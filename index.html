@@ -974,15 +974,15 @@ function parseBomParamSheet(data, sheetName) {
       for(let i=1; i<data.length; i++) {
         const r = data[i];
         if(!r || !r[pIdx] || !r[cIdx]) continue;
-        const exists = appData.boms.some(b=>b.parent===String(r[pIdx]).trim() && b.child===String(r[cIdx]).trim());
-        if(!exists) {
-          appData.boms.push({
-            parent: String(r[pIdx]).trim(),
-            child: String(r[cIdx]).trim(),
-            usage: uIdx>=0 ? parseFloat(r[uIdx])||1 : 1,
-            scrap: sIdx>=0 ? parseFloat(r[sIdx])||0 : 0
-          });
-        }
+        const parent=String(r[pIdx]).trim(), child=String(r[cIdx]).trim();
+        const bomEntry = {
+          parent, child,
+          usage: uIdx>=0 ? parseFloat(r[uIdx])||1 : 1,
+          scrap: sIdx>=0 ? parseFloat(r[sIdx])||0 : 0
+        };
+        const bIdx=appData.boms.findIndex(b=>b.parent===parent && b.child===child);
+        if(bIdx>=0) appData.boms[bIdx]=bomEntry;
+        else appData.boms.push(bomEntry);
       }
       appData.bom = appData.boms;
       showToast('✅ BOM数据已更新','success');
@@ -1091,22 +1091,20 @@ function parseDemandSheet(data, sheetName) {
     const qty = parseFloat(r[qIdx])||0;
     if(qty<=0) continue;
     const orderNo = oIdx>=0 && r[oIdx] ? String(r[oIdx]).trim() : ('ORD'+String(appData.demands.length+1).padStart(3,'0'));
-    // 去重
-    if(!appData.demands.some(d=>d.orderNo===orderNo && d.material===matCode)) {
-      appData.demands.push({
-        orderNo: orderNo,
-        material: matCode,
-        quantity: qty,
-        demandDate: dIdx>=0 && r[dIdx] ? String(r[dIdx]).trim() : new Date(Date.now()+30*86400000).toISOString().split('T')[0],
-        priority: pIdx>=0 && r[pIdx] ? String(r[pIdx]).trim() : '中',
-        customer: cIdx>=0 && r[cIdx] ? String(r[cIdx]).trim() : ''
-      });
-      appData.demandHistory.push({
-        time: new Date().toISOString().substring(0,16).replace('T',' '),
-        orderNo, type:'上传导入',
-        content:'从Sheet「'+sheetName+'」导入订单 '+orderNo+', 数量'+qty
-      });
-    }
+    const entry = {
+      orderNo, material: matCode, quantity: qty,
+      demandDate: dIdx>=0 && r[dIdx] ? String(r[dIdx]).trim() : new Date(Date.now()+30*86400000).toISOString().split('T')[0],
+      priority: pIdx>=0 && r[pIdx] ? String(r[pIdx]).trim() : '中',
+      customer: cIdx>=0 && r[cIdx] ? String(r[cIdx]).trim() : ''
+    };
+    const dIdx2=appData.demands.findIndex(d=>d.orderNo===orderNo && d.material===matCode);
+    if(dIdx2>=0) appData.demands[dIdx2]=entry;
+    else appData.demands.push(entry);
+    appData.demandHistory.push({
+      time: new Date().toISOString().substring(0,16).replace('T',' '),
+      orderNo, type:'上传导入',
+      content:'从Sheet「'+sheetName+'」导入订单 '+orderNo+', 数量'+qty
+    });
   }
   showToast('✅ 需求数据已导入','success');
 }
@@ -1128,23 +1126,17 @@ function parseInventorySheet(data, sheetName) {
     const r = data[i];
     if(!r || !r[mIdx]) continue;
     const matCode = String(r[mIdx]).trim();
-    const stock = sIdx>=0 ? parseFloat(r[sIdx])||0 : 0;
-    // 合并已有记录
-    const existing = appData.inventory.findIndex(inv=>inv.materialCode===matCode);
     const entry = {
       materialCode: matCode,
       materialName: nIdx>=0 && r[nIdx] ? String(r[nIdx]).trim() : '',
       warehouse: wIdx>=0 && r[wIdx] ? String(r[wIdx]).trim() : '主仓库',
-      stock: stock,
+      stock: sIdx>=0 ? parseFloat(r[sIdx])||0 : 0,
       transit: tIdx>=0 ? parseFloat(r[tIdx])||0 : 0,
       transitArrival: aIdx>=0 && r[aIdx] ? String(r[aIdx]).trim() : ''
     };
-    if(existing>=0) {
-      appData.inventory[existing].stock += stock;
-      if(entry.transit) appData.inventory[existing].transit = (appData.inventory[existing].transit||0)+entry.transit;
-    } else {
-      appData.inventory.push(entry);
-    }
+    const idx=appData.inventory.findIndex(inv=>inv.materialCode===matCode);
+    if(idx>=0) appData.inventory[idx]=entry;
+    else appData.inventory.push(entry);
   }
   showToast('✅ 库存数据已导入','success');
 }
@@ -1164,15 +1156,16 @@ function parseMaterialSheet(data, sheetName) {
     const r = data[i];
     if(!r || !r[cIdx]) continue;
     const code = String(r[cIdx]).trim();
-    if(!appData.materials.some(m=>m.code===code)) {
-      appData.materials.push({
-        code: code,
-        name: nIdx>=0 && r[nIdx] ? String(r[nIdx]).trim() : code,
-        category: catIdx>=0 && r[catIdx] ? String(r[catIdx]).trim() : '通用',
-        unit: uIdx>=0 && r[uIdx] ? String(r[uIdx]).trim() : 'EA',
-        type: tIdx>=0 && r[tIdx] ? String(r[tIdx]).trim() : '自制'
-      });
-    }
+    const entry = {
+      code: code,
+      name: nIdx>=0 && r[nIdx] ? String(r[nIdx]).trim() : code,
+      category: catIdx>=0 && r[catIdx] ? String(r[catIdx]).trim() : '通用',
+      unit: uIdx>=0 && r[uIdx] ? String(r[uIdx]).trim() : 'EA',
+      type: tIdx>=0 && r[tIdx] ? String(r[tIdx]).trim() : '自制'
+    };
+    const idx=appData.materials.findIndex(m=>m.code===code);
+    if(idx>=0) appData.materials[idx]=entry;
+    else appData.materials.push(entry);
   }
   showToast('✅ 物料数据已导入','success');
 }
@@ -1193,15 +1186,15 @@ function parseSupplierSheet(data, sheetName) {
     if(!r) continue;
     const code = cIdx>=0 && r[cIdx] ? String(r[cIdx]).trim() : ('SUP-'+String(i).padStart(3,'0'));
     const name = nIdx>=0 && r[nIdx] ? String(r[nIdx]).trim() : code;
-    if(!appData.suppliers.some(s=>s.code===code || s.name===name)) {
-      appData.suppliers.push({
-        code: code,
-        name: name,
-        material: mIdx>=0 && r[mIdx] ? String(r[mIdx]).trim() : '',
-        leadTime: lIdx>=0 ? parseInt(r[lIdx])||0 : 0,
-        quota: qIdx>=0 ? parseFloat(r[qIdx])||100 : 100
-      });
-    }
+    const entry = {
+      code, name,
+      material: mIdx>=0 && r[mIdx] ? String(r[mIdx]).trim() : '',
+      leadTime: lIdx>=0 ? parseInt(r[lIdx])||0 : 0,
+      quota: qIdx>=0 ? parseFloat(r[qIdx])||100 : 100
+    };
+    const idx=appData.suppliers.findIndex(s=>s.code===code);
+    if(idx>=0) appData.suppliers[idx]=entry;
+    else appData.suppliers.push(entry);
   }
   showToast('✅ 供应商数据已导入','success');
 }
@@ -1221,15 +1214,15 @@ function parseRoutingSheet(data, sheetName) {
     const r = data[i];
     if(!r) continue;
     const code = cIdx>=0 && r[cIdx] ? String(r[cIdx]).trim() : ('R-'+String(i).padStart(3,'0'));
-    if(!appData.routings.some(rt=>rt.code===code)) {
-      appData.routings.push({
-        code: code,
-        name: nIdx>=0 && r[nIdx] ? String(r[nIdx]).trim() : code,
-        operation: oIdx>=0 && r[oIdx] ? String(r[oIdx]).trim() : '',
-        leadTime: lIdx>=0 ? parseInt(r[lIdx])||0 : 0,
-        capacity: capIdx>=0 ? parseInt(r[capIdx])||0 : 0
-      });
-    }
+    const entry = {
+      code, name: nIdx>=0 && r[nIdx] ? String(r[nIdx]).trim() : code,
+      operation: oIdx>=0 && r[oIdx] ? String(r[oIdx]).trim() : '',
+      leadTime: lIdx>=0 ? parseInt(r[lIdx])||0 : 0,
+      capacity: capIdx>=0 ? parseInt(r[capIdx])||0 : 0
+    };
+    const idx=appData.routings.findIndex(rt=>rt.code===code);
+    if(idx>=0) appData.routings[idx]=entry;
+    else appData.routings.push(entry);
   }
   showToast('✅ 工艺路线数据已导入','success');
 }
