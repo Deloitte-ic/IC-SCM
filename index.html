@@ -1398,8 +1398,12 @@ function parseSupplierSheet(data, sheetName) {
   for(let i=1; i<data.length; i++) {
     const r = data[i];
     if(!r) continue;
-    const code = cIdx>=0 && r[cIdx] ? String(r[cIdx]).trim() : ('SUP-'+String(i).padStart(3,'0'));
-    const name = nIdx>=0 && r[nIdx] ? String(r[nIdx]).trim() : code;
+    // 跳过空行：所有关键列都为空时忽略
+    const codeVal = cIdx>=0 && r[cIdx] ? String(r[cIdx]).trim() : '';
+    const nameVal = nIdx>=0 && r[nIdx] ? String(r[nIdx]).trim() : '';
+    if(!codeVal && !nameVal) continue;
+    const code = codeVal || ('SUP-'+String(i).padStart(3,'0'));
+    const name = nameVal || code;
     const entry = {
       code, name,
       material: mIdx>=0 && r[mIdx] ? String(r[mIdx]).trim() : '',
@@ -1427,7 +1431,10 @@ function parseRoutingSheet(data, sheetName) {
   for(let i=1; i<data.length; i++) {
     const r = data[i];
     if(!r) continue;
-    const code = cIdx>=0 && r[cIdx] ? String(r[cIdx]).trim() : ('R-'+String(i).padStart(3,'0'));
+    const codeVal = cIdx>=0 && r[cIdx] ? String(r[cIdx]).trim() : '';
+    const nameVal = nIdx>=0 && r[nIdx] ? String(r[nIdx]).trim() : '';
+    if(!codeVal && !nameVal) continue;
+    const code = codeVal || ('R-'+String(i).padStart(3,'0'));
     const entry = {
       code, name: nIdx>=0 && r[nIdx] ? String(r[nIdx]).trim() : code,
       operation: oIdx>=0 && r[oIdx] ? String(r[oIdx]).trim() : '',
