@@ -349,7 +349,7 @@ tbody tr:hover td{background:var(--primary-bg)}
               <button class="btn btn-sm btn-primary" onclick="openAddMaterialModal()">➕ 新增</button>
             </div>
           </div>
-          <div class="table-wrapper"><table id="materialTable"><thead><tr><th>物料编码</th><th>物料名称</th><th>类别</th><th>单位</th><th>采购/自制</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+          <div class="table-wrapper"><table id="materialTable"><thead><tr><th>物料编码</th><th>物料描述</th><th>物料类型</th><th>制程代码</th><th>基本计量单位</th><th>生产方式</th><th>操作</th></tr></thead><tbody></tbody></table></div>
         </div>
         <div class="card">
           <div class="card-header">
@@ -1331,10 +1331,11 @@ function parseMaterialSheet(data, sheetName) {
   if(data.length < 2) return;
   const h = data[0].map(c=>String(c||''));
   const cIdx = h.findIndex(c=>/(编码|code|物料)/i.test(c));
-  const nIdx = h.findIndex(c=>/(名称|name)/i.test(c));
-  const catIdx = h.findIndex(c=>/(类别|category)/i.test(c));
-  const uIdx = h.findIndex(c=>/(单位|unit)/i.test(c));
-  const tIdx = h.findIndex(c=>/(采购|自制|type|类型)/i.test(c));
+  const nIdx = h.findIndex(c=>/(名称|name|描述|description)/i.test(c));
+  const catIdx = h.findIndex(c=>/(类别|类型|category|type)/i.test(c));
+  const pIdx = h.findIndex(c=>/(制程|工艺|process)/i.test(c));
+  const uIdx = h.findIndex(c=>/(单位|unit|计量)/i.test(c));
+  const tIdx = h.findIndex(c=>/(采购|自制|生产|方式|type)/i.test(c));
   if(cIdx<0) return;
 
   for(let i=1; i<data.length; i++) {
@@ -1345,6 +1346,7 @@ function parseMaterialSheet(data, sheetName) {
       code: code,
       name: nIdx>=0 && r[nIdx] ? String(r[nIdx]).trim() : code,
       category: catIdx>=0 && r[catIdx] ? String(r[catIdx]).trim() : '通用',
+      processCode: pIdx>=0 && r[pIdx] ? String(r[pIdx]).trim() : '',
       unit: uIdx>=0 && r[uIdx] ? String(r[uIdx]).trim() : 'EA',
       type: tIdx>=0 && r[tIdx] ? String(r[tIdx]).trim() : '自制'
     };
@@ -1486,11 +1488,11 @@ document.addEventListener('DOMContentLoaded', function() {
 // ======================== 示例数据 ========================
 function loadSampleData() {
   appData.materials = [
-    { code:'IC-1000-FT', name:'FT测试后成品芯片', category:'成品', unit:'颗', type:'自制' },
-    { code:'IC-1000-AB', name:'AB封装后芯片', category:'半成品', unit:'颗', type:'自制' },
-    { code:'IC-1000-CP', name:'CP测试后晶圆', category:'半成品', unit:'片', type:'自制' },
-    { code:'IC-1000-BP', name:'BP制造后晶圆', category:'半成品', unit:'片', type:'自制' },
-    { code:'IC-1000-Wafer', name:'Wafer晶圆', category:'原材料', unit:'片', type:'采购' }
+    { code:'IC-1000-FT', name:'FT测试后成品芯片', category:'成品', processCode:'FT', unit:'颗', type:'自制' },
+    { code:'IC-1000-AB', name:'AB封装后芯片', category:'半成品', processCode:'AB', unit:'颗', type:'自制' },
+    { code:'IC-1000-CP', name:'CP测试后晶圆', category:'半成品', processCode:'CP', unit:'片', type:'自制' },
+    { code:'IC-1000-BP', name:'BP制造后晶圆', category:'半成品', processCode:'BP', unit:'片', type:'自制' },
+    { code:'IC-1000-Wafer', name:'Wafer晶圆', category:'原材料', processCode:'Wafer', unit:'片', type:'采购' }
   ];
   appData.boms = [
     { parent:'IC-1000-FT', child:'IC-1000-AB', usage:1, scrap:5 },
@@ -1549,9 +1551,9 @@ function loadSampleData() {
 function renderAllMasterdata() {
   let mhtml = '';
   appData.materials.forEach((m,i)=>{
-    mhtml += '<tr><td>'+m.code+'</td><td>'+m.name+'</td><td>'+m.category+'</td><td>'+m.unit+'</td><td><span class="tag-status '+(m.type==='采购'?'tag-yellow':'tag-blue')+'">'+m.type+'</span></td><td><button class="btn btn-sm btn-outline" onclick="editMaterial('+i+')">✏️</button><button class="btn btn-sm btn-outline" onclick="deleteMaterial('+i+')">🗑️</button></td></tr>';
+    mhtml += '<tr><td>'+m.code+'</td><td>'+m.name+'</td><td>'+m.category+'</td><td>'+(m.processCode||'-')+'</td><td>'+m.unit+'</td><td><span class="tag-status '+(m.type==='采购'?'tag-yellow':'tag-blue')+'">'+m.type+'</span></td><td><button class="btn btn-sm btn-outline" onclick="editMaterial('+i+')">✏️</button><button class="btn btn-sm btn-outline" onclick="deleteMaterial('+i+')">🗑️</button></td></tr>';
   });
-  document.querySelector('#materialTable tbody').innerHTML = mhtml || '<tr><td colspan="6" style="text-align:center;color:var(--gray-400)">暂无数据，请上传或加载示例数据</td></tr>';
+  document.querySelector('#materialTable tbody').innerHTML = mhtml || '<tr><td colspan="7" style="text-align:center;color:var(--gray-400)">暂无数据，请上传或加载示例数据</td></tr>';
   document.getElementById('materialCount').textContent = appData.materials.length+'条';
   let bhtml = '';
   appData.boms.forEach((b,i)=>{
@@ -1602,10 +1604,11 @@ function editMaterial(idx) {
   if(!m) return;
   openModal('<div class="modal-title">编辑物料 <button class="modal-close" onclick="closeModal()">×</button></div>'+
     '<div class="grid-2"><div class="form-group"><label>物料编码</label><input id="formMatCode" value="'+escapeHtml(m.code)+'"></div>'+
-    '<div class="form-group"><label>物料名称</label><input id="formMatName" value="'+escapeHtml(m.name)+'"></div></div>'+
-    '<div class="grid-2"><div class="form-group"><label>类别</label><select id="formMatCategory"><option '+(m.category==='成品'?'selected':'')+'>成品</option><option '+(m.category==='半成品'?'selected':'')+'>半成品</option><option '+(m.category==='原材料'?'selected':'')+'>原材料</option></select></div>'+
-    '<div class="form-group"><label>单位</label><select id="formMatUnit"><option '+(m.unit==='颗'?'selected':'')+'>颗</option><option '+(m.unit==='片'?'selected':'')+'>片</option><option '+(m.unit==='个'?'selected':'')+'>个</option></select></div></div>'+
-    '<div class="form-group"><label>采购/自制</label><select id="formMatType"><option '+(m.type==='自制'?'selected':'')+'>自制</option><option '+(m.type==='采购'?'selected':'')+'>采购</option></select></div>'+
+    '<div class="form-group"><label>物料描述</label><input id="formMatName" value="'+escapeHtml(m.name)+'"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>物料类型</label><select id="formMatCategory"><option '+(m.category==='成品'?'selected':'')+'>成品</option><option '+(m.category==='半成品'?'selected':'')+'>半成品</option><option '+(m.category==='原材料'?'selected':'')+'>原材料</option></select></div>'+
+    '<div class="form-group"><label>制程代码</label><input id="formMatProcess" value="'+escapeHtml(m.processCode||'')+'" placeholder="如 FT"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>基本计量单位</label><select id="formMatUnit"><option '+(m.unit==='颗'?'selected':'')+'>颗</option><option '+(m.unit==='片'?'selected':'')+'>片</option><option '+(m.unit==='个'?'selected':'')+'>个</option></select></div>'+
+    '<div class="form-group"><label>生产方式</label><select id="formMatType"><option '+(m.type==='自制'?'selected':'')+'>自制</option><option '+(m.type==='采购'?'selected':'')+'>采购</option></select></div></div>'+
     '<input type="hidden" id="editMatIdx" value="'+idx+'">'+
     '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveEditMaterial()">保存</button></div>');
 }
@@ -1614,8 +1617,8 @@ function saveEditMaterial() {
   if(isNaN(idx)||!appData.materials[idx]){showToast('数据异常','error');return;}
   const code=document.getElementById('formMatCode').value.trim();
   const name=document.getElementById('formMatName').value.trim();
-  if(!code||!name){showToast('请填写物料编码和名称','error');return;}
-  appData.materials[idx]={code,name,category:document.getElementById('formMatCategory').value,unit:document.getElementById('formMatUnit').value,type:document.getElementById('formMatType').value};
+  if(!code||!name){showToast('请填写物料编码和描述','error');return;}
+  appData.materials[idx]={code,name,category:document.getElementById('formMatCategory').value,processCode:document.getElementById('formMatProcess').value.trim(),unit:document.getElementById('formMatUnit').value,type:document.getElementById('formMatType').value};
   closeModal();renderAllMasterdata();showToast('✅ 物料已更新','success');
 }
 
@@ -1698,17 +1701,18 @@ function saveEditInventory() {
 function openAddMaterialModal() {
   openModal('<div class="modal-title">新增物料 <button class="modal-close" onclick="closeModal()">×</button></div>'+
     '<div class="grid-2"><div class="form-group"><label>物料编码</label><input id="formMatCode" placeholder="如 IC-1000-XXX"></div>'+
-    '<div class="form-group"><label>物料名称</label><input id="formMatName" placeholder="物料名称"></div></div>'+
-    '<div class="grid-2"><div class="form-group"><label>类别</label><select id="formMatCategory"><option>成品</option><option>半成品</option><option>原材料</option></select></div>'+
-    '<div class="form-group"><label>单位</label><select id="formMatUnit"><option>颗</option><option>片</option><option>个</option></select></div></div>'+
-    '<div class="form-group"><label>采购/自制</label><select id="formMatType"><option>自制</option><option>采购</option></select></div>'+
+    '<div class="form-group"><label>物料描述</label><input id="formMatName" placeholder="物料描述"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>物料类型</label><select id="formMatCategory"><option>成品</option><option>半成品</option><option>原材料</option></select></div>'+
+    '<div class="form-group"><label>制程代码</label><input id="formMatProcess" placeholder="如 FT"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>基本计量单位</label><select id="formMatUnit"><option>颗</option><option>片</option><option>个</option></select></div>'+
+    '<div class="form-group"><label>生产方式</label><select id="formMatType"><option>自制</option><option>采购</option></select></div></div>'+
     '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveNewMaterial()">保存</button></div>');
 }
 function saveNewMaterial() {
   const code = document.getElementById('formMatCode').value.trim();
   const name = document.getElementById('formMatName').value.trim();
-  if(!code||!name) { showToast('请填写物料编码和名称','error'); return; }
-  appData.materials.push({code,name,category:document.getElementById('formMatCategory').value,unit:document.getElementById('formMatUnit').value,type:document.getElementById('formMatType').value});
+  if(!code||!name) { showToast('请填写物料编码和描述','error'); return; }
+  appData.materials.push({code,name,category:document.getElementById('formMatCategory').value,processCode:document.getElementById('formMatProcess').value.trim(),unit:document.getElementById('formMatUnit').value,type:document.getElementById('formMatType').value});
   closeModal();renderAllMasterdata();showToast('✅ 物料添加成功','success');
 }
 function openAddBomModal() {
