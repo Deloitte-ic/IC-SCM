@@ -379,7 +379,7 @@ tbody tr:hover td{background:var(--primary-bg)}
               <button class="btn btn-sm btn-primary" onclick="openAddRoutingModal()">➕ 新增</button>
             </div>
           </div>
-          <div class="table-wrapper"><table id="routingTable"><thead><tr><th>制程编码</th><th>制程名称</th><th>工序</th><th>交期(天)</th><th>日产能</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+          <div class="table-wrapper"><table id="routingTable"><thead><tr><th>物料</th><th>制程代码</th><th>工序</th><th>计量单位</th><th>每日有效工时</th><th>日产能</th><th>操作</th></tr></thead><tbody></tbody></table></div>
         </div>
       </div>
 
@@ -393,7 +393,7 @@ tbody tr:hover td{background:var(--primary-bg)}
               <button class="btn btn-sm btn-primary" onclick="openAddSupplierModal()">➕ 新增</button>
             </div>
           </div>
-          <div class="table-wrapper"><table id="supplierTable"><thead><tr><th>供应商编码</th><th>供应商名称</th><th>供应物料</th><th>制程代码</th><th>交期（天）</th><th>日产能</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+          <div class="table-wrapper"><table id="supplierTable"><thead><tr><th>供应商编码</th><th>供应商名称</th><th>供应物料</th><th>制程代码</th><th>交期（天）</th><th>操作</th></tr></thead><tbody></tbody></table></div>
         </div>
       </div>
     </div>
@@ -1386,7 +1386,6 @@ function parseSupplierSheet(data, sheetName) {
   const mIdx = h.findIndex(c=>/(物料|材料|material)/i.test(c));
   const pIdx = h.findIndex(c=>/(制程|工艺|process)/i.test(c));
   const lIdx = h.findIndex(c=>/(交期|lead|天数)/i.test(c));
-  const capIdx = h.findIndex(c=>/(产能|capacity|日产能)/i.test(c));
   if(cIdx<0 && nIdx<0) return;
 
   for(let i=1; i<data.length; i++) {
@@ -1402,8 +1401,7 @@ function parseSupplierSheet(data, sheetName) {
       code, name,
       material: mIdx>=0 && r[mIdx] ? String(r[mIdx]).trim() : '',
       processCode: pIdx>=0 && r[pIdx] ? String(r[pIdx]).trim() : '',
-      leadTime: lIdx>=0 ? parseInt(r[lIdx])||0 : 0,
-      dailyCapacity: capIdx>=0 ? parseInt(r[capIdx])||0 : 0
+      leadTime: lIdx>=0 ? parseInt(r[lIdx])||0 : 0
     };
     const idx=appData.suppliers.findIndex(s=>s.code===code);
     if(idx>=0) appData.suppliers[idx]=entry;
@@ -1416,10 +1414,11 @@ function parseSupplierSheet(data, sheetName) {
 function parseRoutingSheet(data, sheetName) {
   if(data.length < 2) return;
   const h = data[0].map(c=>String(c||''));
-  const cIdx = h.findIndex(c=>/(编码|code|制程)/i.test(c));
-  const nIdx = h.findIndex(c=>/(名称|name)/i.test(c));
+  const cIdx = h.findIndex(c=>/(编码|code|物料)/i.test(c));
+  const nIdx = h.findIndex(c=>/(名称|name|制程代码)/i.test(c));
   const oIdx = h.findIndex(c=>/(工序|operation)/i.test(c));
-  const lIdx = h.findIndex(c=>/(交期|lead|天数)/i.test(c));
+  const uIdx = h.findIndex(c=>/(计量|单位|unit)/i.test(c));
+  const hIdx = h.findIndex(c=>/(工时|有效|hours|hour)/i.test(c));
   const capIdx = h.findIndex(c=>/(产能|capacity)/i.test(c));
   if(cIdx<0 && nIdx<0) return;
 
@@ -1433,7 +1432,8 @@ function parseRoutingSheet(data, sheetName) {
     const entry = {
       code, name: nIdx>=0 && r[nIdx] ? String(r[nIdx]).trim() : code,
       operation: oIdx>=0 && r[oIdx] ? String(r[oIdx]).trim() : '',
-      leadTime: lIdx>=0 ? parseInt(r[lIdx])||0 : 0,
+      unit: uIdx>=0 && r[uIdx] ? String(r[uIdx]).trim() : '',
+      effectiveHours: hIdx>=0 ? parseFloat(r[hIdx])||0 : 8,
       capacity: capIdx>=0 ? parseInt(r[capIdx])||0 : 0
     };
     const idx=appData.routings.findIndex(rt=>rt.code===code);
@@ -1504,18 +1504,18 @@ function loadSampleData() {
   ];
   appData.bom = appData.boms;
   appData.routings = [
-    { code:'R-FT', name:'FT测试', operation:'FT测试工序', leadTime:5, capacity:5000 },
-    { code:'R-AB', name:'AB封装', operation:'AB封装工序', leadTime:15, capacity:3000 },
-    { code:'R-CP', name:'CP测试', operation:'CP测试工序', leadTime:8, capacity:4000 },
-    { code:'R-BP', name:'BP制造', operation:'BP凸块制造', leadTime:15, capacity:3500 },
-    { code:'R-Wafer', name:'Wafer', operation:'晶圆制造', leadTime:50, capacity:2000 }
+    { code:'R-FT', name:'FT测试', operation:'FT测试工序', unit:'颗', effectiveHours:8, capacity:5000 },
+    { code:'R-AB', name:'AB封装', operation:'AB封装工序', unit:'颗', effectiveHours:8, capacity:3000 },
+    { code:'R-CP', name:'CP测试', operation:'CP测试工序', unit:'片', effectiveHours:8, capacity:4000 },
+    { code:'R-BP', name:'BP制造', operation:'BP凸块制造', unit:'片', effectiveHours:8, capacity:3500 },
+    { code:'R-Wafer', name:'Wafer', operation:'晶圆制造', unit:'片', effectiveHours:8, capacity:2000 }
   ];
   appData.suppliers = [
-    { code:'SUP-FT-001', name:'FT封装测试供应商', material:'IC-1000-FT', processCode:'FT', leadTime:5, dailyCapacity:2000 },
-    { code:'SUP-AB-001', name:'AB封装供应商', material:'IC-1000-AB', processCode:'AB', leadTime:15, dailyCapacity:1500 },
-    { code:'SUP-CP-001', name:'CP测试供应商', material:'IC-1000-CP', processCode:'CP', leadTime:8, dailyCapacity:3000 },
-    { code:'SUP-BP-001', name:'BP凸块供应商', material:'IC-1000-BP', processCode:'BP', leadTime:15, dailyCapacity:2500 },
-    { code:'SUP-WF-001', name:'Wafer晶圆供应商', material:'IC-1000-Wafer', processCode:'Wafer', leadTime:50, dailyCapacity:1000 }
+    { code:'SUP-FT-001', name:'FT封装测试供应商', material:'IC-1000-FT', processCode:'FT', leadTime:5 },
+    { code:'SUP-AB-001', name:'AB封装供应商', material:'IC-1000-AB', processCode:'AB', leadTime:15 },
+    { code:'SUP-CP-001', name:'CP测试供应商', material:'IC-1000-CP', processCode:'CP', leadTime:8 },
+    { code:'SUP-BP-001', name:'BP凸块供应商', material:'IC-1000-BP', processCode:'BP', leadTime:15 },
+    { code:'SUP-WF-001', name:'Wafer晶圆供应商', material:'IC-1000-Wafer', processCode:'Wafer', leadTime:50 }
   ];
   appData.leadTimes = [
     { process:'FT', code:'SUP-FT-001', name:'FT封装测试供应商', prod:2, trans:2, inspect:1 },
@@ -1565,15 +1565,15 @@ function renderAllMasterdata() {
   document.getElementById('bomCount').textContent = appData.boms.length+'条';
   let rhtml = '';
   appData.routings.forEach((r,i)=>{
-    rhtml += '<tr><td>'+r.code+'</td><td>'+r.name+'</td><td>'+r.operation+'</td><td>'+r.leadTime+'</td><td>'+r.capacity+'</td><td><button class="btn btn-sm btn-outline" onclick="editRouting('+i+')">✏️</button><button class="btn btn-sm btn-outline" onclick="deleteRouting('+i+')">🗑️</button></td></tr>';
+    rhtml += '<tr><td>'+r.code+'</td><td>'+r.name+'</td><td>'+r.operation+'</td><td>'+(r.unit||'')+'</td><td>'+(r.effectiveHours||0)+'</td><td>'+r.capacity+'</td><td><button class="btn btn-sm btn-outline" onclick="editRouting('+i+')">✏️</button><button class="btn btn-sm btn-outline" onclick="deleteRouting('+i+')">🗑️</button></td></tr>';
   });
-  document.querySelector('#routingTable tbody').innerHTML = rhtml || '<tr><td colspan="6" style="text-align:center;color:var(--gray-400)">暂无数据</td></tr>';
+  document.querySelector('#routingTable tbody').innerHTML = rhtml || '<tr><td colspan="7" style="text-align:center;color:var(--gray-400)">暂无数据</td></tr>';
   document.getElementById('routingCount').textContent = appData.routings.length+'条';
   let shtml = '';
   appData.suppliers.forEach((s,i)=>{
-    shtml += '<tr><td>'+s.code+'</td><td>'+s.name+'</td><td>'+s.material+'</td><td>'+(s.processCode||'')+'</td><td>'+s.leadTime+'</td><td>'+(s.dailyCapacity||0)+'</td><td><button class="btn btn-sm btn-outline" onclick="editSupplier('+i+')">✏️</button><button class="btn btn-sm btn-outline" onclick="deleteSupplier('+i+')">🗑️</button></td></tr>';
+    shtml += '<tr><td>'+s.code+'</td><td>'+s.name+'</td><td>'+s.material+'</td><td>'+(s.processCode||'')+'</td><td>'+s.leadTime+'</td><td><button class="btn btn-sm btn-outline" onclick="editSupplier('+i+')">✏️</button><button class="btn btn-sm btn-outline" onclick="deleteSupplier('+i+')">🗑️</button></td></tr>';
   });
-  document.querySelector('#supplierTable tbody').innerHTML = shtml || '<tr><td colspan="7" style="text-align:center;color:var(--gray-400)">暂无数据</td></tr>';
+  document.querySelector('#supplierTable tbody').innerHTML = shtml || '<tr><td colspan="6" style="text-align:center;color:var(--gray-400)">暂无数据</td></tr>';
   document.getElementById('supplierCount').textContent = appData.suppliers.length+'条';
   let ihtml = '';
   appData.inventory.forEach((inv,idx)=>{
@@ -1651,16 +1651,16 @@ function editRouting(idx) {
   const r=appData.routings[idx];
   if(!r) return;
   openModal('<div class="modal-title">编辑工艺路线 <button class="modal-close" onclick="closeModal()">×</button></div>'+
-    '<div class="grid-2"><div class="form-group"><label>制程编码</label><input id="formRtCode" value="'+escapeHtml(r.code)+'"></div><div class="form-group"><label>制程名称</label><input id="formRtName" value="'+escapeHtml(r.name)+'"></div></div>'+
-    '<div class="grid-2"><div class="form-group"><label>工序描述</label><input id="formRtOp" value="'+escapeHtml(r.operation)+'"></div><div class="form-group"><label>交期(天)</label><input type="number" id="formRtLead" value="'+r.leadTime+'"></div></div>'+
-    '<div class="form-group"><label>日产能</label><input type="number" id="formRtCap" value="'+r.capacity+'"></div>'+
+    '<div class="grid-2"><div class="form-group"><label>物料</label><input id="formRtCode" value="'+escapeHtml(r.code)+'"></div><div class="form-group"><label>制程代码</label><input id="formRtName" value="'+escapeHtml(r.name)+'"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>工序</label><input id="formRtOp" value="'+escapeHtml(r.operation)+'"></div><div class="form-group"><label>计量单位</label><input id="formRtUnit" value="'+escapeHtml(r.unit||'')+'" placeholder="如 颗/片"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>每日有效工时</label><input type="number" id="formRtHours" value="'+(r.effectiveHours||8)+'"></div><div class="form-group"><label>日产能</label><input type="number" id="formRtCap" value="'+r.capacity+'"></div></div>'+
     '<input type="hidden" id="editRtIdx" value="'+idx+'">'+
     '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveEditRouting()">保存</button></div>');
 }
 function saveEditRouting() {
   const idx=parseInt(document.getElementById('editRtIdx').value);
   if(isNaN(idx)||!appData.routings[idx]){showToast('数据异常','error');return;}
-  appData.routings[idx]={code:document.getElementById('formRtCode').value.trim(),name:document.getElementById('formRtName').value.trim(),operation:document.getElementById('formRtOp').value.trim(),leadTime:parseInt(document.getElementById('formRtLead').value)||0,capacity:parseInt(document.getElementById('formRtCap').value)||0};
+  appData.routings[idx]={code:document.getElementById('formRtCode').value.trim(),name:document.getElementById('formRtName').value.trim(),operation:document.getElementById('formRtOp').value.trim(),unit:document.getElementById('formRtUnit').value.trim(),effectiveHours:parseFloat(document.getElementById('formRtHours').value)||0,capacity:parseInt(document.getElementById('formRtCap').value)||0};
   closeModal();renderAllMasterdata();showToast('✅ 工艺路线已更新','success');
 }
 
@@ -1670,14 +1670,14 @@ function editSupplier(idx) {
   openModal('<div class="modal-title">编辑供应商 <button class="modal-close" onclick="closeModal()">×</button></div>'+
     '<div class="grid-2"><div class="form-group"><label>供应商编码</label><input id="formSupCode" value="'+escapeHtml(s.code)+'"></div><div class="form-group"><label>供应商名称</label><input id="formSupName" value="'+escapeHtml(s.name)+'"></div></div>'+
     '<div class="grid-2"><div class="form-group"><label>供应物料</label><input id="formSupMat" value="'+escapeHtml(s.material)+'"></div><div class="form-group"><label>制程代码</label><input id="formSupProcess" value="'+escapeHtml(s.processCode||'')+'" placeholder="如 FT"></div></div>'+
-    '<div class="grid-2"><div class="form-group"><label>交期（天）</label><input type="number" id="formSupLead" value="'+s.leadTime+'"></div><div class="form-group"><label>日产能</label><input type="number" id="formSupCapacity" value="'+(s.dailyCapacity||0)+'"></div></div>'+
+    '<div class="form-group"><label>交期（天）</label><input type="number" id="formSupLead" value="'+s.leadTime+'"></div>'+
     '<input type="hidden" id="editSupIdx" value="'+idx+'">'+
     '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveEditSupplier()">保存</button></div>');
 }
 function saveEditSupplier() {
   const idx=parseInt(document.getElementById('editSupIdx').value);
   if(isNaN(idx)||!appData.suppliers[idx]){showToast('数据异常','error');return;}
-  appData.suppliers[idx]={code:document.getElementById('formSupCode').value.trim(),name:document.getElementById('formSupName').value.trim(),material:document.getElementById('formSupMat').value.trim(),processCode:document.getElementById('formSupProcess').value.trim(),leadTime:parseInt(document.getElementById('formSupLead').value)||0,dailyCapacity:parseInt(document.getElementById('formSupCapacity').value)||0};
+  appData.suppliers[idx]={code:document.getElementById('formSupCode').value.trim(),name:document.getElementById('formSupName').value.trim(),material:document.getElementById('formSupMat').value.trim(),processCode:document.getElementById('formSupProcess').value.trim(),leadTime:parseInt(document.getElementById('formSupLead').value)||0};
   closeModal();renderAllMasterdata();showToast('✅ 供应商已更新','success');
 }
 
@@ -1734,24 +1734,24 @@ function saveNewBom() {
 }
 function openAddRoutingModal() {
   openModal('<div class="modal-title">新增工艺路线 <button class="modal-close" onclick="closeModal()">×</button></div>'+
-    '<div class="grid-2"><div class="form-group"><label>制程编码</label><input id="formRtCode" placeholder="如 R-XXX"></div><div class="form-group"><label>制程名称</label><input id="formRtName" placeholder="制程名称"></div></div>'+
-    '<div class="grid-2"><div class="form-group"><label>工序描述</label><input id="formRtOp" placeholder="工序描述"></div><div class="form-group"><label>交期(天)</label><input type="number" id="formRtLead" value="5"></div></div>'+
-    '<div class="form-group"><label>日产能</label><input type="number" id="formRtCap" value="1000"></div>'+
+    '<div class="grid-2"><div class="form-group"><label>物料</label><input id="formRtCode" placeholder="如 R-XXX"></div><div class="form-group"><label>制程代码</label><input id="formRtName" placeholder="如 FT"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>工序</label><input id="formRtOp" placeholder="工序描述"></div><div class="form-group"><label>计量单位</label><input id="formRtUnit" placeholder="如 颗/片"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>每日有效工时</label><input type="number" id="formRtHours" value="8"></div><div class="form-group"><label>日产能</label><input type="number" id="formRtCap" value="1000"></div></div>'+
     '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveNewRouting()">保存</button></div>');
 }
 function saveNewRouting() {
-  appData.routings.push({code:document.getElementById('formRtCode').value.trim(),name:document.getElementById('formRtName').value.trim(),operation:document.getElementById('formRtOp').value.trim(),leadTime:parseInt(document.getElementById('formRtLead').value)||0,capacity:parseInt(document.getElementById('formRtCap').value)||0});
+  appData.routings.push({code:document.getElementById('formRtCode').value.trim(),name:document.getElementById('formRtName').value.trim(),operation:document.getElementById('formRtOp').value.trim(),unit:document.getElementById('formRtUnit').value.trim(),effectiveHours:parseFloat(document.getElementById('formRtHours').value)||0,capacity:parseInt(document.getElementById('formRtCap').value)||0});
   closeModal();renderAllMasterdata();showToast('✅ 工艺路线添加成功','success');
 }
 function openAddSupplierModal() {
   openModal('<div class="modal-title">新增供应商 <button class="modal-close" onclick="closeModal()">×</button></div>'+
     '<div class="grid-2"><div class="form-group"><label>供应商编码</label><input id="formSupCode" placeholder="如 SUP-XXX-001"></div><div class="form-group"><label>供应商名称</label><input id="formSupName" placeholder="供应商名称"></div></div>'+
     '<div class="grid-2"><div class="form-group"><label>供应物料</label><input id="formSupMat" placeholder="物料编码"></div><div class="form-group"><label>制程代码</label><input id="formSupProcess" placeholder="如 FT"></div></div>'+
-    '<div class="grid-2"><div class="form-group"><label>交期（天）</label><input type="number" id="formSupLead" value="10"></div><div class="form-group"><label>日产能</label><input type="number" id="formSupCapacity" value="0"></div></div>'+
+    '<div class="form-group"><label>交期（天）</label><input type="number" id="formSupLead" value="10"></div>'+
     '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveNewSupplier()">保存</button></div>');
 }
 function saveNewSupplier() {
-  appData.suppliers.push({code:document.getElementById('formSupCode').value.trim(),name:document.getElementById('formSupName').value.trim(),material:document.getElementById('formSupMat').value.trim(),processCode:document.getElementById('formSupProcess').value.trim(),leadTime:parseInt(document.getElementById('formSupLead').value)||0,dailyCapacity:parseInt(document.getElementById('formSupCapacity').value)||0});
+  appData.suppliers.push({code:document.getElementById('formSupCode').value.trim(),name:document.getElementById('formSupName').value.trim(),material:document.getElementById('formSupMat').value.trim(),processCode:document.getElementById('formSupProcess').value.trim(),leadTime:parseInt(document.getElementById('formSupLead').value)||0});
   closeModal();renderAllMasterdata();showToast('✅ 供应商添加成功','success');
 }
 function openAddInventoryModal() {
