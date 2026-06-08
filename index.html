@@ -254,8 +254,11 @@ tbody tr:hover td{background:var(--primary-bg)}
     <div class="nav-group">
       <div class="nav-group-title">数据管理</div>
       <div class="nav-item" data-section="masterdata" onclick="switchSection('masterdata')">
-        <span class="nav-icon">📦</span><span class="nav-text">主数据导入</span>
+        <span class="nav-icon">📦</span><span class="nav-text">主数据</span>
         <span class="badge" id="masterdataBadge" style="display:none">!</span>
+      </div>
+      <div class="nav-item" data-section="business" onclick="switchSection('business')">
+        <span class="nav-icon">📊</span><span class="nav-text">业务数据</span>
       </div>
     </div>
     <div class="nav-group">
@@ -322,33 +325,27 @@ tbody tr:hover td{background:var(--primary-bg)}
       </div>
     </div>
 
-    <!-- ==================== 主数据导入 ==================== -->
+    <!-- ==================== 主数据 ==================== -->
     <div class="section" id="section-masterdata">
       <div class="tabs" id="masterdataTabs">
-        <div class="tab active" data-tab="md-upload" onclick="switchMasterdataTab('md-upload')">📤 数据上传</div>
-        <div class="tab" data-tab="md-materials" onclick="switchMasterdataTab('md-materials')">🏭 物料主数据</div>
+        <div class="tab active" data-tab="md-materials" onclick="switchMasterdataTab('md-materials')">🏭 物料主数据</div>
         <div class="tab" data-tab="md-bom" onclick="switchMasterdataTab('md-bom')">🔗 BOM结构</div>
         <div class="tab" data-tab="md-routing" onclick="switchMasterdataTab('md-routing')">📋 工艺路线</div>
         <div class="tab" data-tab="md-suppliers" onclick="switchMasterdataTab('md-suppliers')">🏢 供应商</div>
-        <div class="tab" data-tab="md-inventory" onclick="switchMasterdataTab('md-inventory')">📦 库存</div>
       </div>
 
-      <!-- 改造一：通用文件上传入口 -->
-      <div class="tab-content active" id="tab-md-upload">
+      <div class="tab-content active" id="tab-md-materials">
         <div class="card">
-          <div class="card-title">📤 通用文件上传 <span class="tag">支持智能识别</span></div>
-          <div class="alert alert-info">💡 上传任意Excel文件，系统自动遍历所有sheet，根据sheet名称智能识别数据类型并解析到对应页面。</div>
-          <div class="upload-zone" id="unifiedDropZone" onclick="document.getElementById('unifiedFileInput').click()">
-            <span class="icon">📂</span>
-            <div class="label">拖拽或点击上传Excel文件</div>
-            <div class="hint">支持 .xlsx/.xls 格式 · 自动识别BOM/参数/制程/需求/订单/预测/库存/物料/供应商等Sheet</div>
-            <input type="file" id="unifiedFileInput" accept=".xlsx,.xls" onchange="handleUnifiedUpload(event)">
-            <div class="upload-status" id="unifiedUploadStatus"></div>
+          <div class="card-header">
+            <div class="card-title">🏭 物料主数据 <span class="tag" id="materialCount">0条</span></div>
+            <div class="card-actions">
+              <button class="btn btn-sm btn-outline" onclick="importToType('materials')">📥 导入</button>
+              <input type="file" id="importFile_materials" accept=".xlsx,.xls" onchange="handleTypeImport(event,'materials')" style="display:none">
+              <button class="btn btn-sm btn-primary" onclick="openAddMaterialModal()">➕ 新增</button>
+            </div>
           </div>
-          <div id="genericSheetTables" style="margin-top:12px"></div>
+          <div class="table-wrapper"><table id="materialTable"><thead><tr><th>物料编码</th><th>物料名称</th><th>类别</th><th>单位</th><th>采购/自制</th><th>操作</th></tr></thead><tbody></tbody></table></div>
         </div>
-        <!-- 新增：通用数据表展示区域 -->
-        <div id="genericDataCards" style="display:none"></div>
         <div class="card">
           <div class="card-header">
             <div class="card-title">📌 快速体验</div>
@@ -358,23 +355,13 @@ tbody tr:hover td{background:var(--primary-bg)}
         </div>
       </div>
 
-      <div class="tab-content" id="tab-md-materials">
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title">🏭 物料主数据 <span class="tag" id="materialCount">0条</span></div>
-            <div class="card-actions">
-              <button class="btn btn-sm btn-primary" onclick="openAddMaterialModal()">➕ 新增</button>
-            </div>
-          </div>
-          <div class="table-wrapper"><table id="materialTable"><thead><tr><th>物料编码</th><th>物料名称</th><th>类别</th><th>单位</th><th>采购/自制</th><th>操作</th></tr></thead><tbody></tbody></table></div>
-        </div>
-      </div>
-
       <div class="tab-content" id="tab-md-bom">
         <div class="card">
           <div class="card-header">
             <div class="card-title">🔗 BOM结构 <span class="tag" id="bomCount">0条</span></div>
             <div class="card-actions">
+              <button class="btn btn-sm btn-outline" onclick="importToType('bom')">📥 导入</button>
+              <input type="file" id="importFile_bom" accept=".xlsx,.xls" onchange="handleTypeImport(event,'bom')" style="display:none">
               <button class="btn btn-sm btn-primary" onclick="openAddBomModal()">➕ 新增</button>
               <button class="btn btn-sm btn-outline" onclick="renderBomTree()">🌳 BOM树形图</button>
             </div>
@@ -389,6 +376,8 @@ tbody tr:hover td{background:var(--primary-bg)}
           <div class="card-header">
             <div class="card-title">📋 工艺路线 <span class="tag" id="routingCount">0条</span></div>
             <div class="card-actions">
+              <button class="btn btn-sm btn-outline" onclick="importToType('routing')">📥 导入</button>
+              <input type="file" id="importFile_routing" accept=".xlsx,.xls" onchange="handleTypeImport(event,'routing')" style="display:none">
               <button class="btn btn-sm btn-primary" onclick="openAddRoutingModal()">➕ 新增</button>
             </div>
           </div>
@@ -401,14 +390,23 @@ tbody tr:hover td{background:var(--primary-bg)}
           <div class="card-header">
             <div class="card-title">🏢 供应商信息 <span class="tag" id="supplierCount">0条</span></div>
             <div class="card-actions">
+              <button class="btn btn-sm btn-outline" onclick="importToType('suppliers')">📥 导入</button>
+              <input type="file" id="importFile_suppliers" accept=".xlsx,.xls" onchange="handleTypeImport(event,'suppliers')" style="display:none">
               <button class="btn btn-sm btn-primary" onclick="openAddSupplierModal()">➕ 新增</button>
             </div>
           </div>
           <div class="table-wrapper"><table id="supplierTable"><thead><tr><th>供应商编码</th><th>供应商名称</th><th>供应物料</th><th>交期(天)</th><th>配额(%)</th><th>操作</th></tr></thead><tbody></tbody></table></div>
         </div>
       </div>
+    </div>
 
-      <div class="tab-content" id="tab-md-inventory">
+    <!-- ==================== 业务数据 ==================== -->
+    <div class="section" id="section-business">
+      <div class="tabs" id="businessTabs">
+        <div class="tab active" data-tab="bd-inventory" onclick="switchBusinessTab('bd-inventory')">📦 库存</div>
+      </div>
+
+      <div class="tab-content active" id="tab-bd-inventory">
         <div class="card">
           <div class="card-header">
             <div class="card-title">📦 库存数据 <span class="tag" id="invCount">0条</span></div>
@@ -782,7 +780,8 @@ function switchSection(id) {
 
   const titles = {
     dashboard:'📊 仪表板',
-    masterdata:'📦 主数据导入',
+    masterdata:'📦 主数据',
+    business:'📊 业务数据',
     demand:'🔮 需求预测',
     mrp:'⚙️ MRP运算',
     balance:'⚖️ 供给平衡',
@@ -790,7 +789,8 @@ function switchSection(id) {
   };
   const breadcrumbs = {
     dashboard:'仪表板',
-    masterdata:'主数据导入',
+    masterdata:'主数据',
+    business:'业务数据',
     demand:'需求预测',
     mrp:'MRP运算',
     balance:'供给平衡',
@@ -801,6 +801,7 @@ function switchSection(id) {
 
   if(id==='dashboard') updateDashboard();
   if(id==='masterdata') renderAllMasterdata();
+  if(id==='business') renderAllMasterdata();
   if(id==='demand') renderDemand();
   if(id==='mrp') { renderConfigTables(); refreshOrderSelect(); }
   if(id==='balance') updateBalance();
@@ -921,6 +922,9 @@ function handleUnifiedUpload(event) {
           if (autoJumpTab === null) {
             // 跳转到需求预测页面
             switchSection('demand');
+          } else if (autoJumpTab === 'md-inventory') {
+            switchSection('business');
+            switchBusinessTab('bd-inventory');
           } else if (autoJumpTab) {
             switchSection('masterdata');
             switchMasterdataTab(autoJumpTab);
@@ -958,6 +962,57 @@ function renderGenericSheetTable(data, sheetName, tableId) {
   }
   html += '</tbody></table></div></div>';
   return html;
+}
+
+// ======================== 按类型导入 ========================
+function importToType(type){
+  const input=document.getElementById('importFile_'+type);
+  if(input) input.click();
+}
+function handleTypeImport(event,type){
+  const file=event.target.files[0];
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const wb=XLSX.read(e.target.result,{type:'array'});
+      wb.SheetNames.forEach(sheetName=>{
+        const sheet=wb.Sheets[sheetName];
+        const data=XLSX.utils.sheet_to_json(sheet,{header:1,defval:''});
+        if(!data||data.length<2) return;
+        switch(type){
+          case 'materials': parseMaterialSheet(data,sheetName); break;
+          case 'bom': parseBomSheetDirect(data,sheetName); break;
+          case 'routing': parseRoutingSheet(data,sheetName); break;
+          case 'suppliers': parseSupplierSheet(data,sheetName); break;
+        }
+      });
+      renderAllMasterdata();
+      showToast('✅ '+({materials:'物料',bom:'BOM',routing:'工艺路线',suppliers:'供应商'}[type]||type)+'数据导入完成','success');
+    }catch(err){showToast('❌ 导入失败：'+err.message,'error');}
+  };
+  reader.readAsArrayBuffer(file);
+  event.target.value='';
+}
+// BOM专用解析（不依赖sheet名称包含BOM）
+function parseBomSheetDirect(data,sheetName){
+  if(data.length<2) return;
+  const h=data[0].map(c=>String(c||''));
+  const pIdx=h.findIndex(c=>/(父项|父|parent)/i.test(c));
+  const cIdx=h.findIndex(c=>/(子项|子|child)/i.test(c));
+  const uIdx=h.findIndex(c=>/(用量|数量|usage|qty)/i.test(c));
+  const sIdx=h.findIndex(c=>/(损耗|scrap|rate)/i.test(c));
+  if(pIdx<0||cIdx<0){showToast('ℹ️ Sheet「'+sheetName+'」未识别到父项/子项列','info');return;}
+  for(let i=1;i<data.length;i++){
+    const r=data[i];
+    if(!r||!r[pIdx]||!r[cIdx]) continue;
+    const parent=String(r[pIdx]).trim(),child=String(r[cIdx]).trim();
+    const bomEntry={parent,child,usage:uIdx>=0?parseFloat(r[uIdx])||1:1,scrap:sIdx>=0?parseFloat(r[sIdx])||0:0};
+    const bIdx=appData.boms.findIndex(b=>b.parent===parent&&b.child===child);
+    if(bIdx>=0) appData.boms[bIdx]=bomEntry;
+    else appData.boms.push(bomEntry);
+  }
+  appData.bom=appData.boms;
 }
 
 // 解析BOM/参数/制程类型Sheet
@@ -2800,7 +2855,15 @@ function switchMasterdataTab(tab){
   document.querySelectorAll('#section-masterdata .tab-content').forEach(t=>t.classList.remove('active'));
   document.querySelector('#masterdataTabs .tab[data-tab="'+tab+'"]').classList.add('active');
   document.getElementById('tab-'+tab).classList.add('active');
-  if(tab==='md-materials'||tab==='md-bom'||tab==='md-routing'||tab==='md-suppliers'||tab==='md-inventory')renderAllMasterdata();
+  if(tab==='md-materials'||tab==='md-bom'||tab==='md-routing'||tab==='md-suppliers')renderAllMasterdata();
+}
+
+function switchBusinessTab(tab){
+  document.querySelectorAll('#businessTabs .tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('#section-business .tab-content').forEach(t=>t.classList.remove('active'));
+  document.querySelector('#businessTabs .tab[data-tab="'+tab+'"]').classList.add('active');
+  document.getElementById('tab-'+tab).classList.add('active');
+  if(tab==='bd-inventory')renderAllMasterdata();
 }
 
 function renderBomTree(){
