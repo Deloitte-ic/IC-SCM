@@ -1723,17 +1723,20 @@ function executeMRP(){
     if(inv&&inv.transit>0&&inv.transitArrival&&inv.transitArrival<=plannedArrival)wipAvailable=inv.transit;
     const totalSupply=stock+wipAvailable;
     const netRemaining=core.calcNetRemaining(grossReq,stock,wipAvailable);
-    // 时间倒推
+    // 时间倒推（审批天数仅对采购物料有效）
     let plannedOrderDate='';
-    if(netRemaining>0)plannedOrderDate=addDays(plannedArrival,-(totalDelivery+approvalDays));
-    results.push({level,process,matCode,matName,action,supplier,demandType,unit,netReq:netReqQty,scrapRate,grossReq,stock,wipAvailable,totalSupply,netRemaining,plannedArrival,plannedOrderDate,totalDelivery,approvalDays});
+    const isPurchase=mat&&mat.type==='采购';
+    const effectiveApproval=isPurchase?approvalDays:0;
+    if(netRemaining>0)plannedOrderDate=addDays(plannedArrival,-(totalDelivery+effectiveApproval));
+    results.push({level,process,matCode,matName,action,supplier,demandType,unit,netReq:netReqQty,scrapRate,grossReq,stock,wipAvailable,totalSupply,netRemaining,plannedArrival,plannedOrderDate,totalDelivery,approvalDays:effectiveApproval});
     let detailText='';
     if(level===0)detailText='【'+process+'】顶层净需求 = '+netReqQty.toLocaleString()+' '+unit;
     else detailText='【'+process+'】净需求(父毛需求÷BOM用量) = '+netReqQty.toLocaleString()+' '+unit;
     detailText+=' → 毛需求(含'+scrapRate+'%损耗) = '+grossReq.toLocaleString()+' '+unit;
     detailText+=' → 可用供给(库存'+stock.toLocaleString()+'+WIP'+wipAvailable.toLocaleString()+') = '+totalSupply.toLocaleString()+' '+unit;
     detailText+=' → 净待补 = '+netRemaining.toLocaleString()+' '+unit;
-    detailText+=' → 到货日'+plannedArrival+' → 总交付'+totalDelivery+'天+审批'+approvalDays+'天 → 下单日'+(plannedOrderDate||'N/A');
+    if(isPurchase)detailText+=' → 到货日'+plannedArrival+' → 总交付'+totalDelivery+'天+审批'+effectiveApproval+'天 → 下单日'+(plannedOrderDate||'N/A');
+    else detailText+=' → 到货日'+plannedArrival+' → 交付周期'+totalDelivery+'天 → 投产日'+(plannedOrderDate||'N/A');
     details.push({process,text:detailText,netRemaining});
     // 递归展开子制程
     if(core.shouldExpandChildren(netRemaining)){
