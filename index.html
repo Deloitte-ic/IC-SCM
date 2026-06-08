@@ -262,17 +262,8 @@ tbody tr:hover td{background:var(--primary-bg)}
         <span class="nav-icon">📦</span><span class="nav-text">主数据</span>
         <span class="badge" id="masterdataBadge" style="display:none">!</span>
       </div>
-      <div class="nav-item" onclick="toggleBusinessSubnav()" style="cursor:pointer">
+      <div class="nav-item" data-section="business" onclick="switchSection('business')">
         <span class="nav-icon">📊</span><span class="nav-text">业务数据</span>
-        <span style="margin-left:auto;font-size:10px;opacity:0.7" id="businessArrow">▾</span>
-      </div>
-      <div id="businessSubnav" class="nav-children" style="display:block">
-        <div class="nav-sub-item" data-section="business" onclick="switchSection('business');switchBusinessTab('bd-inventory')">
-          <span style="width:22px;text-align:center;flex-shrink:0;font-size:13px">📦</span><span class="nav-text">当前库存</span>
-        </div>
-        <div class="nav-sub-item" data-section="business" onclick="switchSection('business');switchBusinessTab('bd-wip')">
-          <span style="width:22px;text-align:center;flex-shrink:0;font-size:13px">🏗️</span><span class="nav-text">在制品</span>
-        </div>
       </div>
     </div>
     <div class="nav-group">
@@ -836,19 +827,6 @@ function switchSection(id) {
   if(id==='mrp') { renderConfigTables(); refreshOrderSelect(); }
   if(id==='balance') updateBalance();
   if(id==='collaboration') updateCollaboration();
-}
-
-// 业务数据侧栏展开/收起
-function toggleBusinessSubnav(){
-  const sub=document.getElementById('businessSubnav');
-  const arrow=document.getElementById('businessArrow');
-  if(sub.style.display==='none'){
-    sub.style.display='block';
-    if(arrow) arrow.textContent='▾';
-  }else{
-    sub.style.display='none';
-    if(arrow) arrow.textContent='▸';
-  }
 }
 
 // ======================== Toast通知 ========================
