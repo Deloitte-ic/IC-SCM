@@ -1,0 +1,2841 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>供应链计划及产销协同平台 - IC-SCM</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --primary: #2563eb;
+  --primary-dark: #1d4ed8;
+  --primary-light: #3b82f6;
+  --primary-bg: #eff6ff;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --info: #06b6d4;
+  --gray-50: #f8fafc;
+  --gray-100: #f1f5f9;
+  --gray-200: #e2e8f0;
+  --gray-300: #cbd5e1;
+  --gray-400: #94a3b8;
+  --gray-500: #64748b;
+  --gray-600: #475569;
+  --gray-700: #334155;
+  --gray-800: #1e293b;
+  --gray-900: #0f172a;
+  --sidebar-width: 250px;
+  --sidebar-collapsed: 64px;
+  --header-height: 60px;
+  --radius: 10px;
+  --radius-sm: 6px;
+  --shadow: 0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.06);
+  --shadow-lg: 0 10px 25px rgba(0,0,0,.1),0 4px 10px rgba(0,0,0,.06);
+  --transition: all .25s cubic-bezier(.4,0,.2,1);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,'Noto Sans SC',sans-serif;background:var(--gray-50);color:var(--gray-800);min-height:100vh;display:flex}
+.sidebar{width:var(--sidebar-width);background:linear-gradient(180deg,var(--gray-900),#111827);color:#fff;display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:100;transition:var(--transition);overflow:hidden}
+.sidebar.collapsed{width:var(--sidebar-collapsed)}
+.sidebar-header{padding:18px 16px;border-bottom:1px solid rgba(255,255,255,.06);min-height:62px;display:flex;align-items:center;gap:10px}
+.sidebar-header .logo-icon{width:34px;height:34px;background:linear-gradient(135deg,var(--primary),#7c3aed);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.sidebar-header .logo-text{font-size:15px;font-weight:700;letter-spacing:.3px;white-space:nowrap;overflow:hidden;transition:var(--transition)}
+.sidebar.collapsed .logo-text{opacity:0;width:0}
+.sidebar-header .sub{font-size:10px;color:var(--gray-400);white-space:nowrap;overflow:hidden;transition:var(--transition)}
+.sidebar.collapsed .sidebar-header .sub{opacity:0;width:0}
+.sidebar-nav{padding:10px 8px;flex:1;overflow-y:auto;overflow-x:hidden}
+.sidebar-nav::-webkit-scrollbar{width:3px}
+.sidebar-nav::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:3px}
+.nav-group{margin-bottom:4px}
+.nav-group-title{font-size:10px;text-transform:uppercase;color:var(--gray-400);padding:8px 10px 4px;letter-spacing:1px;white-space:nowrap;overflow:hidden;transition:var(--transition)}
+.sidebar.collapsed .nav-group-title{opacity:0;height:0;padding:0;margin:0}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;cursor:pointer;transition:var(--transition);color:var(--gray-300);margin-bottom:1px;font-size:13px;white-space:nowrap;overflow:hidden}
+.nav-item:hover{background:rgba(255,255,255,.08);color:#fff}
+.nav-item.active{background:linear-gradient(135deg,rgba(37,99,235,.3),rgba(124,58,237,.15));color:#fff;font-weight:600;border:1px solid rgba(37,99,235,.25)}
+.nav-item .nav-icon{font-size:16px;width:22px;text-align:center;flex-shrink:0}
+.nav-item .nav-text{overflow:hidden;transition:var(--transition)}
+.sidebar.collapsed .nav-item .nav-text{opacity:0;width:0}
+.nav-item .badge{background:var(--danger);color:#fff;font-size:9px;padding:1px 6px;border-radius:8px;margin-left:auto;flex-shrink:0;min-width:18px;text-align:center}
+.sidebar-footer{padding:14px 16px;border-top:1px solid rgba(255,255,255,.06);font-size:10px;color:var(--gray-500);white-space:nowrap;overflow:hidden;transition:var(--transition)}
+.sidebar.collapsed .sidebar-footer{opacity:0;height:0;padding:0;overflow:hidden}
+.toggle-btn{position:absolute;bottom:16px;right:-14px;width:28px;height:28px;background:var(--gray-800);border:2px solid var(--gray-700);border-radius:50%;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;z-index:101;transition:var(--transition)}
+.toggle-btn:hover{background:var(--primary)}
+.main-content{flex:1;margin-left:var(--sidebar-width);min-height:100vh;display:flex;flex-direction:column;transition:var(--transition)}
+.main-content.expanded{margin-left:var(--sidebar-collapsed)}
+.header{height:var(--header-height);background:#fff;border-bottom:1px solid var(--gray-200);display:flex;align-items:center;justify-content:space-between;padding:0 28px;position:sticky;top:0;z-index:50;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.header-left{display:flex;align-items:center;gap:16px}
+.header h2{font-size:17px;font-weight:600;color:var(--gray-800)}
+.header .breadcrumb{font-size:12px;color:var(--gray-400)}
+.header .breadcrumb span{color:var(--primary)}
+.header-actions{display:flex;align-items:center;gap:12px}
+.header-btn{width:36px;height:36px;border:none;border-radius:8px;background:var(--gray-100);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:var(--transition);color:var(--gray-600)}
+.header-btn:hover{background:var(--primary-bg);color:var(--primary)}
+.content{padding:22px 28px;flex:1;max-width:1400px}
+.section{display:none;animation:fadeIn .3s ease}
+.section.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);padding:20px 24px;margin-bottom:18px;border:1px solid rgba(0,0,0,.04)}
+.card:hover{box-shadow:var(--shadow-lg)}
+.card-title{font-size:15px;font-weight:600;color:var(--gray-800);margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.card-title .tag{font-size:11px;background:var(--primary-bg);color:var(--primary);padding:2px 8px;border-radius:4px;font-weight:400}
+.card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px}
+.rule-desc{font-size:13px;color:var(--gray-600);line-height:1.7;padding:8px 12px;background:var(--primary-bg);border-radius:6px;border-left:3px solid var(--primary)}
+.rule-card-header{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:14px}
+.rule-card-title{display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex:1}
+.rule-title-input{font-size:15px;font-weight:600;color:var(--gray-800);border:1px solid transparent;padding:4px 8px;border-radius:4px;background:transparent;font-family:inherit;min-width:200px;flex:1;transition:var(--transition)}
+.rule-title-input:focus{border-color:var(--primary);background:#fff;outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+.rule-title-input:hover:not(:focus){border-color:var(--gray-200);background:#fff}
+.rule-desc-textarea{width:100%;min-height:60px;border:1px solid var(--gray-200);border-radius:6px;padding:10px 12px;font-size:13px;color:var(--gray-600);line-height:1.7;font-family:inherit;resize:vertical;transition:var(--transition);background:var(--gray-50)}
+.rule-desc-textarea:focus{border-color:var(--primary);background:#fff;outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+.rule-desc-textarea:hover:not(:focus){border-color:var(--gray-300);background:#fff}
+.rule-tag{font-size:10px;padding:2px 8px;border-radius:4px;font-weight:400}
+.rule-tag-system{background:var(--primary-bg);color:var(--primary)}
+.rule-tag-custom{background:#fef3c7;color:#92400e}
+.btn-sm{padding:5px 12px;font-size:12px}
+.btn-outline-danger{background:transparent;color:var(--danger);border:1px solid var(--danger)}
+.btn-outline-danger:hover{background:var(--danger);color:#fff}
+.rule-config-box{background:var(--gray-50);border-radius:8px;padding:14px 16px;margin-top:8px}
+.card-actions{display:flex;gap:8px;flex-wrap:wrap}
+.upload-zone{border:2px dashed var(--gray-300);border-radius:var(--radius);padding:50px 20px;text-align:center;cursor:pointer;transition:var(--transition);position:relative;background:var(--gray-50)}
+.upload-zone:hover{border-color:var(--primary);background:var(--primary-bg);transform:translateY(-2px)}
+.upload-zone.dragover{border-color:var(--primary);background:var(--primary-bg);transform:scale(1.02);box-shadow:0 0 0 4px rgba(37,99,235,.1)}
+.upload-zone .icon{font-size:48px;margin-bottom:12px;display:block}
+.upload-zone .label{font-size:16px;color:var(--gray-600);margin-bottom:4px}
+.upload-zone .hint{font-size:12px;color:var(--gray-400)}
+.upload-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer}
+.upload-status{margin-top:12px;display:flex;align-items:center;gap:8px;font-size:13px;justify-content:center;flex-wrap:wrap}
+.upload-status .success{color:var(--success)}
+.upload-status .error{color:var(--danger)}
+.table-wrapper{overflow-x:auto;margin-top:10px;border-radius:8px;border:1px solid var(--gray-200);max-height:500px;overflow-y:auto}
+.table-wrapper table thead{position:sticky;top:0;z-index:2}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead{background:var(--gray-100)}
+th{padding:10px 12px;text-align:left;font-weight:600;color:var(--gray-600);white-space:nowrap;border-bottom:2px solid var(--gray-200);font-size:12px}
+td{padding:9px 12px;border-bottom:1px solid var(--gray-100);color:var(--gray-700)}
+tbody tr:nth-child(even){background:var(--gray-50)}
+tbody tr:hover td{background:var(--primary-bg)}
+.editable{border:1px solid transparent;padding:4px 6px;border-radius:4px;min-width:40px;transition:var(--transition);font-size:13px;width:100%;background:transparent;font-family:inherit}
+.editable:focus{border-color:var(--primary);background:#fff;outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+.editable:hover{border-color:var(--gray-300);background:#fff}
+.btn{padding:8px 18px;border:none;border-radius:var(--radius-sm);font-size:13px;font-weight:500;cursor:pointer;transition:var(--transition);display:inline-flex;align-items:center;gap:6px;font-family:inherit}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff}
+.btn-primary:hover{box-shadow:0 4px 14px rgba(37,99,235,.4);transform:translateY(-1px)}
+.btn-success{background:linear-gradient(135deg,var(--success),#059669);color:#fff}
+.btn-success:hover{box-shadow:0 4px 14px rgba(16,185,129,.4);transform:translateY(-1px)}
+.btn-warning{background:linear-gradient(135deg,var(--warning),#d97706);color:#fff}
+.btn-warning:hover{box-shadow:0 4px 14px rgba(245,158,11,.4);transform:translateY(-1px)}
+.btn-danger{background:linear-gradient(135deg,var(--danger),#dc2626);color:#fff}
+.btn-danger:hover{box-shadow:0 4px 14px rgba(239,68,68,.4);transform:translateY(-1px)}
+.btn-info{background:linear-gradient(135deg,var(--info),#0891b2);color:#fff}
+.btn-info:hover{box-shadow:0 4px 14px rgba(6,182,212,.4);transform:translateY(-1px)}
+.btn-outline{background:transparent;border:1px solid var(--gray-300);color:var(--gray-600)}
+.btn-outline:hover{background:var(--gray-100);border-color:var(--gray-400)}
+.btn-sm{padding:5px 12px;font-size:12px}
+.btn-lg{padding:10px 24px;font-size:14px}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:12px;font-weight:500;color:var(--gray-600);margin-bottom:4px}
+.form-group select,.form-group input[type=number],.form-group input[type=date],.form-group input[type=text]{width:100%;padding:9px 12px;border:1px solid var(--gray-300);border-radius:var(--radius-sm);font-size:13px;transition:var(--transition);background:#fff;font-family:inherit}
+.form-group select:focus,.form-group input:focus{border-color:var(--primary);outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+.form-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.alert{padding:14px 18px;border-radius:8px;font-size:13px;margin-bottom:14px;display:flex;align-items:flex-start;gap:10px;line-height:1.5}
+.alert-info{background:var(--primary-bg);color:var(--primary-dark);border:1px solid rgba(37,99,235,.15)}
+.alert-success{background:#ecfdf5;color:#065f46;border:1px solid rgba(16,185,129,.15)}
+.alert-warning{background:#fffbeb;color:#92400e;border:1px solid rgba(245,158,11,.15)}
+.alert-danger{background:#fef2f2;color:#991b1b;border:1px solid rgba(239,68,68,.15)}
+.result-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:18px}
+.summary-card{padding:16px 18px;border-radius:8px;background:var(--gray-50);border:1px solid var(--gray-200);position:relative;overflow:hidden}
+.summary-card::before{content:"";position:absolute;top:0;left:0;width:4px;height:100%}
+.summary-card.blue::before{background:var(--primary)}
+.summary-card.green::before{background:var(--success)}
+.summary-card.yellow::before{background:var(--warning)}
+.summary-card.red::before{background:var(--danger)}
+.summary-card.cyan::before{background:var(--info)}
+.summary-card .num{font-size:22px;font-weight:700;margin-top:4px;letter-spacing:-.5px}
+.summary-card .lbl{font-size:12px;color:var(--gray-500)}
+.summary-card .sub-text{font-size:11px;color:var(--gray-400);margin-top:2px}
+.gantt-wrapper{position:relative;overflow-x:auto;padding:10px 0;border-radius:8px;background:var(--gray-50);border:1px solid var(--gray-200)}
+.gantt-chart{position:relative;min-height:180px}
+.gantt-bar{position:absolute;height:28px;border-radius:6px;display:flex;align-items:center;padding:0 10px;font-size:11px;color:#fff;font-weight:500;transition:var(--transition);cursor:pointer;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;box-shadow:0 2px 4px rgba(0,0,0,.18);z-index:1}
+.gantt-bar:hover{transform:scaleY(1.12);z-index:5;box-shadow:0 6px 16px rgba(0,0,0,.25)}
+.gantt-label{position:absolute;font-size:12px;color:var(--gray-600);white-space:nowrap;z-index:1}
+.gantt-grid{position:absolute;top:0;bottom:0;border-left:1px dashed var(--gray-200);pointer-events:none;z-index:0}
+.gantt-header{position:absolute;top:0;left:80px;right:0;height:22px;z-index:2;display:flex}
+.gantt-header-date{font-size:9px;color:var(--gray-400);position:absolute;text-align:center;transform:translateX(-50%)}
+.gantt-legend{display:flex;gap:16px;margin-top:10px;flex-wrap:wrap}
+.gantt-legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--gray-600)}
+.gantt-legend-item .dot{width:12px;height:12px;border-radius:3px}
+.tabs{display:flex;gap:0;border-bottom:2px solid var(--gray-200);margin-bottom:18px;overflow-x:auto}
+.tab{padding:10px 18px;cursor:pointer;font-size:13px;font-weight:500;color:var(--gray-500);border-bottom:2px solid transparent;margin-bottom:-2px;transition:var(--transition);white-space:nowrap}
+.tab.active{color:var(--primary);border-bottom-color:var(--primary)}
+.tab:hover{color:var(--gray-700);background:var(--gray-50)}
+.tab-content{display:none;animation:fadeIn .25s ease}
+.tab-content.active{display:block}
+.empty-state{text-align:center;padding:50px 20px;color:var(--gray-400)}
+.empty-state .icon{font-size:54px;margin-bottom:14px;display:block;opacity:.6}
+.empty-state .text{font-size:14px}
+.dropdown-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:1024px){.form-row,.grid-3,.grid-4{grid-template-columns:1fr 1fr}}
+@media(max-width:768px){.sidebar{width:var(--sidebar-collapsed)}.sidebar .logo-text,.sidebar .sub,.sidebar .nav-text,.sidebar .nav-group-title,.sidebar-footer{opacity:0;width:0;height:0;overflow:hidden;padding:0;margin:0}.main-content{margin-left:var(--sidebar-collapsed)}.form-row,.grid-2,.grid-3,.grid-4,.dropdown-grid{grid-template-columns:1fr}.content{padding:16px}.card{padding:16px}.header{padding:0 16px}}
+@media(max-width:480px){.result-summary{grid-template-columns:1fr 1fr}}
+.tooltip{position:relative}
+.tooltip:hover::after{content:attr(data-tip);position:absolute;bottom:100%;left:50%;transform:translateX(-50%);background:var(--gray-800);color:#fff;padding:4px 10px;border-radius:4px;font-size:11px;white-space:nowrap;z-index:20;pointer-events:none}
+.calc-step{padding:12px 16px;margin-bottom:6px;border-radius:6px;background:var(--gray-50);border-left:3px solid var(--primary);font-size:13px;line-height:1.6}
+.calc-step .highlight{color:var(--primary);font-weight:600}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.modal-overlay.show{display:flex}
+.modal{background:#fff;border-radius:12px;padding:28px;max-width:720px;width:92%;max-height:85vh;overflow-y:auto;box-shadow:var(--shadow-lg);animation:fadeIn .2s ease}
+.modal-title{font-size:16px;font-weight:600;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
+.modal-close{background:none;border:none;font-size:24px;cursor:pointer;color:var(--gray-400);padding:0 4px;line-height:1;transition:var(--transition)}
+.modal-close:hover{color:var(--gray-700);transform:rotate(90deg)}
+.modal-footer{display:flex;justify-content:flex-end;gap:10px;margin-top:18px;padding-top:14px;border-top:1px solid var(--gray-200)}
+.section-title{font-size:17px;font-weight:600;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.section-title .count{font-size:12px;background:var(--gray-100);color:var(--gray-500);padding:1px 8px;border-radius:10px;font-weight:400}
+.stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
+.stat-item{text-align:center;padding:16px 12px;border-radius:8px;background:var(--gray-50)}
+.stat-item .val{font-size:26px;font-weight:700;margin-bottom:2px}
+.stat-item .lbl{font-size:11px;color:var(--gray-500)}
+.chart-container{position:relative;height:300px;width:100%}
+.chart-container-sm{height:250px}
+.flex-row{display:flex;gap:14px;flex-wrap:wrap}
+.flex-1{flex:1;min-width:280px}
+.tag-status{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:500}
+.tag-green{background:#ecfdf5;color:#065f46}
+.tag-red{background:#fef2f2;color:#991b1b}
+.tag-yellow{background:#fffbeb;color:#92400e}
+.tag-blue{background:var(--primary-bg);color:var(--primary-dark)}
+.tag-orange{background:#fff7ed;color:#9a3412}
+.progress-bar{height:8px;background:var(--gray-200);border-radius:4px;overflow:hidden;margin-top:6px}
+.progress-bar .fill{height:100%;border-radius:4px;transition:width .8s ease}
+.progress-green .fill{background:var(--success)}
+.progress-yellow .fill{background:var(--warning)}
+.progress-red .fill{background:var(--danger)}
+.timeline{position:relative;padding-left:20px}
+.timeline::before{content:"";position:absolute;left:6px;top:4px;bottom:4px;width:2px;background:var(--gray-200)}
+.timeline-item{position:relative;padding:8px 0 8px 16px;font-size:13px}
+.timeline-item::before{content:"";position:absolute;left:-14px;top:13px;width:10px;height:10px;border-radius:50%;background:var(--primary);border:2px solid #fff;box-shadow:0 0 0 2px var(--primary)}
+.timeline-item .time{font-size:11px;color:var(--gray-400)}
+.timeline-item .content{color:var(--gray-700)}
+.inline-flex{display:inline-flex;align-items:center;gap:6px}
+.text-success{color:var(--success)}
+.text-danger{color:var(--danger)}
+.text-warning{color:var(--warning)}
+.text-primary{color:var(--primary)}
+.text-muted{color:var(--gray-400)}
+.font-bold{font-weight:600}
+.mt-1{margin-top:4px}
+.mt-2{margin-top:8px}
+.mt-3{margin-top:12px}
+.mb-2{margin-bottom:8px}
+.mb-3{margin-bottom:12px}
+</style>
+</head>
+<body>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="logo-icon">📊</div>
+    <div>
+      <div class="logo-text">IC-SCM 平台</div>
+      <div class="sub">供应链计划 &amp; 产销协同</div>
+    </div>
+  </div>
+  <nav class="sidebar-nav" id="sidebarNav">
+    <div class="nav-group">
+      <div class="nav-group-title">概览</div>
+      <div class="nav-item active" data-section="dashboard" onclick="switchSection('dashboard')">
+        <span class="nav-icon">📊</span><span class="nav-text">仪表板</span>
+      </div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-title">数据管理</div>
+      <div class="nav-item" data-section="masterdata" onclick="switchSection('masterdata')">
+        <span class="nav-icon">📦</span><span class="nav-text">主数据导入</span>
+        <span class="badge" id="masterdataBadge" style="display:none">!</span>
+      </div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-title">计划</div>
+      <div class="nav-item" data-section="demand" onclick="switchSection('demand')">
+        <span class="nav-icon">🔮</span><span class="nav-text">需求预测</span>
+      </div>
+      <div class="nav-item" data-section="mrp" onclick="switchSection('mrp')">
+        <span class="nav-icon">⚙️</span><span class="nav-text">MRP运算</span>
+      </div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-title">分析</div>
+      <div class="nav-item" data-section="balance" onclick="switchSection('balance')">
+        <span class="nav-icon">⚖️</span><span class="nav-text">供给平衡</span>
+      </div>
+      <div class="nav-item" data-section="collaboration" onclick="switchSection('collaboration')">
+        <span class="nav-icon">🤝</span><span class="nav-text">产销协同</span>
+      </div>
+    </div>
+  </nav>
+  <div class="sidebar-footer">v3.0 · IC行业版 · SCM平台</div>
+  <button class="toggle-btn" id="sidebarToggle" onclick="toggleSidebar()">◀</button>
+</aside>
+
+<main class="main-content" id="mainContent">
+  <header class="header">
+    <div class="header-left">
+      <h2 id="pageTitle">📊 仪表板</h2>
+      <div class="breadcrumb" id="breadcrumb">供应链计划及产销协同平台 <span>/ 仪表板</span></div>
+    </div>
+    <div class="header-actions">
+      <button class="header-btn" onclick="showToast('⏰ 最后更新: ' + new Date().toLocaleString(),'info')" title="刷新">🔄</button>
+      <button class="header-btn" onclick="loadSampleData()" title="加载示例数据">📥</button>
+    </div>
+  </header>
+
+  <div class="content">
+
+    <!-- ==================== 仪表板 ==================== -->
+    <div class="section active" id="section-dashboard">
+      <div class="result-summary" id="dashboardKPI"></div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">📈 需求趋势 <span class="tag">月度</span></div>
+          <div class="chart-container chart-container-sm"><canvas id="dashboardDemandChart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">⚖️ 供需对比 <span class="tag">按物料</span></div>
+          <div class="chart-container chart-container-sm"><canvas id="dashboardSupplyChart"></canvas></div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">⏰ 近期待办提醒</div>
+          <div id="dashboardTodos"><div class="empty-state"><span class="icon">📋</span><div class="text">暂无待办事项</div></div></div>
+        </div>
+        <div class="card">
+          <div class="card-title">📋 数据状态概览</div>
+          <div id="dashboardDataStatus"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 主数据导入 ==================== -->
+    <div class="section" id="section-masterdata">
+      <div class="tabs" id="masterdataTabs">
+        <div class="tab active" data-tab="md-upload" onclick="switchMasterdataTab('md-upload')">📤 数据上传</div>
+        <div class="tab" data-tab="md-materials" onclick="switchMasterdataTab('md-materials')">🏭 物料主数据</div>
+        <div class="tab" data-tab="md-bom" onclick="switchMasterdataTab('md-bom')">🔗 BOM结构</div>
+        <div class="tab" data-tab="md-routing" onclick="switchMasterdataTab('md-routing')">📋 工艺路线</div>
+        <div class="tab" data-tab="md-suppliers" onclick="switchMasterdataTab('md-suppliers')">🏢 供应商</div>
+        <div class="tab" data-tab="md-inventory" onclick="switchMasterdataTab('md-inventory')">📦 库存</div>
+      </div>
+
+      <!-- 改造一：通用文件上传入口 -->
+      <div class="tab-content active" id="tab-md-upload">
+        <div class="card">
+          <div class="card-title">📤 通用文件上传 <span class="tag">支持智能识别</span></div>
+          <div class="alert alert-info">💡 上传任意Excel文件，系统自动遍历所有sheet，根据sheet名称智能识别数据类型并解析到对应页面。</div>
+          <div class="upload-zone" id="unifiedDropZone" onclick="document.getElementById('unifiedFileInput').click()">
+            <span class="icon">📂</span>
+            <div class="label">拖拽或点击上传Excel文件</div>
+            <div class="hint">支持 .xlsx/.xls 格式 · 自动识别BOM/参数/制程/需求/订单/预测/库存/物料/供应商等Sheet</div>
+            <input type="file" id="unifiedFileInput" accept=".xlsx,.xls" onchange="handleUnifiedUpload(event)">
+            <div class="upload-status" id="unifiedUploadStatus"></div>
+          </div>
+          <div id="genericSheetTables" style="margin-top:12px"></div>
+        </div>
+        <!-- 新增：通用数据表展示区域 -->
+        <div id="genericDataCards" style="display:none"></div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📌 快速体验</div>
+            <button class="btn btn-primary" onclick="loadSampleData()">📥 加载示例数据</button>
+          </div>
+          <p style="font-size:13px;color:var(--gray-500)">点击上方按钮加载内置IC行业示例数据，快速体验平台全部功能。</p>
+        </div>
+      </div>
+
+      <div class="tab-content" id="tab-md-materials">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">🏭 物料主数据 <span class="tag" id="materialCount">0条</span></div>
+            <div class="card-actions">
+              <button class="btn btn-sm btn-primary" onclick="openAddMaterialModal()">➕ 新增</button>
+            </div>
+          </div>
+          <div class="table-wrapper"><table id="materialTable"><thead><tr><th>物料编码</th><th>物料名称</th><th>类别</th><th>单位</th><th>采购/自制</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+        </div>
+      </div>
+
+      <div class="tab-content" id="tab-md-bom">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">🔗 BOM结构 <span class="tag" id="bomCount">0条</span></div>
+            <div class="card-actions">
+              <button class="btn btn-sm btn-primary" onclick="openAddBomModal()">➕ 新增</button>
+              <button class="btn btn-sm btn-outline" onclick="renderBomTree()">🌳 BOM树形图</button>
+            </div>
+          </div>
+          <div class="table-wrapper"><table id="bomTable"><thead><tr><th>父项物料</th><th>子项物料</th><th>单位用量</th><th>损耗率(%)</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+          <div id="bomTreeView" style="display:none;margin-top:12px"></div>
+        </div>
+      </div>
+
+      <div class="tab-content" id="tab-md-routing">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📋 工艺路线 <span class="tag" id="routingCount">0条</span></div>
+            <div class="card-actions">
+              <button class="btn btn-sm btn-primary" onclick="openAddRoutingModal()">➕ 新增</button>
+            </div>
+          </div>
+          <div class="table-wrapper"><table id="routingTable"><thead><tr><th>制程编码</th><th>制程名称</th><th>工序</th><th>交期(天)</th><th>日产能</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+        </div>
+      </div>
+
+      <div class="tab-content" id="tab-md-suppliers">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">🏢 供应商信息 <span class="tag" id="supplierCount">0条</span></div>
+            <div class="card-actions">
+              <button class="btn btn-sm btn-primary" onclick="openAddSupplierModal()">➕ 新增</button>
+            </div>
+          </div>
+          <div class="table-wrapper"><table id="supplierTable"><thead><tr><th>供应商编码</th><th>供应商名称</th><th>供应物料</th><th>交期(天)</th><th>配额(%)</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+        </div>
+      </div>
+
+      <div class="tab-content" id="tab-md-inventory">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📦 库存数据 <span class="tag" id="invCount">0条</span></div>
+            <div class="card-actions">
+              <button class="btn btn-sm btn-primary" onclick="openAddInventoryModal()">➕ 新增</button>
+              <button class="btn btn-sm btn-outline" onclick="openAddWipModal()">📥 在制录入</button>
+            </div>
+          </div>
+          <div class="table-wrapper"><table id="inventoryTable"><thead><tr><th>物料编码</th><th>物料名称</th><th>仓库</th><th>可用库存</th><th>在制数量</th><th>在制到货日</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 需求预测 ==================== -->
+    <div class="section" id="section-demand">
+      <div class="tabs" id="demandTabs">
+        <div class="tab active" data-tab="demand-entry" onclick="switchDemandTab('demand-entry')">📝 需求录入</div>
+        <div class="tab" data-tab="demand-summary" onclick="switchDemandTab('demand-summary')">📊 需求汇总</div>
+        <div class="tab" data-tab="demand-trend" onclick="switchDemandTab('demand-trend')">📈 趋势分析</div>
+      </div>
+
+      <div class="tab-content active" id="tab-demand-entry">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📝 独立需求录入</div>
+            <button class="btn btn-sm btn-success" onclick="openAddDemandModal()">➕ 新增需求</button>
+          </div>
+          <div class="table-wrapper"><table id="demandTable"><thead><tr><th>订单号</th><th>物料编码</th><th>数量</th><th>需求日期</th><th>优先级</th><th>客户</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+        </div>
+      </div>
+
+      <div class="tab-content" id="tab-demand-summary">
+        <div class="result-summary" id="demandSummaryCards"></div>
+        <div class="card">
+          <div class="card-title">📊 按物料需求汇总</div>
+          <div class="table-wrapper"><table id="demandSummaryTable"><thead><tr><th>物料编码</th><th>物料名称</th><th>总需求量</th><th>订单数</th></tr></thead><tbody></tbody></table></div>
+        </div>
+        <div class="card">
+          <div class="card-title">📊 按日期需求汇总</div>
+          <div class="table-wrapper"><table id="demandDateTable"><thead><tr><th>月份</th><th>总需求量</th><th>订单数</th></tr></thead><tbody></tbody></table></div>
+        </div>
+      </div>
+
+      <div class="tab-content" id="tab-demand-trend">
+        <div class="card">
+          <div class="chart-container"><canvas id="demandTrendChart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">📜 需求变更历史</div>
+          <div class="table-wrapper"><table id="demandHistoryTable"><thead><tr><th>时间</th><th>订单号</th><th>变更类型</th><th>变更内容</th></tr></thead><tbody></tbody></table></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== MRP运算 ==================== -->
+    <div class="section" id="section-mrp">
+      <div class="tabs" id="mrpTabs">
+        <div class="tab active" data-tab="mrp-config" onclick="switchMrpTab('mrp-config')">⚙️ 参数配置</div>
+        <div class="tab" data-tab="mrp-rules" onclick="switchMrpTab('mrp-rules')">📐 运算规则</div>
+        <div class="tab" data-tab="mrp-run" onclick="switchMrpTab('mrp-run')">▶️ 执行运算</div>
+        <div class="tab" data-tab="mrp-result" onclick="switchMrpTab('mrp-result')">📊 结果查看</div>
+      </div>
+
+      <div class="tab-content active" id="tab-mrp-config">
+        <div class="alert alert-info">💡 所有参数在线可编辑，修改后自动保存。</div>
+        <div class="card">
+          <div class="card-title">🏗️ 制程层级</div>
+          <div class="table-wrapper"><table id="processLevelTable"><thead><tr><th>层级</th><th>制程名称</th><th>描述</th><th>单位</th></tr></thead><tbody></tbody></table></div>
+        </div>
+        <div class="card">
+          <div class="card-title">🔗 BOM结构配置 <span class="tag">可编辑</span></div>
+          <div class="table-wrapper"><table id="bomConfigTable"><thead><tr><th>父项制程</th><th>子项制程</th><th>单位用量</th><th>损耗率(%)</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+        </div>
+        <div class="card">
+          <div class="card-title">⏱️ 交期配置 <span class="tag">可编辑</span></div>
+          <div class="table-wrapper"><table id="leadTimeTable"><thead><tr><th>制程</th><th>供应商编码</th><th>供应商名称</th><th>生产交期(天)</th><th>运输(天)</th><th>检验(天)</th></tr></thead><tbody></tbody></table></div>
+        </div>
+        <div class="card">
+          <div class="card-title">📋 审批周期 <span class="tag">可编辑</span></div>
+          <div class="table-wrapper"><table id="approvalTable"><thead><tr><th>审批节点</th><th>耗时(天)</th></tr></thead><tbody></tbody></table></div>
+          <div style="margin-top:10px;font-size:13px;color:var(--gray-500)">审批总天数：<strong id="approvalTotal">4</strong> 天</div>
+        </div>
+        <div style="text-align:right;margin-top:8px">
+          <button class="btn btn-success" onclick="saveAllParams()">💾 保存全部参数</button>
+        </div>
+      </div>
+
+      <div class="tab-content" id="tab-mrp-rules">
+        <div class="alert alert-info">💡 以下是用自然语言描述的MRP运算规则，每条规则可编辑、可删除，也可新增自定义规则。修改后点击底部"保存规则"生效。</div>
+
+        <!-- 规则列表容器：由JS动态渲染 -->
+        <div id="ruleListContainer"></div>
+
+        <!-- 操作按钮 -->
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:18px">
+          <button class="btn btn-primary" onclick="addRule()">➕ 新增规则</button>
+          <div style="display:flex;gap:10px">
+            <button class="btn btn-success" onclick="saveNaturalRules()">💾 保存规则</button>
+            <button class="btn btn-outline" onclick="resetNaturalRules()">↻ 恢复默认</button>
+          </div>
+        </div>
+        <div id="naturalRulesSaveTip" style="text-align:right;font-size:12px;color:var(--gray-400);margin-top:-10px"></div>
+      </div>
+
+      <div class="tab-content" id="tab-mrp-run">
+        <div class="card">
+          <div class="card-title">🎯 MRP运算条件设置</div>
+          <div class="grid-3">
+            <div class="form-group">
+              <label>选择需求订单</label>
+              <select id="mrpOrderSelect" onchange="onMrpOrderSelect()"><option value="">-- 选择订单 --</option></select>
+            </div>
+            <div class="form-group">
+              <label>需求数量</label>
+              <input type="number" id="mrpQuantity" min="1" value="120000">
+            </div>
+            <div class="form-group">
+              <label>需求日期</label>
+              <input type="date" id="mrpDueDate">
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:8px">
+            <button class="btn btn-primary btn-lg" onclick="executeMRP()">🧮 执行MRP运算</button>
+            <button class="btn btn-outline" onclick="resetMRP()">↻ 重置</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-content" id="tab-mrp-result">
+        <div id="mrpResultArea" style="display:none">
+          <div class="result-summary" id="mrpSummary"></div>
+
+          <!-- 改造二：MRP结果表增加全阶物料列 -->
+          <div class="card">
+            <div class="card-title">📊 MRP运算结果表 <span class="tag" id="resultOrderInfo"></span></div>
+            <div class="table-wrapper"><table id="mrpResultTable"><thead><tr>
+              <th>层级</th><th>制程</th><th>物料编码</th><th>物料名称</th><th>需求日期</th><th>建议动作</th><th>供应商</th><th>需求类型</th><th>单位</th><th>净需求</th><th>损耗率</th><th>毛需求</th><th>可用库存</th><th>WIP</th><th>净待补</th><th>计划到货日</th><th>计划下单日</th>
+            </tr></thead><tbody></tbody></table></div>
+          </div>
+
+          <!-- 改造二：采购/委外建议清单 -->
+          <div class="card" id="procurementCard">
+            <div class="card-header">
+              <div class="card-title">📋 采购/委外建议清单 <span class="tag" id="procurementCount">0项</span></div>
+              <div class="card-actions">
+                <button class="btn btn-sm btn-success" onclick="exportProcurementList()">📥 导出Excel</button>
+              </div>
+            </div>
+            <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap">
+              <span style="display:inline-flex;align-items:center;gap:4px;font-size:12px"><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#f59e0b"></span> 采购</span>
+              <span style="display:inline-flex;align-items:center;gap:4px;font-size:12px"><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#3b82f6"></span> 委外</span>
+            </div>
+            <div class="table-wrapper"><table id="procurementTable"><thead><tr>
+              <th>序号</th><th>物料编码</th><th>物料名称</th><th>制程</th><th>建议动作</th><th>净需求数量</th><th>单位</th><th>计划到货日</th><th>计划下单日</th><th>供应商</th><th>类型</th><th>操作</th>
+            </tr></thead><tbody></tbody></table></div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">📅 时间轴甘特图</div>
+            <div class="gantt-wrapper"><div class="gantt-chart" id="ganttChart"></div></div>
+            <div class="gantt-legend" id="ganttLegend"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">📝 运算明细</div>
+            <div id="mrpDetails"></div>
+          </div>
+
+          <div style="text-align:right;margin-top:12px">
+            <button class="btn btn-success" onclick="exportMRPResult()">📥 导出MRP结果Excel</button>
+          </div>
+        </div>
+        <div class="empty-state" id="mrpEmpty">
+          <span class="icon">📊</span>
+          <div class="text">请先在「执行运算」页签中设置条件并执行MRP运算</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 供给平衡 ==================== -->
+    <div class="section" id="section-balance">
+      <div class="tabs" id="balanceTabs">
+        <div class="tab active" data-tab="balance-compare" onclick="switchBalanceTab('balance-compare')">📊 供需对比</div>
+        <div class="tab" data-tab="balance-gap" onclick="switchBalanceTab('balance-gap')">⚠️ 缺口预警</div>
+        <div class="tab" data-tab="balance-replenish" onclick="switchBalanceTab('balance-replenish')">🔄 补货建议</div>
+      </div>
+
+      <div class="tab-content active" id="tab-balance-compare">
+        <div class="card">
+          <div class="chart-container"><canvas id="balanceCompareChart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">📋 供需对比明细</div>
+          <div class="table-wrapper"><table id="balanceCompareTable"><thead><tr><th>物料编码</th><th>物料名称</th><th>制程</th><th>需求日期</th><th>需求数量</th><th>可用库存</th><th>在制</th><th>计划订单号</th><th>计划订单量</th><th>计划下单日</th><th>总供给</th><th>缺口/盈余</th><th>状态</th></tr></thead><tbody></tbody></table></div>
+        </div>
+        <div class="card" id="supplySimCard">
+          <div class="card-title">🧮 供需模拟 <span class="tag" style="font-size:11px;background:#fef3c7;color:#92400e">正算+反算</span></div>
+          <div id="supplySimContent" style="font-size:13px;line-height:1.8">请先执行MRP运算后查看供需模拟</div>
+        </div>
+      </div>
+
+      <div class="tab-content" id="tab-balance-gap">
+        <div class="result-summary" id="gapSummaryCards"></div>
+        <div class="card">
+          <div class="card-title">⚠️ 短缺物料预警清单</div>
+          <div class="table-wrapper"><table id="gapTable"><thead><tr><th>物料编码</th><th>短缺数量</th><th>最早短缺日期</th><th>建议补货量</th><th>紧急程度</th></tr></thead><tbody></tbody></table></div>
+        </div>
+      </div>
+
+      <div class="tab-content" id="tab-balance-replenish">
+        <div class="card">
+          <div class="card-title">🔄 补货建议</div>
+          <div class="table-wrapper"><table id="replenishTable"><thead><tr><th>物料编码</th><th>建议补货量</th><th>建议下单日</th><th>期望到货日</th><th>优选供应商</th></tr></thead><tbody></tbody></table></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== 产销协同 ==================== -->
+    <div class="section" id="section-collaboration">
+      <div class="tabs" id="collabTabs">
+        <div class="tab active" data-tab="collab-board" onclick="switchCollabTab('collab-board')">🤝 协同看板</div>
+        <div class="tab" data-tab="collab-production" onclick="switchCollabTab('collab-production')">🏭 生产建议</div>
+        <div class="tab" data-tab="collab-purchase" onclick="switchCollabTab('collab-purchase')">🛒 采购清单</div>
+        <div class="tab" data-tab="collab-tasks" onclick="switchCollabTab('collab-tasks')">✅ 任务管理</div>
+      </div>
+
+      <div class="tab-content active" id="tab-collab-board">
+        <div class="result-summary" id="collabSummaryCards"></div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title">📈 销售计划 vs 生产计划</div>
+            <div class="chart-container chart-container-sm"><canvas id="collabChart"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-title">📋 近期生产排程</div>
+            <div class="table-wrapper"><table id="productionScheduleTable"><thead><tr><th>物料</th><th>计划产量</th><th>开始日</th><th>完成日</th><th>状态</th></tr></thead><tbody></tbody></table></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-content" id="tab-collab-production">
+        <div class="card">
+          <div class="card-title">🏭 生产计划排程建议</div>
+          <div class="table-wrapper"><table id="productionAdviceTable"><thead><tr><th>制程</th><th>物料编码</th><th>建议产量</th><th>计划开始</th><th>计划完成</th><th>优先级</th></tr></thead><tbody></tbody></table></div>
+        </div>
+      </div>
+
+      <div class="tab-content" id="tab-collab-purchase">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">🛒 采购建议清单</div>
+            <button class="btn btn-sm btn-success" onclick="exportPurchaseList()">📥 导出</button>
+          </div>
+          <div class="table-wrapper"><table id="purchaseTable"><thead><tr><th>物料编码</th><th>物料名称</th><th>建议采购量</th><th>建议下单日</th><th>期望到货日</th><th>推荐供应商</th></tr></thead><tbody></tbody></table></div>
+        </div>
+      </div>
+
+      <div class="tab-content" id="tab-collab-tasks">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">✅ 协同任务管理</div>
+            <button class="btn btn-sm btn-primary" onclick="openAddTaskModal()">➕ 新建任务</button>
+          </div>
+          <div class="table-wrapper"><table id="taskTable"><thead><tr><th>任务ID</th><th>任务名称</th><th>负责人</th><th>截止日</th><th>优先级</th><th>状态</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modalContent"></div>
+</div>
+
+<script>
+// ======================== 全局数据模型 ========================
+const appData = {
+  materials: [],       // 物料主数据
+  boms: [],           // BOM结构
+  routings: [],       // 工艺路线
+  suppliers: [],      // 供应商
+  inventory: [],      // 库存
+  wip: [],            // 在途
+  demands: [],        // 独立需求
+  demandHistory: [],  // 需求变更历史
+  mrpResult: [],      // MRP运算结果
+  mrpDetails: [],     // 运算明细
+  plannedOrders: [],  // 用户创建的计划订单
+  tasks: [            // 协同任务
+    { id:'TASK-001', name:'审核7月销售计划', assignee:'张三', dueDate:'2026-07-10', priority:'高', status:'进行中' },
+    { id:'TASK-002', name:'确认Wafer采购订单', assignee:'李四', dueDate:'2026-07-05', priority:'高', status:'待开始' },
+    { id:'TASK-003', name:'更新BOM损耗率参数', assignee:'王五', dueDate:'2026-07-15', priority:'中', status:'待开始' }
+  ],
+  processOrder: ['FT','AB','CP','BP','Wafer'],
+  unitMap: { FT:'颗', AB:'颗', CP:'片', BP:'片', Wafer:'片' },
+  // 物料编码映射
+  materialCodeMap: { FT:'IC-1000-FT', AB:'IC-1000-AB', CP:'IC-1000-CP', BP:'IC-1000-BP', Wafer:'IC-1000-Wafer' },
+  // 建议动作映射
+  actionMap: { FT:'委外FT测试', AB:'委外包封测', CP:'委外CP测试', BP:'委外BP制造', Wafer:'采购Wafer晶圆' },
+  // 制程层级配置（MRP参数用）
+  processes: [
+    { level:1, name:'FT', parent:'', unit:'颗', desc:'FT测试后成品芯片' },
+    { level:2, name:'AB', parent:'FT', unit:'颗', desc:'AB封装后芯片' },
+    { level:3, name:'CP', parent:'AB', unit:'片', desc:'CP测试后晶圆' },
+    { level:4, name:'BP', parent:'CP', unit:'片', desc:'BP制造后晶圆' },
+    { level:5, name:'Wafer', parent:'BP', unit:'片', desc:'Wafer晶圆' }
+  ],
+  bom: [
+    { parent:'FT', child:'AB', usage:1, scrap:5 },
+    { parent:'AB', child:'CP', usage:120, scrap:2 },
+    { parent:'CP', child:'BP', usage:1, scrap:10 },
+    { parent:'BP', child:'Wafer', usage:1, scrap:5 }
+  ],
+  leadTimes: [
+    { process:'FT', code:'SUP-FT-001', name:'FT封装测试供应商', prod:2, trans:2, inspect:1 },
+    { process:'AB', code:'SUP-AB-001', name:'AB封装供应商', prod:10, trans:3, inspect:2 },
+    { process:'CP', code:'SUP-CP-001', name:'CP测试供应商', prod:5, trans:2, inspect:1 },
+    { process:'BP', code:'SUP-BP-001', name:'BP凸块供应商', prod:10, trans:2, inspect:3 },
+    { process:'Wafer', code:'SUP-WF-001', name:'Wafer晶圆供应商', prod:40, trans:6, inspect:4 }
+  ],
+  approvals: [
+    { node:'部门审批', days:1 },
+    { node:'采购审批', days:2 },
+    { node:'财务审批', days:1 }
+  ],
+  chartInstances: {}
+};
+
+let sidebarCollapsed = false;
+let demandChartInstance = null;
+let supplyChartInstance = null;
+
+// ======================== 初始化 ========================
+function init() {
+  const d = new Date();
+  d.setDate(d.getDate() + 30);
+  document.getElementById('mrpDueDate').value = d.toISOString().split('T')[0];
+  // 优先从 localStorage 恢复主数据，无则加载示例
+  if(!loadMasterdataFromStorage()){
+    loadSampleData();
+    saveMasterdataToStorage();
+  } else {
+    // 即使从 storage 恢复，也要确保示例需求数据存在（需求不通过主数据导入）
+    if(!appData.demands||!appData.demands.length) loadSampleDemands();
+    renderAllMasterdata();
+    renderDemand();
+    updateDashboard();
+    refreshOrderSelect();
+    renderConfigTables();
+  }
+  // 加载计划订单
+  loadPlannedOrdersFromStorage();
+}
+
+// ======================== 侧边栏切换 ========================
+function toggleSidebar() {
+  sidebarCollapsed = !sidebarCollapsed;
+  document.getElementById('sidebar').classList.toggle('collapsed', sidebarCollapsed);
+  document.getElementById('mainContent').classList.toggle('expanded', sidebarCollapsed);
+  document.getElementById('sidebarToggle').textContent = sidebarCollapsed ? '▶' : '◀';
+}
+
+// ======================== 页面切换 ========================
+function switchSection(id) {
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('section-'+id).classList.add('active');
+  const navItem = document.querySelector(`.nav-item[data-section="${id}"]`);
+  if(navItem) navItem.classList.add('active');
+
+  const titles = {
+    dashboard:'📊 仪表板',
+    masterdata:'📦 主数据导入',
+    demand:'🔮 需求预测',
+    mrp:'⚙️ MRP运算',
+    balance:'⚖️ 供给平衡',
+    collaboration:'🤝 产销协同'
+  };
+  const breadcrumbs = {
+    dashboard:'仪表板',
+    masterdata:'主数据导入',
+    demand:'需求预测',
+    mrp:'MRP运算',
+    balance:'供给平衡',
+    collaboration:'产销协同'
+  };
+  document.getElementById('pageTitle').textContent = titles[id]||'SCM平台';
+  document.getElementById('breadcrumb').innerHTML = '供应链计划及产销协同平台 <span>/ '+breadcrumbs[id]+'</span>';
+
+  if(id==='dashboard') updateDashboard();
+  if(id==='masterdata') renderAllMasterdata();
+  if(id==='demand') renderDemand();
+  if(id==='mrp') { renderConfigTables(); refreshOrderSelect(); }
+  if(id==='balance') updateBalance();
+  if(id==='collaboration') updateCollaboration();
+}
+
+// ======================== Toast通知 ========================
+function showToast(msg, type) {
+  const existing = document.querySelector('.toast-container');
+  if(existing) existing.remove();
+  const container = document.createElement('div');
+  container.className = 'toast-container';
+  container.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:999;display:flex;flex-direction:column;gap:8px';
+  const el = document.createElement('div');
+  const bgColor = type==='success'?'#10b981':type==='error'?'#ef4444':type==='warning'?'#f59e0b':'#3b82f6';
+  el.style.cssText = 'padding:12px 20px;border-radius:8px;font-size:14px;box-shadow:0 6px 20px rgba(0,0,0,.18);color:#fff;animation: toastIn .3s ease;max-width:380px';
+  el.style.background = bgColor;
+  el.textContent = msg;
+  container.appendChild(el);
+  document.body.appendChild(container);
+  const style = document.createElement('style');
+  style.textContent = '@keyframes toastIn{from{transform:translateX(100px);opacity:0}to{transform:translateX(0);opacity:1}}';
+  document.head.appendChild(style);
+  setTimeout(()=>{el.style.opacity='0';el.style.transition='opacity .3s';setTimeout(()=>{el.remove();if(!container.children.length)container.remove()},300)},3000);
+}
+
+// ======================== 模态框 ========================
+function openModal(html) {
+  document.getElementById('modalContent').innerHTML = html;
+  document.getElementById('modalOverlay').classList.add('show');
+}
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('show');
+}
+
+// ======================== 改造一：统一文件上传 ========================
+function handleUnifiedUpload(event) {
+  const file = event.target.files[0];
+  if(!file) return;
+  const statusEl = document.getElementById('unifiedUploadStatus');
+  statusEl.innerHTML = '<span>⏳ 正在解析 '+file.name+'...</span>';
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const wb = XLSX.read(e.target.result, {type:'array'});
+      let parsedCount = 0;
+      let hasAutoJump = false;
+      let autoJumpTab = 'md-materials';
+      let autoSheetTables = '';
+
+      wb.SheetNames.forEach(sheetName => {
+        const sheet = wb.Sheets[sheetName];
+        const data = XLSX.utils.sheet_to_json(sheet, {header:1, defval:''});
+        if(!data || data.length < 2) return;
+        const upperName = sheetName.toUpperCase();
+
+        // 按sheet名称关键词智能识别
+        if (/(BOM|参数|制程)/.test(upperName)) {
+          parseBomParamSheet(data, sheetName);
+          parsedCount++;
+          hasAutoJump = true;
+          autoJumpTab = 'md-bom';
+        } else if (/(需求|订单|预测|独立)/.test(upperName)) {
+          parseDemandSheet(data, sheetName);
+          parsedCount++;
+          hasAutoJump = true;
+          autoJumpTab = null; // 跳转到需求预测页
+        } else if (/(库存|WIP|在制)/.test(upperName)) {
+          parseInventorySheet(data, sheetName);
+          parsedCount++;
+          hasAutoJump = true;
+          autoJumpTab = 'md-inventory';
+        } else if (/(物料|材料)/.test(upperName)) {
+          parseMaterialSheet(data, sheetName);
+          parsedCount++;
+          hasAutoJump = true;
+          autoJumpTab = 'md-materials';
+        } else if (/(供应商)/.test(upperName)) {
+          parseSupplierSheet(data, sheetName);
+          parsedCount++;
+          hasAutoJump = true;
+          autoJumpTab = 'md-suppliers';
+        } else if (/(工艺|路线|工序)/.test(upperName)) {
+          parseRoutingSheet(data, sheetName);
+          parsedCount++;
+          hasAutoJump = true;
+          autoJumpTab = 'md-routing';
+        } else {
+          // 通用数据表展示
+          const tableId = 'genericTable_' + sheetName.replace(/[^a-zA-Z0-9_]/g,'_');
+          autoSheetTables += renderGenericSheetTable(data, sheetName, tableId);
+          parsedCount++;
+        }
+      });
+
+      // 显示通用数据表
+      const genericContainer = document.getElementById('genericSheetTables');
+      if (autoSheetTables) {
+        genericContainer.innerHTML = autoSheetTables;
+        genericContainer.style.display = 'block';
+      } else {
+        genericContainer.style.display = 'none';
+      }
+
+      if(parsedCount > 0) {
+        statusEl.innerHTML = '<span class="success">✅ 解析完成！共处理 '+wb.SheetNames.length+' 个工作表，识别 '+parsedCount+' 个数据区域</span>';
+        // 刷新所有视图
+        renderAllMasterdata();
+        renderDemand();
+        updateDashboard();
+        refreshOrderSelect();
+        renderConfigTables();
+        showToast('✅ 数据上传并解析完成','success');
+
+        // 自动跳转
+        if (hasAutoJump) {
+          if (autoJumpTab === null) {
+            // 跳转到需求预测页面
+            switchSection('demand');
+          } else if (autoJumpTab) {
+            switchSection('masterdata');
+            switchMasterdataTab(autoJumpTab);
+          }
+        }
+      } else {
+        statusEl.innerHTML = '<span class="error">⚠️ 未识别到有效数据，请检查文件内容</span>';
+      }
+    } catch(err) {
+      statusEl.innerHTML = '<span class="error">❌ 解析失败：'+err.message+'</span>';
+    }
+  };
+  reader.readAsArrayBuffer(file);
+
+  // 重置file input以便重复上传同一文件
+  event.target.value = '';
+}
+
+// 通用数据表渲染
+function renderGenericSheetTable(data, sheetName, tableId) {
+  if(!data || data.length < 2) return '';
+  const headers = data[0];
+  let html = '<div class="card" style="margin-top:12px"><div class="card-title">📋 '+sheetName+' <span class="tag">通用数据表</span></div>';
+  html += '<div class="table-wrapper" style="max-height:400px"><table id="'+tableId+'"><thead><tr>';
+  headers.forEach(h => { html += '<th>'+(h||'列')+'</th>'; });
+  html += '</tr></thead><tbody>';
+  for(let i=1; i<data.length; i++) {
+    const row = data[i];
+    if(!row || !row.some(c=>c!==''&&c!==undefined)) continue;
+    html += '<tr>';
+    for(let j=0; j<headers.length; j++) {
+      html += '<td>'+(row[j]!==undefined&&row[j]!==null?row[j]:'')+'</td>';
+    }
+    html += '</tr>';
+  }
+  html += '</tbody></table></div></div>';
+  return html;
+}
+
+// 解析BOM/参数/制程类型Sheet
+function parseBomParamSheet(data, sheetName) {
+  const upperName = sheetName.toUpperCase();
+  if(upperName.includes('BOM') && data.length > 2) {
+    // 尝试解析BOM：找父项/子项/用量/损耗列
+    const h = data[0].map(c=>String(c||''));
+    const pIdx = h.findIndex(c=>/(父项|父|parent)/i.test(c));
+    const cIdx = h.findIndex(c=>/(子项|子|child)/i.test(c));
+    const uIdx = h.findIndex(c=>/(用量|数量|usage|qty)/i.test(c));
+    const sIdx = h.findIndex(c=>/(损耗|scrap|rate)/i.test(c));
+    if(pIdx>=0 && cIdx>=0) {
+      for(let i=1; i<data.length; i++) {
+        const r = data[i];
+        if(!r || !r[pIdx] || !r[cIdx]) continue;
+        const exists = appData.boms.some(b=>b.parent===String(r[pIdx]).trim() && b.child===String(r[cIdx]).trim());
+        if(!exists) {
+          appData.boms.push({
+            parent: String(r[pIdx]).trim(),
+            child: String(r[cIdx]).trim(),
+            usage: uIdx>=0 ? parseFloat(r[uIdx])||1 : 1,
+            scrap: sIdx>=0 ? parseFloat(r[sIdx])||0 : 0
+          });
+        }
+      }
+      appData.bom = appData.boms;
+      showToast('✅ BOM数据已更新','success');
+      return;
+    }
+  }
+
+  if(upperName.includes('制程') && data.length > 2) {
+    const h = data[0].map(c=>String(c||''));
+    const lIdx = h.findIndex(c=>/(层级|level)/i.test(c));
+    const nIdx = h.findIndex(c=>/(名称|name|制程)/i.test(c));
+    const dIdx = h.findIndex(c=>/(描述|desc)/i.test(c));
+    const uIdx = h.findIndex(c=>/(单位|unit)/i.test(c));
+    if(nIdx>=0) {
+      for(let i=1; i<data.length; i++) {
+        const r = data[i];
+        if(!r || !r[nIdx]) continue;
+        const name = String(r[nIdx]).trim();
+        if(!appData.processes.some(p=>p.name===name)) {
+          appData.processes.push({
+            level: lIdx>=0 ? parseInt(r[lIdx])||(appData.processes.length+1) : appData.processes.length+1,
+            name: name,
+            parent: '',
+            unit: uIdx>=0 ? String(r[uIdx]).trim() : 'EA',
+            desc: dIdx>=0 ? String(r[dIdx]).trim() : ''
+          });
+        }
+      }
+      showToast('✅ 制程层级已更新','success');
+      return;
+    }
+  }
+
+  if(upperName.includes('参数') || upperName.includes('交期') || upperName.includes('LEAD')) {
+    // 交期配置
+    const h = data[0].map(c=>String(c||''));
+    const pIdx = h.findIndex(c=>/(制程|process)/i.test(c));
+    if(pIdx>=0) {
+      const cIdx = h.findIndex(c=>/(供应商编码|code)/i.test(c));
+      const nIdx = h.findIndex(c=>/(供应商名称|name|供应商)/i.test(c));
+      const pdIdx = h.findIndex(c=>/(生产交期|prod)/i.test(c));
+      const tIdx = h.findIndex(c=>/(运输|trans)/i.test(c));
+      const iIdx = h.findIndex(c=>/(检验|inspect)/i.test(c));
+      for(let i=1; i<data.length; i++) {
+        const r = data[i];
+        if(!r || !r[pIdx]) continue;
+        const proc = String(r[pIdx]).trim();
+        const existing = appData.leadTimes.findIndex(l=>l.process===proc);
+        const entry = {
+          process: proc,
+          code: cIdx>=0?String(r[cIdx]).trim():('SUP-'+proc),
+          name: nIdx>=0?String(r[nIdx]).trim():('供应商-'+proc),
+          prod: pdIdx>=0?parseInt(r[pdIdx])||0:0,
+          trans: tIdx>=0?parseInt(r[tIdx])||0:0,
+          inspect: iIdx>=0?parseInt(r[iIdx])||0:0
+        };
+        if(existing>=0) appData.leadTimes[existing] = entry;
+        else appData.leadTimes.push(entry);
+      }
+      showToast('✅ 交期配置已更新','success');
+      return;
+    }
+
+    // 审批周期
+    const nodeIdx = h.findIndex(c=>/(审批|node)/i.test(c));
+    if(nodeIdx>=0) {
+      const dIdx = h.findIndex(c=>/(天数|耗时|天|days)/i.test(c));
+      appData.approvals = [];
+      for(let i=1; i<data.length; i++) {
+        const r = data[i];
+        if(!r || !r[nodeIdx]) continue;
+        appData.approvals.push({
+          node: String(r[nodeIdx]).trim(),
+          days: dIdx>=0?parseInt(r[dIdx])||0:0
+        });
+      }
+      showToast('✅ 审批周期已更新','success');
+      return;
+    }
+  }
+
+  // 如果以上都不匹配，按通用数据表处理
+  showToast('ℹ️ Sheet「'+sheetName+'」已作为通用数据展示','info');
+}
+
+// 解析需求/订单/预测Sheet
+function parseDemandSheet(data, sheetName) {
+  if(data.length < 2) return;
+  const h = data[0].map(c=>String(c||''));
+  const oIdx = h.findIndex(c=>/(订单|order|ord|编号)/i.test(c));
+  const mIdx = h.findIndex(c=>/(物料|材料|编码|code|material)/i.test(c));
+  const qIdx = h.findIndex(c=>/(数量|qty|quantity|需求)/i.test(c));
+  const dIdx = h.findIndex(c=>/(日期|date|需求日)/i.test(c));
+  const pIdx = h.findIndex(c=>/(优先级|priority|紧急)/i.test(c));
+  const cIdx = h.findIndex(c=>/(客户|customer)/i.test(c));
+
+  if(mIdx<0 || qIdx<0) {
+    showToast('ℹ️ Sheet「'+sheetName+'」未识别为需求数据,作为通用表展示','info');
+    return;
+  }
+
+  for(let i=1; i<data.length; i++) {
+    const r = data[i];
+    if(!r || !r[mIdx] || !r[qIdx]) continue;
+    const matCode = String(r[mIdx]).trim();
+    const qty = parseFloat(r[qIdx])||0;
+    if(qty<=0) continue;
+    const orderNo = oIdx>=0 && r[oIdx] ? String(r[oIdx]).trim() : ('ORD'+String(appData.demands.length+1).padStart(3,'0'));
+    // 去重
+    if(!appData.demands.some(d=>d.orderNo===orderNo && d.material===matCode)) {
+      appData.demands.push({
+        orderNo: orderNo,
+        material: matCode,
+        quantity: qty,
+        demandDate: dIdx>=0 && r[dIdx] ? String(r[dIdx]).trim() : new Date(Date.now()+30*86400000).toISOString().split('T')[0],
+        priority: pIdx>=0 && r[pIdx] ? String(r[pIdx]).trim() : '中',
+        customer: cIdx>=0 && r[cIdx] ? String(r[cIdx]).trim() : ''
+      });
+      appData.demandHistory.push({
+        time: new Date().toISOString().substring(0,16).replace('T',' '),
+        orderNo, type:'上传导入',
+        content:'从Sheet「'+sheetName+'」导入订单 '+orderNo+', 数量'+qty
+      });
+    }
+  }
+  showToast('✅ 需求数据已导入','success');
+}
+
+// 解析库存Sheet
+function parseInventorySheet(data, sheetName) {
+  if(data.length < 2) return;
+  const h = data[0].map(c=>String(c||''));
+  const mIdx = h.findIndex(c=>/(物料|编码|code|material)/i.test(c));
+  const nIdx = h.findIndex(c=>/(名称|name)/i.test(c));
+  const wIdx = h.findIndex(c=>/(仓库|warehouse)/i.test(c));
+  const sIdx = h.findIndex(c=>/(库存|stock|数量)/i.test(c));
+  const tIdx = h.findIndex(c=>/(在途|在制|transit|WIP)/i.test(c));
+  const aIdx = h.findIndex(c=>/(到货|arrival)/i.test(c));
+
+  if(mIdx<0) return;
+
+  for(let i=1; i<data.length; i++) {
+    const r = data[i];
+    if(!r || !r[mIdx]) continue;
+    const matCode = String(r[mIdx]).trim();
+    const stock = sIdx>=0 ? parseFloat(r[sIdx])||0 : 0;
+    // 合并已有记录
+    const existing = appData.inventory.findIndex(inv=>inv.materialCode===matCode);
+    const entry = {
+      materialCode: matCode,
+      materialName: nIdx>=0 && r[nIdx] ? String(r[nIdx]).trim() : '',
+      warehouse: wIdx>=0 && r[wIdx] ? String(r[wIdx]).trim() : '主仓库',
+      stock: stock,
+      transit: tIdx>=0 ? parseFloat(r[tIdx])||0 : 0,
+      transitArrival: aIdx>=0 && r[aIdx] ? String(r[aIdx]).trim() : ''
+    };
+    if(existing>=0) {
+      appData.inventory[existing].stock += stock;
+      if(entry.transit) appData.inventory[existing].transit = (appData.inventory[existing].transit||0)+entry.transit;
+    } else {
+      appData.inventory.push(entry);
+    }
+  }
+  showToast('✅ 库存数据已导入','success');
+}
+
+// 解析物料Sheet
+function parseMaterialSheet(data, sheetName) {
+  if(data.length < 2) return;
+  const h = data[0].map(c=>String(c||''));
+  const cIdx = h.findIndex(c=>/(编码|code|物料)/i.test(c));
+  const nIdx = h.findIndex(c=>/(名称|name)/i.test(c));
+  const catIdx = h.findIndex(c=>/(类别|category)/i.test(c));
+  const uIdx = h.findIndex(c=>/(单位|unit)/i.test(c));
+  const tIdx = h.findIndex(c=>/(采购|自制|type|类型)/i.test(c));
+  if(cIdx<0) return;
+
+  for(let i=1; i<data.length; i++) {
+    const r = data[i];
+    if(!r || !r[cIdx]) continue;
+    const code = String(r[cIdx]).trim();
+    if(!appData.materials.some(m=>m.code===code)) {
+      appData.materials.push({
+        code: code,
+        name: nIdx>=0 && r[nIdx] ? String(r[nIdx]).trim() : code,
+        category: catIdx>=0 && r[catIdx] ? String(r[catIdx]).trim() : '通用',
+        unit: uIdx>=0 && r[uIdx] ? String(r[uIdx]).trim() : 'EA',
+        type: tIdx>=0 && r[tIdx] ? String(r[tIdx]).trim() : '自制'
+      });
+    }
+  }
+  showToast('✅ 物料数据已导入','success');
+}
+
+// 解析供应商Sheet
+function parseSupplierSheet(data, sheetName) {
+  if(data.length < 2) return;
+  const h = data[0].map(c=>String(c||''));
+  const cIdx = h.findIndex(c=>/(编码|code|供应商)/i.test(c));
+  const nIdx = h.findIndex(c=>/(名称|name)/i.test(c));
+  const mIdx = h.findIndex(c=>/(物料|材料|material)/i.test(c));
+  const lIdx = h.findIndex(c=>/(交期|lead)/i.test(c));
+  const qIdx = h.findIndex(c=>/(配额|quota)/i.test(c));
+  if(cIdx<0 && nIdx<0) return;
+
+  for(let i=1; i<data.length; i++) {
+    const r = data[i];
+    if(!r) continue;
+    const code = cIdx>=0 && r[cIdx] ? String(r[cIdx]).trim() : ('SUP-'+String(i).padStart(3,'0'));
+    const name = nIdx>=0 && r[nIdx] ? String(r[nIdx]).trim() : code;
+    if(!appData.suppliers.some(s=>s.code===code || s.name===name)) {
+      appData.suppliers.push({
+        code: code,
+        name: name,
+        material: mIdx>=0 && r[mIdx] ? String(r[mIdx]).trim() : '',
+        leadTime: lIdx>=0 ? parseInt(r[lIdx])||0 : 0,
+        quota: qIdx>=0 ? parseFloat(r[qIdx])||100 : 100
+      });
+    }
+  }
+  showToast('✅ 供应商数据已导入','success');
+}
+
+// 解析工艺路线Sheet
+function parseRoutingSheet(data, sheetName) {
+  if(data.length < 2) return;
+  const h = data[0].map(c=>String(c||''));
+  const cIdx = h.findIndex(c=>/(编码|code|制程)/i.test(c));
+  const nIdx = h.findIndex(c=>/(名称|name)/i.test(c));
+  const oIdx = h.findIndex(c=>/(工序|operation)/i.test(c));
+  const lIdx = h.findIndex(c=>/(交期|lead|天数)/i.test(c));
+  const capIdx = h.findIndex(c=>/(产能|capacity)/i.test(c));
+  if(cIdx<0 && nIdx<0) return;
+
+  for(let i=1; i<data.length; i++) {
+    const r = data[i];
+    if(!r) continue;
+    const code = cIdx>=0 && r[cIdx] ? String(r[cIdx]).trim() : ('R-'+String(i).padStart(3,'0'));
+    if(!appData.routings.some(rt=>rt.code===code)) {
+      appData.routings.push({
+        code: code,
+        name: nIdx>=0 && r[nIdx] ? String(r[nIdx]).trim() : code,
+        operation: oIdx>=0 && r[oIdx] ? String(r[oIdx]).trim() : '',
+        leadTime: lIdx>=0 ? parseInt(r[lIdx])||0 : 0,
+        capacity: capIdx>=0 ? parseInt(r[capIdx])||0 : 0
+      });
+    }
+  }
+  showToast('✅ 工艺路线数据已导入','success');
+}
+
+// 原上传函数保留兼容
+function handleFileUpload(event, fileId) {
+  handleUnifiedUpload(event);
+}
+
+// 统一拖拽支持
+document.addEventListener('DOMContentLoaded', function() {
+  const dropZone = document.getElementById('unifiedDropZone');
+  if(dropZone) {
+    dropZone.addEventListener('dragover', e=>{e.preventDefault();dropZone.classList.add('dragover')});
+    dropZone.addEventListener('dragleave', e=>{e.preventDefault();dropZone.classList.remove('dragover')});
+    dropZone.addEventListener('drop', e=>{
+      e.preventDefault();dropZone.classList.remove('dragover');
+      const file = e.dataTransfer.files[0];
+      if(file) {
+        const input = document.getElementById('unifiedFileInput');
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        input.files = dt.files;
+        handleUnifiedUpload({target:{files:[file]}});
+      }
+    });
+  }
+});
+
+// 保留旧拖拽（兼容）
+['dropZone1','dropZone2','dropZone3'].forEach((id)=>{
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.addEventListener('dragover', e=>{e.preventDefault();el.classList.add('dragover')});
+  el.addEventListener('dragleave', e=>{e.preventDefault();el.classList.remove('dragover')});
+  el.addEventListener('drop', e=>{
+    e.preventDefault();el.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if(file) {
+      const input = document.getElementById('unifiedFileInput');
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      input.files = dt.files;
+      handleUnifiedUpload({target:{files:[file]}});
+    }
+  });
+});
+
+// ======================== 示例数据 ========================
+function loadSampleData() {
+  appData.materials = [
+    { code:'IC-1000-FT', name:'FT测试后成品芯片', category:'成品', unit:'颗', type:'自制' },
+    { code:'IC-1000-AB', name:'AB封装后芯片', category:'半成品', unit:'颗', type:'自制' },
+    { code:'IC-1000-CP', name:'CP测试后晶圆', category:'半成品', unit:'片', type:'自制' },
+    { code:'IC-1000-BP', name:'BP制造后晶圆', category:'半成品', unit:'片', type:'自制' },
+    { code:'IC-1000-Wafer', name:'Wafer晶圆', category:'原材料', unit:'片', type:'采购' }
+  ];
+  appData.boms = [
+    { parent:'IC-1000-FT', child:'IC-1000-AB', usage:1, scrap:5 },
+    { parent:'IC-1000-AB', child:'IC-1000-CP', usage:120, scrap:2 },
+    { parent:'IC-1000-CP', child:'IC-1000-BP', usage:1, scrap:10 },
+    { parent:'IC-1000-BP', child:'IC-1000-Wafer', usage:1, scrap:5 }
+  ];
+  appData.bom = appData.boms;
+  appData.routings = [
+    { code:'R-FT', name:'FT测试', operation:'FT测试工序', leadTime:5, capacity:5000 },
+    { code:'R-AB', name:'AB封装', operation:'AB封装工序', leadTime:15, capacity:3000 },
+    { code:'R-CP', name:'CP测试', operation:'CP测试工序', leadTime:8, capacity:4000 },
+    { code:'R-BP', name:'BP制造', operation:'BP凸块制造', leadTime:15, capacity:3500 },
+    { code:'R-Wafer', name:'Wafer', operation:'晶圆制造', leadTime:50, capacity:2000 }
+  ];
+  appData.suppliers = [
+    { code:'SUP-FT-001', name:'FT封装测试供应商', material:'IC-1000-FT', leadTime:5, quota:100 },
+    { code:'SUP-AB-001', name:'AB封装供应商', material:'IC-1000-AB', leadTime:15, quota:100 },
+    { code:'SUP-CP-001', name:'CP测试供应商', material:'IC-1000-CP', leadTime:8, quota:100 },
+    { code:'SUP-BP-001', name:'BP凸块供应商', material:'IC-1000-BP', leadTime:15, quota:100 },
+    { code:'SUP-WF-001', name:'Wafer晶圆供应商', material:'IC-1000-Wafer', leadTime:50, quota:100 }
+  ];
+  appData.leadTimes = [
+    { process:'FT', code:'SUP-FT-001', name:'FT封装测试供应商', prod:2, trans:2, inspect:1 },
+    { process:'AB', code:'SUP-AB-001', name:'AB封装供应商', prod:10, trans:3, inspect:2 },
+    { process:'CP', code:'SUP-CP-001', name:'CP测试供应商', prod:5, trans:2, inspect:1 },
+    { process:'BP', code:'SUP-BP-001', name:'BP凸块供应商', prod:10, trans:2, inspect:3 },
+    { process:'Wafer', code:'SUP-WF-001', name:'Wafer晶圆供应商', prod:40, trans:6, inspect:4 }
+  ];
+  appData.inventory = [
+    { materialCode:'IC-1000-FT', materialName:'FT测试后成品芯片', warehouse:'成品仓', stock:5000, transit:2400, transitArrival:'2026-07-15' },
+    { materialCode:'IC-1000-AB', materialName:'AB封装后芯片', warehouse:'半成品仓', stock:4000, transit:0, transitArrival:'' },
+    { materialCode:'IC-1000-CP', materialName:'CP测试后晶圆', warehouse:'半成品仓', stock:500, transit:0, transitArrival:'' },
+    { materialCode:'IC-1000-BP', materialName:'BP制造后晶圆', warehouse:'半成品仓', stock:400, transit:0, transitArrival:'' },
+    { materialCode:'IC-1000-Wafer', materialName:'Wafer晶圆', warehouse:'原材料仓', stock:300, transit:0, transitArrival:'' }
+  ];
+  appData.demands = [
+    { orderNo:'ORD001', material:'IC-1000-FT', quantity:120000, demandDate:'2026-07-31', priority:'高', customer:'华为海思' },
+    { orderNo:'ORD002', material:'IC-1000-FT', quantity:180000, demandDate:'2026-08-31', priority:'中', customer:'展讯通信' },
+    { orderNo:'ORD003', material:'IC-1000-FT', quantity:80000, demandDate:'2026-09-30', priority:'中', customer:'中兴微电子' }
+  ];
+  appData.demandHistory = [
+    { time:'2026-06-01 09:00', orderNo:'ORD001', type:'新建', content:'创建订单 ORD001, 数量120000, 需求日2026-07-31' },
+    { time:'2026-06-01 09:05', orderNo:'ORD002', type:'新建', content:'创建订单 ORD002, 数量180000, 需求日2026-08-31' },
+    { time:'2026-06-05 14:30', orderNo:'ORD003', type:'新建', content:'创建订单 ORD003, 数量80000, 需求日2026-09-30' }
+  ];
+  showToast('✅ 示例数据加载完成！','success');
+  renderAllMasterdata();
+  renderDemand();
+  updateDashboard();
+  refreshOrderSelect();
+  renderConfigTables();
+}
+
+// ======================== 主数据渲染 ========================
+function renderAllMasterdata() {
+  let mhtml = '';
+  appData.materials.forEach((m,i)=>{
+    mhtml += '<tr><td>'+m.code+'</td><td>'+m.name+'</td><td>'+m.category+'</td><td>'+m.unit+'</td><td><span class="tag-status '+(m.type==='采购'?'tag-yellow':'tag-blue')+'">'+m.type+'</span></td><td><button class="btn btn-sm btn-outline" onclick="editMaterial('+i+')">✏️</button><button class="btn btn-sm btn-outline" onclick="deleteMaterial('+i+')">🗑️</button></td></tr>';
+  });
+  document.querySelector('#materialTable tbody').innerHTML = mhtml || '<tr><td colspan="6" style="text-align:center;color:var(--gray-400)">暂无数据，请上传或加载示例数据</td></tr>';
+  document.getElementById('materialCount').textContent = appData.materials.length+'条';
+  let bhtml = '';
+  appData.boms.forEach((b,i)=>{
+    bhtml += '<tr><td>'+b.parent+'</td><td>'+b.child+'</td><td>'+b.usage+'</td><td>'+b.scrap+'%</td><td><button class="btn btn-sm btn-outline" onclick="editBom('+i+')">✏️</button><button class="btn btn-sm btn-outline" onclick="deleteBom('+i+')">🗑️</button></td></tr>';
+  });
+  document.querySelector('#bomTable tbody').innerHTML = bhtml || '<tr><td colspan="5" style="text-align:center;color:var(--gray-400)">暂无数据</td></tr>';
+  document.getElementById('bomCount').textContent = appData.boms.length+'条';
+  let rhtml = '';
+  appData.routings.forEach((r,i)=>{
+    rhtml += '<tr><td>'+r.code+'</td><td>'+r.name+'</td><td>'+r.operation+'</td><td>'+r.leadTime+'</td><td>'+r.capacity+'</td><td><button class="btn btn-sm btn-outline" onclick="editRouting('+i+')">✏️</button><button class="btn btn-sm btn-outline" onclick="deleteRouting('+i+')">🗑️</button></td></tr>';
+  });
+  document.querySelector('#routingTable tbody').innerHTML = rhtml || '<tr><td colspan="6" style="text-align:center;color:var(--gray-400)">暂无数据</td></tr>';
+  document.getElementById('routingCount').textContent = appData.routings.length+'条';
+  let shtml = '';
+  appData.suppliers.forEach((s,i)=>{
+    shtml += '<tr><td>'+s.code+'</td><td>'+s.name+'</td><td>'+s.material+'</td><td>'+s.leadTime+'</td><td>'+s.quota+'%</td><td><button class="btn btn-sm btn-outline" onclick="editSupplier('+i+')">✏️</button><button class="btn btn-sm btn-outline" onclick="deleteSupplier('+i+')">🗑️</button></td></tr>';
+  });
+  document.querySelector('#supplierTable tbody').innerHTML = shtml || '<tr><td colspan="6" style="text-align:center;color:var(--gray-400)">暂无数据</td></tr>';
+  document.getElementById('supplierCount').textContent = appData.suppliers.length+'条';
+  let ihtml = '';
+  appData.inventory.forEach((inv,idx)=>{
+    ihtml += '<tr><td>'+inv.materialCode+'</td><td>'+inv.materialName+'</td><td>'+inv.warehouse+'</td><td class="font-bold">'+inv.stock.toLocaleString()+'</td><td>'+(inv.transit||0).toLocaleString()+'</td><td>'+(inv.transitArrival||'-')+'</td><td><button class="btn btn-sm btn-outline" onclick="editInventory('+idx+')">✏️</button><button class="btn btn-sm btn-outline" onclick="deleteInventory('+idx+')">🗑️</button></td></tr>';
+  });
+  document.querySelector('#inventoryTable tbody').innerHTML = ihtml || '<tr><td colspan="7" style="text-align:center;color:var(--gray-400)">暂无数据</td></tr>';
+  document.getElementById('invCount').textContent = appData.inventory.length+'条';
+  // 每次渲染主数据时同步保存到 localStorage（确保编辑/删除/新增后持久化）
+  saveMasterdataToStorage();
+}
+
+function deleteMaterial(idx) { appData.materials.splice(idx,1); renderAllMasterdata(); }
+function deleteBom(idx) { appData.boms.splice(idx,1); appData.bom = appData.boms; renderAllMasterdata(); }
+function deleteRouting(idx) { appData.routings.splice(idx,1); renderAllMasterdata(); }
+function deleteSupplier(idx) { appData.suppliers.splice(idx,1); renderAllMasterdata(); }
+function deleteInventory(idx) { appData.inventory.splice(idx,1); renderAllMasterdata(); }
+function deleteDemand(idx) { appData.demands.splice(idx,1); renderDemand(); updateDashboard(); }
+
+// ======================== 主数据编辑功能 ========================
+function editMaterial(idx) {
+  const m=appData.materials[idx];
+  if(!m) return;
+  openModal('<div class="modal-title">编辑物料 <button class="modal-close" onclick="closeModal()">×</button></div>'+
+    '<div class="grid-2"><div class="form-group"><label>物料编码</label><input id="formMatCode" value="'+escapeHtml(m.code)+'"></div>'+
+    '<div class="form-group"><label>物料名称</label><input id="formMatName" value="'+escapeHtml(m.name)+'"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>类别</label><select id="formMatCategory"><option '+(m.category==='成品'?'selected':'')+'>成品</option><option '+(m.category==='半成品'?'selected':'')+'>半成品</option><option '+(m.category==='原材料'?'selected':'')+'>原材料</option></select></div>'+
+    '<div class="form-group"><label>单位</label><select id="formMatUnit"><option '+(m.unit==='颗'?'selected':'')+'>颗</option><option '+(m.unit==='片'?'selected':'')+'>片</option><option '+(m.unit==='个'?'selected':'')+'>个</option></select></div></div>'+
+    '<div class="form-group"><label>采购/自制</label><select id="formMatType"><option '+(m.type==='自制'?'selected':'')+'>自制</option><option '+(m.type==='采购'?'selected':'')+'>采购</option></select></div>'+
+    '<input type="hidden" id="editMatIdx" value="'+idx+'">'+
+    '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveEditMaterial()">保存</button></div>');
+}
+function saveEditMaterial() {
+  const idx=parseInt(document.getElementById('editMatIdx').value);
+  if(isNaN(idx)||!appData.materials[idx]){showToast('数据异常','error');return;}
+  const code=document.getElementById('formMatCode').value.trim();
+  const name=document.getElementById('formMatName').value.trim();
+  if(!code||!name){showToast('请填写物料编码和名称','error');return;}
+  appData.materials[idx]={code,name,category:document.getElementById('formMatCategory').value,unit:document.getElementById('formMatUnit').value,type:document.getElementById('formMatType').value};
+  closeModal();renderAllMasterdata();showToast('✅ 物料已更新','success');
+}
+
+function editBom(idx) {
+  const b=appData.boms[idx];
+  if(!b) return;
+  const matOpts = appData.materials.map(m=>'<option value="'+m.code+'" '+(m.code===b.parent?'selected':'')+'>'+m.code+' - '+m.name+'</option>').join('');
+  const childOpts = appData.materials.map(m=>'<option value="'+m.code+'" '+(m.code===b.child?'selected':'')+'>'+m.code+' - '+m.name+'</option>').join('');
+  openModal('<div class="modal-title">编辑BOM <button class="modal-close" onclick="closeModal()">×</button></div>'+
+    '<div class="grid-2"><div class="form-group"><label>父项物料</label><select id="formBomParent">'+matOpts+'</select></div>'+
+    '<div class="form-group"><label>子项物料</label><select id="formBomChild">'+childOpts+'</select></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>单位用量</label><input type="number" id="formBomUsage" value="'+b.usage+'" min="0.01" step="0.01"></div>'+
+    '<div class="form-group"><label>损耗率(%)</label><input type="number" id="formBomScrap" value="'+b.scrap+'" min="0" max="100"></div></div>'+
+    '<input type="hidden" id="editBomIdx" value="'+idx+'">'+
+    '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveEditBom()">保存</button></div>');
+}
+function saveEditBom() {
+  const idx=parseInt(document.getElementById('editBomIdx').value);
+  if(isNaN(idx)||!appData.boms[idx]){showToast('数据异常','error');return;}
+  const parent=document.getElementById('formBomParent').value,child=document.getElementById('formBomChild').value;
+  if(parent===child){showToast('父项和子项不能相同','error');return;}
+  appData.boms[idx]={parent,child,usage:parseFloat(document.getElementById('formBomUsage').value)||1,scrap:parseFloat(document.getElementById('formBomScrap').value)||0};
+  appData.bom=appData.boms;
+  closeModal();renderAllMasterdata();showToast('✅ BOM已更新','success');
+}
+
+function editRouting(idx) {
+  const r=appData.routings[idx];
+  if(!r) return;
+  openModal('<div class="modal-title">编辑工艺路线 <button class="modal-close" onclick="closeModal()">×</button></div>'+
+    '<div class="grid-2"><div class="form-group"><label>制程编码</label><input id="formRtCode" value="'+escapeHtml(r.code)+'"></div><div class="form-group"><label>制程名称</label><input id="formRtName" value="'+escapeHtml(r.name)+'"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>工序描述</label><input id="formRtOp" value="'+escapeHtml(r.operation)+'"></div><div class="form-group"><label>交期(天)</label><input type="number" id="formRtLead" value="'+r.leadTime+'"></div></div>'+
+    '<div class="form-group"><label>日产能</label><input type="number" id="formRtCap" value="'+r.capacity+'"></div>'+
+    '<input type="hidden" id="editRtIdx" value="'+idx+'">'+
+    '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveEditRouting()">保存</button></div>');
+}
+function saveEditRouting() {
+  const idx=parseInt(document.getElementById('editRtIdx').value);
+  if(isNaN(idx)||!appData.routings[idx]){showToast('数据异常','error');return;}
+  appData.routings[idx]={code:document.getElementById('formRtCode').value.trim(),name:document.getElementById('formRtName').value.trim(),operation:document.getElementById('formRtOp').value.trim(),leadTime:parseInt(document.getElementById('formRtLead').value)||0,capacity:parseInt(document.getElementById('formRtCap').value)||0};
+  closeModal();renderAllMasterdata();showToast('✅ 工艺路线已更新','success');
+}
+
+function editSupplier(idx) {
+  const s=appData.suppliers[idx];
+  if(!s) return;
+  openModal('<div class="modal-title">编辑供应商 <button class="modal-close" onclick="closeModal()">×</button></div>'+
+    '<div class="grid-2"><div class="form-group"><label>供应商编码</label><input id="formSupCode" value="'+escapeHtml(s.code)+'"></div><div class="form-group"><label>供应商名称</label><input id="formSupName" value="'+escapeHtml(s.name)+'"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>供应物料</label><input id="formSupMat" value="'+escapeHtml(s.material)+'"></div><div class="form-group"><label>交期(天)</label><input type="number" id="formSupLead" value="'+s.leadTime+'"></div></div>'+
+    '<div class="form-group"><label>配额(%)</label><input type="number" id="formSupQuota" value="'+s.quota+'" min="0" max="100"></div>'+
+    '<input type="hidden" id="editSupIdx" value="'+idx+'">'+
+    '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveEditSupplier()">保存</button></div>');
+}
+function saveEditSupplier() {
+  const idx=parseInt(document.getElementById('editSupIdx').value);
+  if(isNaN(idx)||!appData.suppliers[idx]){showToast('数据异常','error');return;}
+  appData.suppliers[idx]={code:document.getElementById('formSupCode').value.trim(),name:document.getElementById('formSupName').value.trim(),material:document.getElementById('formSupMat').value.trim(),leadTime:parseInt(document.getElementById('formSupLead').value)||0,quota:parseFloat(document.getElementById('formSupQuota').value)||0};
+  closeModal();renderAllMasterdata();showToast('✅ 供应商已更新','success');
+}
+
+function editInventory(idx) {
+  const inv=appData.inventory[idx];
+  if(!inv) return;
+  const matOpts = appData.materials.map(m=>'<option value="'+m.code+'" '+(m.code===inv.materialCode?'selected':'')+'>'+m.code+' - '+m.name+'</option>').join('');
+  openModal('<div class="modal-title">编辑库存 <button class="modal-close" onclick="closeModal()">×</button></div>'+
+    '<div class="grid-2"><div class="form-group"><label>物料</label><select id="formInvMat">'+matOpts+'</select></div><div class="form-group"><label>仓库</label><input id="formInvWarehouse" value="'+escapeHtml(inv.warehouse)+'"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>可用库存</label><input type="number" id="formInvStock" value="'+inv.stock+'"></div><div class="form-group"><label>在制数量</label><input type="number" id="formInvTransit" value="'+(inv.transit||0)+'"></div></div>'+
+    '<div class="form-group"><label>在制到货日</label><input type="date" id="formInvArrival" value="'+(inv.transitArrival||'')+'"></div>'+
+    '<input type="hidden" id="editInvIdx" value="'+idx+'">'+
+    '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveEditInventory()">保存</button></div>');
+}
+function saveEditInventory() {
+  const idx=parseInt(document.getElementById('editInvIdx').value);
+  if(isNaN(idx)||!appData.inventory[idx]){showToast('数据异常','error');return;}
+  const matCode=document.getElementById('formInvMat').value,mat=appData.materials.find(m=>m.code===matCode);
+  appData.inventory[idx]={materialCode:matCode,materialName:mat?mat.name:'',warehouse:document.getElementById('formInvWarehouse').value.trim(),stock:parseFloat(document.getElementById('formInvStock').value)||0,transit:parseFloat(document.getElementById('formInvTransit').value)||0,transitArrival:document.getElementById('formInvArrival').value};
+  closeModal();renderAllMasterdata();showToast('✅ 库存已更新','success');
+}
+
+function openAddMaterialModal() {
+  openModal('<div class="modal-title">新增物料 <button class="modal-close" onclick="closeModal()">×</button></div>'+
+    '<div class="grid-2"><div class="form-group"><label>物料编码</label><input id="formMatCode" placeholder="如 IC-1000-XXX"></div>'+
+    '<div class="form-group"><label>物料名称</label><input id="formMatName" placeholder="物料名称"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>类别</label><select id="formMatCategory"><option>成品</option><option>半成品</option><option>原材料</option></select></div>'+
+    '<div class="form-group"><label>单位</label><select id="formMatUnit"><option>颗</option><option>片</option><option>个</option></select></div></div>'+
+    '<div class="form-group"><label>采购/自制</label><select id="formMatType"><option>自制</option><option>采购</option></select></div>'+
+    '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveNewMaterial()">保存</button></div>');
+}
+function saveNewMaterial() {
+  const code = document.getElementById('formMatCode').value.trim();
+  const name = document.getElementById('formMatName').value.trim();
+  if(!code||!name) { showToast('请填写物料编码和名称','error'); return; }
+  appData.materials.push({code,name,category:document.getElementById('formMatCategory').value,unit:document.getElementById('formMatUnit').value,type:document.getElementById('formMatType').value});
+  closeModal();renderAllMasterdata();showToast('✅ 物料添加成功','success');
+}
+function openAddBomModal() {
+  const matOpts = appData.materials.map(m=>'<option value="'+m.code+'">'+m.code+' - '+m.name+'</option>').join('');
+  openModal('<div class="modal-title">新增BOM <button class="modal-close" onclick="closeModal()">×</button></div>'+
+    '<div class="grid-2"><div class="form-group"><label>父项物料</label><select id="formBomParent">'+matOpts+'</select></div>'+
+    '<div class="form-group"><label>子项物料</label><select id="formBomChild">'+matOpts+'</select></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>单位用量</label><input type="number" id="formBomUsage" value="1" min="0.01" step="0.01"></div>'+
+    '<div class="form-group"><label>损耗率(%)</label><input type="number" id="formBomScrap" value="0" min="0" max="100"></div></div>'+
+    '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveNewBom()">保存</button></div>');
+}
+function saveNewBom() {
+  const parent=document.getElementById('formBomParent').value,child=document.getElementById('formBomChild').value;
+  if(parent===child){showToast('父项和子项不能相同','error');return;}
+  appData.boms.push({parent,child,usage:parseFloat(document.getElementById('formBomUsage').value)||1,scrap:parseFloat(document.getElementById('formBomScrap').value)||0});
+  appData.bom=appData.boms;closeModal();renderAllMasterdata();showToast('✅ BOM添加成功','success');
+}
+function openAddRoutingModal() {
+  openModal('<div class="modal-title">新增工艺路线 <button class="modal-close" onclick="closeModal()">×</button></div>'+
+    '<div class="grid-2"><div class="form-group"><label>制程编码</label><input id="formRtCode" placeholder="如 R-XXX"></div><div class="form-group"><label>制程名称</label><input id="formRtName" placeholder="制程名称"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>工序描述</label><input id="formRtOp" placeholder="工序描述"></div><div class="form-group"><label>交期(天)</label><input type="number" id="formRtLead" value="5"></div></div>'+
+    '<div class="form-group"><label>日产能</label><input type="number" id="formRtCap" value="1000"></div>'+
+    '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveNewRouting()">保存</button></div>');
+}
+function saveNewRouting() {
+  appData.routings.push({code:document.getElementById('formRtCode').value.trim(),name:document.getElementById('formRtName').value.trim(),operation:document.getElementById('formRtOp').value.trim(),leadTime:parseInt(document.getElementById('formRtLead').value)||0,capacity:parseInt(document.getElementById('formRtCap').value)||0});
+  closeModal();renderAllMasterdata();showToast('✅ 工艺路线添加成功','success');
+}
+function openAddSupplierModal() {
+  openModal('<div class="modal-title">新增供应商 <button class="modal-close" onclick="closeModal()">×</button></div>'+
+    '<div class="grid-2"><div class="form-group"><label>供应商编码</label><input id="formSupCode" placeholder="如 SUP-XXX-001"></div><div class="form-group"><label>供应商名称</label><input id="formSupName" placeholder="供应商名称"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>供应物料</label><input id="formSupMat" placeholder="物料编码"></div><div class="form-group"><label>交期(天)</label><input type="number" id="formSupLead" value="10"></div></div>'+
+    '<div class="form-group"><label>配额(%)</label><input type="number" id="formSupQuota" value="100" min="0" max="100"></div>'+
+    '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveNewSupplier()">保存</button></div>');
+}
+function saveNewSupplier() {
+  appData.suppliers.push({code:document.getElementById('formSupCode').value.trim(),name:document.getElementById('formSupName').value.trim(),material:document.getElementById('formSupMat').value.trim(),leadTime:parseInt(document.getElementById('formSupLead').value)||0,quota:parseFloat(document.getElementById('formSupQuota').value)||0});
+  closeModal();renderAllMasterdata();showToast('✅ 供应商添加成功','success');
+}
+function openAddInventoryModal() {
+  const matOpts = appData.materials.map(m=>'<option value="'+m.code+'">'+m.code+' - '+m.name+'</option>').join('');
+  openModal('<div class="modal-title">新增库存记录 <button class="modal-close" onclick="closeModal()">×</button></div>'+
+    '<div class="grid-2"><div class="form-group"><label>物料</label><select id="formInvMat">'+matOpts+'</select></div><div class="form-group"><label>仓库</label><input id="formInvWarehouse" placeholder="仓库名称"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>可用库存</label><input type="number" id="formInvStock" value="0"></div><div class="form-group"><label>在制数量</label><input type="number" id="formInvTransit" value="0"></div></div>'+
+    '<div class="form-group"><label>在制到货日</label><input type="date" id="formInvArrival"></div>'+
+    '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveNewInventory()">保存</button></div>');
+}
+function saveNewInventory() {
+  const matCode=document.getElementById('formInvMat').value,mat=appData.materials.find(m=>m.code===matCode);
+  appData.inventory.push({materialCode:matCode,materialName:mat?mat.name:'',warehouse:document.getElementById('formInvWarehouse').value.trim(),stock:parseFloat(document.getElementById('formInvStock').value)||0,transit:parseFloat(document.getElementById('formInvTransit').value)||0,transitArrival:document.getElementById('formInvArrival').value});
+  closeModal();renderAllMasterdata();showToast('✅ 库存添加成功','success');
+}
+function openAddWipModal() {
+  const matOpts=appData.materials.map(m=>'<option value="'+m.code+'">'+m.code+' - '+m.name+'</option>').join('');
+  openModal('<div class="modal-title">在制录入 <button class="modal-close" onclick="closeModal()">×</button></div>'+
+    '<div class="form-group"><label>物料</label><select id="formWipMat">'+matOpts+'</select></div>'+
+    '<div class="grid-2"><div class="form-group"><label>在制数量</label><input type="number" id="formWipQty" value="0"></div><div class="form-group"><label>预计到货日</label><input type="date" id="formWipArrival"></div></div>'+
+    '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveWip()">保存</button></div>');
+}
+function saveWip() {
+  const matCode=document.getElementById('formWipMat').value,qty=parseFloat(document.getElementById('formWipQty').value)||0,arrival=document.getElementById('formWipArrival').value;
+  if(!qty||!arrival){showToast('请填写数量和到货日','error');return;}
+  const inv=appData.inventory.find(i=>i.materialCode===matCode);
+  if(inv){inv.transit=(inv.transit||0)+qty;inv.transitArrival=arrival;}
+  else{const mat=appData.materials.find(m=>m.code===matCode);appData.inventory.push({materialCode:matCode,materialName:mat?mat.name:'',warehouse:'在制',stock:0,transit:qty,transitArrival:arrival});}
+  closeModal();renderAllMasterdata();showToast('✅ 在制信息已更新','success');
+}
+
+// 需求预测
+function switchDemandTab(tab){
+  document.querySelectorAll('#demandTabs .tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('#section-demand .tab-content').forEach(t=>t.classList.remove('active'));
+  document.querySelector('#demandTabs .tab[data-tab="'+tab+'"]').classList.add('active');
+  document.getElementById('tab-'+tab).classList.add('active');
+  if(tab==='demand-summary')renderDemandSummary();
+  if(tab==='demand-trend')renderDemandTrend();
+}
+function renderDemand(){
+  let html='';
+  appData.demands.forEach((d,i)=>{
+    const pColor=d.priority==='高'?'tag-red':d.priority==='中'?'tag-yellow':'tag-blue';
+    html+='<tr><td>'+d.orderNo+'</td><td>'+d.material+'</td><td class="font-bold">'+d.quantity.toLocaleString()+'</td><td>'+d.demandDate+'</td><td><span class="tag-status '+pColor+'">'+d.priority+'</span></td><td>'+d.customer+'</td><td><button class="btn btn-sm btn-outline" onclick="deleteDemand('+i+')">🗑️</button></td></tr>';
+  });
+  document.querySelector('#demandTable tbody').innerHTML=html||'<tr><td colspan="7" style="text-align:center;color:var(--gray-400)">暂无需求数据</td></tr>';
+  renderDemandSummary();renderDemandTrend();
+}
+function renderDemandSummary(){
+  const totalQty=appData.demands.reduce((s,d)=>s+d.quantity,0),totalOrders=appData.demands.length,uniqueMats=new Set(appData.demands.map(d=>d.material)).size,highP=appData.demands.filter(d=>d.priority==='高').length;
+  document.getElementById('demandSummaryCards').innerHTML='<div class="summary-card blue"><div class="lbl">📦 总需求量</div><div class="num" style="color:var(--primary)">'+totalQty.toLocaleString()+'</div></div><div class="summary-card green"><div class="lbl">📋 需求订单数</div><div class="num" style="color:var(--success)">'+totalOrders+'</div></div><div class="summary-card cyan"><div class="lbl">🏭 涉及物料数</div><div class="num" style="color:var(--info)">'+uniqueMats+'</div></div><div class="summary-card red"><div class="lbl">🔴 高优先级</div><div class="num" style="color:var(--danger)">'+highP+'</div></div>';
+  const byMat={};
+  appData.demands.forEach(d=>{if(!byMat[d.material])byMat[d.material]={qty:0,count:0};byMat[d.material].qty+=d.quantity;byMat[d.material].count++;});
+  let mhtml='';
+  Object.keys(byMat).forEach(code=>{const mat=appData.materials.find(m=>m.code===code);mhtml+='<tr><td>'+code+'</td><td>'+(mat?mat.name:code)+'</td><td class="font-bold">'+byMat[code].qty.toLocaleString()+'</td><td>'+byMat[code].count+'</td></tr>';});
+  document.querySelector('#demandSummaryTable tbody').innerHTML=mhtml||'<tr><td colspan="4" style="text-align:center;color:var(--gray-400)">暂无数据</td></tr>';
+  const byDate={};
+  appData.demands.forEach(d=>{const month=d.demandDate.substring(0,7);if(!byDate[month])byDate[month]={qty:0,count:0};byDate[month].qty+=d.quantity;byDate[month].count++;});
+  let dhtml='';
+  Object.keys(byDate).sort().forEach(m=>{dhtml+='<tr><td>'+m+'</td><td class="font-bold">'+byDate[m].qty.toLocaleString()+'</td><td>'+byDate[m].count+'</td></tr>';});
+  document.querySelector('#demandDateTable tbody').innerHTML=dhtml||'<tr><td colspan="3" style="text-align:center;color:var(--gray-400)">暂无数据</td></tr>';
+  let hhtml='';
+  appData.demandHistory.forEach(h=>{hhtml+='<tr><td>'+h.time+'</td><td>'+h.orderNo+'</td><td><span class="tag-status '+(h.type==='新建'?'tag-green':h.type==='修改'?'tag-yellow':'tag-red')+'">'+h.type+'</span></td><td>'+h.content+'</td></tr>';});
+  document.querySelector('#demandHistoryTable tbody').innerHTML=hhtml||'<tr><td colspan="4" style="text-align:center;color:var(--gray-400)">暂无变更记录</td></tr>';
+}
+function renderDemandTrend(){
+  if(demandChartInstance){demandChartInstance.destroy();demandChartInstance=null;}
+  const byDate={};
+  appData.demands.forEach(d=>{const month=d.demandDate.substring(0,7);byDate[month]=(byDate[month]||0)+d.quantity;});
+  const labels=Object.keys(byDate).sort(),data=labels.map(l=>byDate[l]);
+  if(!labels.length){document.querySelector('#demandTrendChart').parentElement.innerHTML='<div style="text-align:center;padding:60px;color:var(--gray-400)">暂无需求数据</div>';return;}
+  const ctx=document.getElementById('demandTrendChart').getContext('2d');
+  demandChartInstance=new Chart(ctx,{type:'line',data:{labels,datasets:[{label:'需求量',data,borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.1)',fill:true,tension:.4,pointBackgroundColor:'#2563eb',pointRadius:5,pointHoverRadius:8}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{callback:v=>v.toLocaleString()}}}}});
+}
+function openAddDemandModal(){
+  const matOpts=appData.materials.map(m=>'<option value="'+m.code+'">'+m.code+' - '+m.name+'</option>').join('');
+  openModal('<div class="modal-title">新增独立需求 <button class="modal-close" onclick="closeModal()">×</button></div>'+
+    '<div class="grid-2"><div class="form-group"><label>订单号</label><input id="formDemOrder" placeholder="如 ORD004"></div><div class="form-group"><label>物料</label><select id="formDemMat">'+matOpts+'</select></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>数量</label><input type="number" id="formDemQty" value="1000" min="1"></div><div class="form-group"><label>需求日期</label><input type="date" id="formDemDate"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>优先级</label><select id="formDemPriority"><option>高</option><option selected>中</option><option>低</option></select></div><div class="form-group"><label>客户</label><input id="formDemCustomer" placeholder="客户名称"></div></div>'+
+    '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveNewDemand()">保存</button></div>');
+  document.getElementById('formDemDate').valueAsDate=new Date(new Date().getTime()+30*86400000);
+}
+function saveNewDemand(){
+  const orderNo=document.getElementById('formDemOrder').value.trim()||('ORD'+String(appData.demands.length+1).padStart(3,'0')),material=document.getElementById('formDemMat').value,qty=parseInt(document.getElementById('formDemQty').value)||0;
+  if(qty<=0){showToast('请输入有效数量','error');return;}
+  appData.demands.push({orderNo,material,quantity:qty,demandDate:document.getElementById('formDemDate').value,priority:document.getElementById('formDemPriority').value,customer:document.getElementById('formDemCustomer').value.trim()});
+  appData.demandHistory.push({time:new Date().toISOString().substring(0,16).replace('T',' '),orderNo,type:'新建',content:'创建订单 '+orderNo+', 数量'+qty+', 需求日'+document.getElementById('formDemDate').value});
+  closeModal();renderDemand();updateDashboard();refreshOrderSelect();showToast('✅ 需求添加成功','success');
+}
+
+// MRP
+function switchMrpTab(tab){
+  document.querySelectorAll('#mrpTabs .tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('#section-mrp .tab-content').forEach(t=>t.classList.remove('active'));
+  document.querySelector('#mrpTabs .tab[data-tab="'+tab+'"]').classList.add('active');
+  document.getElementById('tab-'+tab).classList.add('active');
+  if(tab==='mrp-config')renderConfigTables();
+  if(tab==='mrp-run')refreshOrderSelect();
+  if(tab==='mrp-rules')renderMrpRulesInfo();
+}
+function renderConfigTables(){
+  let html1='';appData.processes.forEach(p=>{html1+='<tr><td>'+p.level+'</td><td>'+p.name+'</td><td>'+p.desc+'</td><td>'+p.unit+'</td></tr>';});
+  document.querySelector('#processLevelTable tbody').innerHTML=html1;
+  let html2='';appData.bom.forEach((b,i)=>{html2+='<tr><td>'+b.parent+'</td><td>'+b.child+'</td><td><input class="editable" type="number" step="any" value="'+b.usage+'" data-bom-idx="'+i+'" data-field="usage"></td><td><input class="editable" type="number" step="any" value="'+b.scrap+'" data-bom-idx="'+i+'" data-field="scrap"></td><td><button class="btn btn-sm btn-outline" onclick="deleteMrpBom('+i+')">🗑️</button></td></tr>';});
+  document.querySelector('#bomConfigTable tbody').innerHTML=html2;
+  let html3='';appData.leadTimes.forEach((l,i)=>{html3+='<tr><td>'+l.process+'</td><td><input class="editable" value="'+l.code+'" data-lt-idx="'+i+'" data-field="code"></td><td><input class="editable" value="'+l.name+'" data-lt-idx="'+i+'" data-field="name"></td><td><input class="editable" type="number" min="0" value="'+l.prod+'" data-lt-idx="'+i+'" data-field="prod"></td><td><input class="editable" type="number" min="0" value="'+l.trans+'" data-lt-idx="'+i+'" data-field="trans"></td><td><input class="editable" type="number" min="0" value="'+l.inspect+'" data-lt-idx="'+i+'" data-field="inspect"></td></tr>';});
+  document.querySelector('#leadTimeTable tbody').innerHTML=html3;
+  let html4='';appData.approvals.forEach((a,i)=>{html4+='<tr><td>'+a.node+'</td><td><input class="editable" type="number" min="0" value="'+a.days+'" data-app-idx="'+i+'" data-field="days"></td></tr>';});
+  document.querySelector('#approvalTable tbody').innerHTML=html4;document.getElementById('approvalTotal').textContent=appData.approvals.reduce((s,a)=>s+a.days,0);
+  document.querySelectorAll('#bomConfigTable .editable').forEach(el=>{el.addEventListener('change',function(){const idx=parseInt(this.dataset.bomIdx),field=this.dataset.field;if(!isNaN(idx)&&appData.bom[idx])appData.bom[idx][field]=field==='usage'||field==='scrap'?parseFloat(this.value)||0:this.value;});});
+  document.querySelectorAll('#leadTimeTable .editable').forEach(el=>{el.addEventListener('change',function(){const idx=parseInt(this.dataset.ltIdx),field=this.dataset.field;if(!isNaN(idx)&&appData.leadTimes[idx]){if(field==='prod'||field==='trans'||field==='inspect')appData.leadTimes[idx][field]=parseInt(this.value)||0;else appData.leadTimes[idx][field]=this.value;}});});
+  document.querySelectorAll('#approvalTable .editable').forEach(el=>{el.addEventListener('change',function(){const idx=parseInt(this.dataset.appIdx);if(!isNaN(idx)&&appData.approvals[idx]){appData.approvals[idx].days=parseInt(this.value)||0;document.getElementById('approvalTotal').textContent=appData.approvals.reduce((s,a)=>s+a.days,0);}});});
+}
+function deleteMrpBom(idx){if(appData.bom.length<=1){showToast('至少保留一条BOM记录','warning');return;}appData.bom.splice(idx,1);appData.boms=appData.bom;renderConfigTables();}
+function saveAllParams(){
+  document.querySelectorAll('#bomConfigTable .editable').forEach(el=>{const idx=parseInt(el.dataset.bomIdx),field=el.dataset.field;if(!isNaN(idx)&&appData.bom[idx])appData.bom[idx][field]=field==='usage'||field==='scrap'?parseFloat(el.value)||0:el.value;});
+  document.querySelectorAll('#leadTimeTable .editable').forEach(el=>{const idx=parseInt(el.dataset.ltIdx),field=el.dataset.field;if(!isNaN(idx)&&appData.leadTimes[idx]){if(field==='prod'||field==='trans'||field==='inspect')appData.leadTimes[idx][field]=parseInt(el.value)||0;else appData.leadTimes[idx][field]=el.value;}});
+  document.querySelectorAll('#approvalTable .editable').forEach(el=>{const idx=parseInt(el.dataset.appIdx);if(!isNaN(idx)&&appData.approvals[idx])appData.approvals[idx].days=parseInt(el.value)||0;});
+  document.getElementById('approvalTotal').textContent=appData.approvals.reduce((s,a)=>s+a.days,0);showToast('✅ 所有参数已保存','success');
+}
+function refreshOrderSelect(){
+  const sel=document.getElementById('mrpOrderSelect'),prevVal=sel.value;
+  sel.innerHTML='<option value="">-- 选择需求订单 --</option><option value="all">📋 所有订单</option><option value="custom">📝 自定义输入</option>';
+  appData.demands.forEach((o,i)=>{const opt=document.createElement('option');opt.value=i;opt.textContent=o.orderNo+' | '+o.material+' | '+o.quantity.toLocaleString()+'颗 | '+o.demandDate;sel.appendChild(opt);});
+  if(prevVal)sel.value=prevVal;
+}
+function onMrpOrderSelect(){
+  const sel=document.getElementById('mrpOrderSelect'),val=sel.value;
+  if(val==='all'){
+    const totalQty=appData.demands.reduce((s,d)=>s+d.quantity,0);
+    const latestDate=appData.demands.reduce((latest,d)=>d.demandDate>latest?d.demandDate:latest,'');
+    document.getElementById('mrpQuantity').value=totalQty;
+    document.getElementById('mrpDueDate').value=latestDate;
+  }else if(val!==''&&val!=='custom'){const order=appData.demands[parseInt(val)];if(order){document.getElementById('mrpQuantity').value=order.quantity;document.getElementById('mrpDueDate').value=order.demandDate;}}
+}
+
+// MRP运算引擎 - 改造二
+function executeMRP(){
+  const sel=document.getElementById('mrpOrderSelect'),qtyInput=document.getElementById('mrpQuantity'),dateInput=document.getElementById('mrpDueDate');
+  let demandQty=parseInt(qtyInput.value);
+  if(isNaN(demandQty)||demandQty<=0){showToast('请输入有效的需求数量','error');return;}
+  let dueDate=dateInput.value;
+  if(!dueDate){showToast('请选择需求日期','error');return;}
+  let selectedOrder=null;
+  if(sel.value!==''&&sel.value!=='custom')selectedOrder=appData.demands[parseInt(sel.value)];
+  const approvalDays=appData.approvals.reduce((s,a)=>s+a.days,0);
+  const unitMap=appData.unitMap,materialCodeMap=appData.materialCodeMap,actionMap=appData.actionMap;
+  // 物料编码 → 制程名 反向映射
+  const processByMatCode={};
+  Object.keys(materialCodeMap).forEach(k=>{processByMatCode[materialCodeMap[k]]=k;});
+  // BOM子项查找：用制程名→物料编码匹配
+  function getBomChildren(process){
+    const matCode=materialCodeMap[process];
+    return appData.bom.filter(b=>b.parent===matCode);
+  }
+  function getScrapRate(process){
+    const matCode=materialCodeMap[process];
+    const entry=appData.bom.find(b=>b.parent===matCode);
+    return entry?entry.scrap:0;
+  }
+  function getLeadTime(process){return appData.leadTimes.find(l=>l.process===process);}
+  function getSupplierName(process){const lt=appData.leadTimes.find(l=>l.process===process);return lt?lt.name:'-';}
+  function getMaterialByProcess(process){const code=materialCodeMap[process]||'IC-1000-'+process;return appData.materials.find(m=>m.code===code);}
+  function getInventoryByProcess(process){const matCode=materialCodeMap[process]||'IC-1000-'+process;return appData.inventory.find(i=>i.materialCode===matCode);}
+  function addDays(dateStr,days){const d=new Date(dateStr);d.setDate(d.getDate()+days);return d.toISOString().split('T')[0];}
+  const results=[],details=[];
+  function calcMRP(process,netReqQty,plannedArrival,level){
+    // netReqQty = 净需求 = 该层级需要产出的数量（不含损耗）
+    const lt=getLeadTime(process);if(!lt)return;
+    const unit=unitMap[process]||'EA',totalDelivery=lt.prod+lt.trans+lt.inspect;
+    const mat=getMaterialByProcess(process);
+    const matCode=mat?mat.code:(materialCodeMap[process]||'IC-1000-'+process);
+    const matName=mat?mat.name:process;
+    const action=actionMap[process]||('委外'+process);
+    const supplier=getSupplierName(process);
+    const demandType=(level===0)?'独立需求':'相关需求';
+    // 损耗率 = 该制程作为父项时的BOM损耗率
+    const scrapRate=getScrapRate(process);
+    // 使用当前生效的运算规则
+    const core=getActiveMrpCore();
+    // 毛需求 = 净需求 × (1 + 损耗率%)
+    const grossReq=core.calcGrossReq(netReqQty,scrapRate);
+    // 库存扣减
+    const inv=getInventoryByProcess(process);
+    let stock=inv?inv.stock:0,wipAvailable=0;
+    if(inv&&inv.transit>0&&inv.transitArrival&&inv.transitArrival<=plannedArrival)wipAvailable=inv.transit;
+    const totalSupply=stock+wipAvailable;
+    const netRemaining=core.calcNetRemaining(grossReq,stock,wipAvailable);
+    // 时间倒推
+    let plannedOrderDate='';
+    if(netRemaining>0)plannedOrderDate=addDays(plannedArrival,-(totalDelivery+approvalDays));
+    results.push({level,process,matCode,matName,action,supplier,demandType,unit,netReq:netReqQty,scrapRate,grossReq,stock,wipAvailable,totalSupply,netRemaining,plannedArrival,plannedOrderDate,totalDelivery,approvalDays});
+    let detailText='';
+    if(level===0)detailText='【'+process+'】顶层净需求 = '+netReqQty.toLocaleString()+' '+unit;
+    else detailText='【'+process+'】净需求(父毛需求÷BOM用量) = '+netReqQty.toLocaleString()+' '+unit;
+    detailText+=' → 毛需求(含'+scrapRate+'%损耗) = '+grossReq.toLocaleString()+' '+unit;
+    detailText+=' → 可用供给(库存'+stock.toLocaleString()+'+WIP'+wipAvailable.toLocaleString()+') = '+totalSupply.toLocaleString()+' '+unit;
+    detailText+=' → 净待补 = '+netRemaining.toLocaleString()+' '+unit;
+    detailText+=' → 到货日'+plannedArrival+' → 总交付'+totalDelivery+'天+审批'+approvalDays+'天 → 下单日'+(plannedOrderDate||'N/A');
+    details.push({process,text:detailText,netRemaining});
+    // 递归展开子制程
+    if(core.shouldExpandChildren(netRemaining)){
+      const children=getBomChildren(process);
+      children.forEach(child=>{
+        // child.child是物料编码，需转成制程名
+        const childProcess=processByMatCode[child.child]||child.child;
+        // 子制程净需求 = 调用运算规则中的函数
+        const childNetReq=core.calcChildNetReq(grossReq,child.usage,childProcess);
+        const childArrival=addDays(plannedOrderDate,0);
+        calcMRP(childProcess,childNetReq,childArrival,level+1);
+      });
+    }
+  }
+  results.length=0;details.length=0;
+  if(sel.value==='all'){
+    // 将所有需求按日期分组（升序），先到先得分配库存
+    const dateMap={};
+    appData.demands.forEach(d=>{if(!dateMap[d.demandDate])dateMap[d.demandDate]=0;dateMap[d.demandDate]+=d.quantity;});
+    const sortedDates=Object.keys(dateMap).sort();
+    const origInventory=JSON.parse(JSON.stringify(appData.inventory));
+    let combResults=[],combDetails=[];
+    sortedDates.forEach(date=>{
+      const groupQty=dateMap[date];
+      results.length=0;details.length=0;
+      calcMRP('FT',groupQty,date,0);
+      // FIFO库存+WIP扣减：各层级消耗了多少就从共享池扣除，先到先得
+      results.forEach(r=>{
+        const consumedStock=r.stock>0?Math.min(r.stock,Math.max(0,r.grossReq-r.wipAvailable-r.netRemaining)):0;
+        if(consumedStock>0){const inv=appData.inventory.find(i=>i.materialCode===r.matCode);if(inv)inv.stock=Math.max(0,inv.stock-consumedStock);}
+        const consumedWip=r.wipAvailable>0?Math.min(r.wipAvailable,Math.max(0,r.grossReq-r.stock-r.netRemaining)):0;
+        if(consumedWip>0){const inv=appData.inventory.find(i=>i.materialCode===r.matCode);if(inv)inv.transit=Math.max(0,inv.transit-consumedWip);}
+      });
+      results.forEach(r=>{r.demandDate=date;});
+      combResults=combResults.concat(results);
+      combDetails=combDetails.concat(details);
+    });
+    appData.inventory=origInventory;
+    // 把合并结果写回results/details（const数组不能重新赋值，清空后逐个push）
+    results.length=0;combResults.forEach(r=>results.push(r));
+    details.length=0;combDetails.forEach(d=>details.push(d));
+  }else{
+    calcMRP('FT',demandQty,dueDate,0);
+    results.forEach(r=>{r.demandDate=dueDate;});
+  }
+  appData.mrpResult=results;appData.mrpDetails=details;
+  document.querySelector('#mrpTabs .tab[data-tab="mrp-result"]').click();
+  document.getElementById('mrpEmpty').style.display='none';
+  document.getElementById('mrpResultArea').style.display='block';
+  let orderInfo;
+  if(sel.value==='all')orderInfo='📋 所有订单（共'+appData.demands.length+'笔，合计'+demandQty.toLocaleString()+'颗，按需求日期分组）';
+  else orderInfo=selectedOrder?selectedOrder.orderNo+' | '+selectedOrder.material:'自定义需求';
+  document.getElementById('resultOrderInfo').textContent=orderInfo;
+  // 按制程分组统计汇总（不按单位，按制程FT/AB/CP/BP/Wafer）
+  const procGroups={};
+  results.forEach(r=>{
+    const p=r.process||'其他';
+    if(!procGroups[p])procGroups[p]={netReq:0,grossReq:0,stock:0,wip:0};
+    procGroups[p].netReq+=r.netReq;
+    procGroups[p].grossReq+=r.grossReq;
+    procGroups[p].stock+=r.stock;
+    procGroups[p].wip+=r.wipAvailable;
+  });
+  const shortItems=results.filter(r=>r.netRemaining>0);
+  const procOrder=['FT','AB','CP','BP','Wafer'];
+  const sum=(p,k)=>(procGroups[p]?procGroups[p][k]:0);
+  const procLabels=p=>procOrder.filter(p=>procGroups[p]).map(p=>'<span style="white-space:nowrap">'+p+'&nbsp;'+sum(p).toLocaleString()+'</span>').join('｜');
+  let summaryHtml='';
+  // 总净需求
+  summaryHtml+='<div class="summary-card blue"><div class="lbl" style="font-size:11px">📦 总净需求</div><div class="num" style="font-size:16px;color:var(--primary)">'+procOrder.reduce((s,p)=>s+sum(p,'netReq'),0).toLocaleString()+'</div><div style="display:flex;flex-wrap:wrap;gap:6px;font-size:11px;color:var(--gray-500);margin-top:4px">'+procOrder.filter(p=>procGroups[p]).map(p=>'<span style="white-space:nowrap">'+p+'&nbsp;'+sum(p,'netReq').toLocaleString()+'</span>').join('｜')+'</div></div>';
+  // 总毛需求
+  summaryHtml+='<div class="summary-card blue"><div class="lbl" style="font-size:11px">📊 总毛需求</div><div class="num" style="font-size:16px;color:var(--primary)">'+procOrder.reduce((s,p)=>s+sum(p,'grossReq'),0).toLocaleString()+'</div><div style="display:flex;flex-wrap:wrap;gap:6px;font-size:11px;color:var(--gray-500);margin-top:4px">'+procOrder.filter(p=>procGroups[p]).map(p=>'<span style="white-space:nowrap">'+p+'&nbsp;'+sum(p,'grossReq').toLocaleString()+'</span>').join('｜')+'</div></div>';
+  // 可用库存
+  summaryHtml+='<div class="summary-card green"><div class="lbl" style="font-size:11px">🏭 可用库存</div><div class="num" style="font-size:16px;color:var(--success)">'+procOrder.reduce((s,p)=>s+sum(p,'stock'),0).toLocaleString()+'</div><div style="display:flex;flex-wrap:wrap;gap:6px;font-size:11px;color:var(--gray-500);margin-top:4px">'+procOrder.filter(p=>procGroups[p]).map(p=>'<span style="white-space:nowrap">'+p+'&nbsp;'+sum(p,'stock').toLocaleString()+'</span>').join('｜')+'</div></div>';
+  // WIP可用
+  summaryHtml+='<div class="summary-card cyan"><div class="lbl" style="font-size:11px">🚚 WIP可用</div><div class="num" style="font-size:16px;color:var(--info)">'+procOrder.reduce((s,p)=>s+sum(p,'wip'),0).toLocaleString()+'</div><div style="display:flex;flex-wrap:wrap;gap:6px;font-size:11px;color:var(--gray-500);margin-top:4px">'+procOrder.filter(p=>procGroups[p]).map(p=>'<span style="white-space:nowrap">'+p+'&nbsp;'+sum(p,'wip').toLocaleString()+'</span>').join('｜')+'</div></div>';
+  summaryHtml+='<div class="summary-card '+(shortItems.length>0?'red':'green')+'"><div class="lbl">⚠️ 待补制程数</div><div class="num" style="color:'+(shortItems.length>0?'var(--danger)':'var(--success)')+'">'+shortItems.length+'</div></div>';
+  document.getElementById('mrpSummary').innerHTML=summaryHtml;
+  let tableHtml='';
+  // 检查是否有多个需求日期，按日期分组显示（增加分隔行）
+  const dateSet=[...new Set(results.map(r=>r.demandDate).filter(d=>d))];
+  const hasMultiDate=dateSet.length>1;
+  if(hasMultiDate){
+    dateSet.forEach(date=>{
+      const groupRows=results.filter(r=>r.demandDate===date);
+      let totalG=groupRows.reduce((s,r)=>s+r.grossReq,0),totalN=groupRows.reduce((s,r)=>s+r.netReq,0);
+      tableHtml+='<tr style="background:#f0f7ff"><td colspan="17" style="font-weight:600;padding:8px 12px">📅 需求日期 '+date+'</td></tr>';
+      groupRows.forEach(r=>{
+        const indent='&nbsp;'.repeat(r.level*4);
+        tableHtml+='<tr><td>'+indent+'L'+r.level+'</td><td style="font-weight:'+(r.level===0?'600':'400')+'">'+(r.level>0?indent:'')+r.process+'</td><td style="font-weight:500">'+r.matCode+'</td><td>'+r.matName+'</td><td style="font-weight:600;color:var(--primary)">'+r.demandDate+'</td><td><span class="tag-status '+(r.action.indexOf('采购')>=0?'tag-yellow':'tag-blue')+'">'+r.action+'</span></td><td>'+r.supplier+'</td><td><span class="tag-status '+(r.demandType==='独立需求'?'tag-green':'tag-blue')+'">'+r.demandType+'</span></td><td>'+r.unit+'</td><td style="font-weight:600">'+r.netReq.toLocaleString()+'</td><td>'+r.scrapRate+'%</td><td style="font-weight:500">'+r.grossReq.toLocaleString()+'</td><td>'+r.stock.toLocaleString()+'</td><td>'+r.wipAvailable.toLocaleString()+'</td><td style="font-weight:600;color:'+(r.netRemaining>0?'var(--danger)':'var(--success)')+'">'+r.netRemaining.toLocaleString()+'</td><td>'+r.plannedArrival+'</td><td style="color:'+(r.plannedOrderDate?r.plannedOrderDate<new Date().toISOString().split('T')[0]?'var(--danger)':'var(--gray-700)':'var(--gray-400)')+'">'+(r.plannedOrderDate||'N/A')+'</td></tr>';
+      });
+    });
+  }else{
+    results.forEach(r=>{
+      const indent='&nbsp;'.repeat(r.level*4);
+      tableHtml+='<tr><td>'+indent+'L'+r.level+'</td><td style="font-weight:'+(r.level===0?'600':'400')+'">'+(r.level>0?indent:'')+r.process+'</td><td style="font-weight:500">'+r.matCode+'</td><td>'+r.matName+'</td><td style="font-weight:600;color:var(--primary)">'+(r.demandDate||'')+'</td><td><span class="tag-status '+(r.action.indexOf('采购')>=0?'tag-yellow':'tag-blue')+'">'+r.action+'</span></td><td>'+r.supplier+'</td><td><span class="tag-status '+(r.demandType==='独立需求'?'tag-green':'tag-blue')+'">'+r.demandType+'</span></td><td>'+r.unit+'</td><td style="font-weight:600">'+r.netReq.toLocaleString()+'</td><td>'+r.scrapRate+'%</td><td style="font-weight:500">'+r.grossReq.toLocaleString()+'</td><td>'+r.stock.toLocaleString()+'</td><td>'+r.wipAvailable.toLocaleString()+'</td><td style="font-weight:600;color:'+(r.netRemaining>0?'var(--danger)':'var(--success)')+'">'+r.netRemaining.toLocaleString()+'</td><td>'+r.plannedArrival+'</td><td style="color:'+(r.plannedOrderDate?r.plannedOrderDate<new Date().toISOString().split('T')[0]?'var(--danger)':'var(--gray-700)':'var(--gray-400)')+'">'+(r.plannedOrderDate||'N/A')+'</td></tr>';
+    });
+  }
+  document.querySelector('#mrpResultTable tbody').innerHTML=tableHtml;
+  renderProcurementList(results);
+  let detailHtml='';details.forEach(d=>{detailHtml+='<div class="calc-step">'+d.text+'</div>';});
+  document.getElementById('mrpDetails').innerHTML=detailHtml;
+  renderGantt(results);updateBalance();updateCollaboration();
+  showToast('✅ MRP运算完成','success');
+}
+
+// ==================== MRP运算规则管理（动态规则列表，可新增/删除/编辑） ====================
+// 默认核心规则（由自然语言界面配置驱动，不对外暴露代码）
+let defaultMrpCore={
+  calcChildNetReq: function(grossReq,usage,process){return Math.ceil(grossReq/usage);},
+  calcGrossReq: function(netReq,scrapRate){return Math.ceil(netReq*(1+scrapRate/100));},
+  calcNetRemaining: function(grossReq,stock,wip){return Math.max(0,grossReq-stock-wip);},
+  shouldExpandChildren: function(netRemaining){return netRemaining>0;}
+};
+
+// 获取系统默认规则列表（5条预设规则）
+function getDefaultRuleList(){
+  return [
+    {id:'rule-1', title:'规则一：制程遍历顺序', type:'system',
+     desc:'MRP运算从成品制程开始，按层级依次向下遍历各子制程：\n\nFT → AB → CP → BP → Wafer\n\n⚠ 制程顺序来源于参数配置中的制程层级，如需调整请到"参数配置"页修改。'},
+    {id:'rule-2', title:'规则二：净需求传递规则', type:'system', config:'childFormula',
+     desc:'下一层级的净需求由上一层级的毛需求按BOM用量折算得到。'},
+    {id:'rule-3', title:'规则三：毛需求计算规则', type:'system',
+     desc:'毛需求 = 净需求 × ( 1 + 损耗率 / 100 )\n\n其中损耗率来自参数配置中BOM结构配置的"损耗率%"字段，不同制程可设置不同损耗率。\n例如FT损耗率5%，净需求120,000，则毛需求 = 120,000 × (1 + 5/100) = 126,000颗'},
+    {id:'rule-4', title:'规则四：库存扣减规则', type:'system',
+     desc:'净待补 = 毛需求 − 可用库存 − 可用在制（WIP）\n\n计算结果不低于0，净待补为0表示库存充足无需采购/委外。\n在制(WIP)仅在计划到货日 ≤ 需求日期时才计入可用供给。'},
+    {id:'rule-5', title:'规则五：子制程展开条件', type:'system', config:'expand',
+     desc:'当前制程的净待补满足以下条件时，继续展开下级制程进行计算：'}
+  ];
+}
+
+// localStorage 持久化键名
+const STORAGE_KEY_RULES='ic_scm_natural_rules';
+const STORAGE_KEY_MASTER='ic_scm_master_data';
+const STORAGE_KEY_PLANNED='ic_scm_planned_orders';
+
+// 保存规则到 localStorage
+function saveRulesToStorage(){
+  try{
+    const data={
+      childFormula: appData.naturalRules?.childFormula||'divide',
+      expandOp: appData.naturalRules?.expandOp||'gt',
+      expandThreshold: appData.naturalRules?.expandThreshold||0,
+      ruleList: appData.naturalRules?.ruleList||[]
+    };
+    localStorage.setItem(STORAGE_KEY_RULES,JSON.stringify(data));
+  }catch(e){/* storage 满或不可用 */}
+}
+
+// 从 localStorage 加载规则，有则恢复到 appData.naturalRules
+function loadRulesFromStorage(){
+  try{
+    const raw=localStorage.getItem(STORAGE_KEY_RULES);
+    if(!raw) return false;
+    const data=JSON.parse(raw);
+    if(!data.ruleList||!data.ruleList.length) return false;
+    if(!appData.naturalRules) appData.naturalRules={};
+    appData.naturalRules.childFormula=data.childFormula||'divide';
+    appData.naturalRules.expandOp=data.expandOp||'gt';
+    appData.naturalRules.expandThreshold=data.expandThreshold||0;
+    appData.naturalRules.ruleList=data.ruleList;
+    // 重新编译 core
+    const cfg=data;
+    appData.naturalRules.core={
+      calcChildNetReq: (cfg.childFormula||'divide')==='divide'
+        ? function(grossReq,usage,p){return Math.ceil(grossReq/usage);}
+        : function(grossReq,usage,p){return Math.ceil(grossReq*usage);},
+      calcGrossReq: function(netReq,scrapRate){return Math.ceil(netReq*(1+scrapRate/100));},
+      calcNetRemaining: function(grossReq,stock,wip){return Math.max(0,grossReq-stock-wip);},
+      shouldExpandChildren: (cfg.expandOp||'gt')==='gt'
+        ? function(netRemaining){return netRemaining>(cfg.expandThreshold||0);}
+        : function(netRemaining){return netRemaining>=(cfg.expandThreshold||0);}
+    };
+    return true;
+  }catch(e){return false;}
+}
+
+// ======================== 主数据 localStorage 持久化 ========================
+// 保存主数据（materials, boms, routings, suppliers, inventory, demands）
+function saveMasterdataToStorage(){
+  try{
+    const data={
+      materials: appData.materials||[],
+      boms: appData.boms||[],
+      routings: appData.routings||[],
+      suppliers: appData.suppliers||[],
+      inventory: appData.inventory||[],
+      demands: appData.demands||[]
+    };
+    localStorage.setItem(STORAGE_KEY_MASTER,JSON.stringify(data));
+  }catch(e){}
+}
+
+// 从 localStorage 加载主数据，成功返回 true
+function loadMasterdataFromStorage(){
+  try{
+    const raw=localStorage.getItem(STORAGE_KEY_MASTER);
+    if(!raw) return false;
+    const data=JSON.parse(raw);
+    if(!data.materials) return false;
+    appData.materials=data.materials||[];
+    appData.boms=data.boms||[];
+    appData.bom=appData.boms;
+    appData.routings=data.routings||[];
+    appData.suppliers=data.suppliers||[];
+    appData.inventory=data.inventory||[];
+    appData.demands=data.demands||[];
+    return true;
+  }catch(e){return false;}
+}
+
+// 加载默认需求数据（独立需求，不通过主数据导入）
+function loadSampleDemands(){
+  appData.demands = [
+    { orderNo:'ORD001', material:'IC-1000-FT', quantity:120000, demandDate:'2026-07-31', priority:'高', customer:'华为海思' },
+    { orderNo:'ORD002', material:'IC-1000-FT', quantity:180000, demandDate:'2026-08-31', priority:'中', customer:'展讯通信' },
+    { orderNo:'ORD003', material:'IC-1000-FT', quantity:80000, demandDate:'2026-09-30', priority:'中', customer:'中兴微电子' }
+  ];
+  appData.demandHistory = [
+    { time:'2026-06-01 09:00', orderNo:'ORD001', type:'新建', content:'创建订单 ORD001, 数量120000, 需求日2026-07-31' },
+    { time:'2026-06-01 09:05', orderNo:'ORD002', type:'新建', content:'创建订单 ORD002, 数量180000, 需求日2026-08-31' },
+    { time:'2026-06-05 14:30', orderNo:'ORD003', type:'新建', content:'创建订单 ORD003, 数量80000, 需求日2026-09-30' }
+  ];
+}
+
+// ======================== 计划订单 localStorage 持久化 ========================
+function savePlannedOrdersToStorage(){
+  try{localStorage.setItem(STORAGE_KEY_PLANNED,JSON.stringify(appData.plannedOrders||[]));}catch(e){}
+}
+function loadPlannedOrdersFromStorage(){
+  try{
+    const raw=localStorage.getItem(STORAGE_KEY_PLANNED);
+    if(!raw) return false;
+    appData.plannedOrders=JSON.parse(raw)||[];
+    return true;
+  }catch(e){appData.plannedOrders=[];return false;}
+}
+
+// 生成计划订单号 PO-YYYYMMDD-NNN
+function generateOrderNo(){
+  const today=new Date().toISOString().split('T')[0].replace(/-/g,'');
+  const existing=appData.plannedOrders.filter(o=>o.orderNo.startsWith('PO-'+today)).length;
+  return 'PO-'+today+'-'+String(existing+1).padStart(3,'0');
+}
+
+// 创建计划订单
+function createPlannedOrder(matCode,matName,process,quantity,unit,plannedOrderDate,plannedArrivalDate,action,supplier){
+  const existing=appData.plannedOrders.find(o=>o.materialCode===matCode&&o.plannedArrivalDate===plannedArrivalDate);
+  if(existing){showToast('该物料已存在计划订单：'+existing.orderNo,'warning');return;}
+  const orderNo=generateOrderNo();
+  appData.plannedOrders.push({
+    orderNo, materialCode:matCode, materialName:matName, process,
+    quantity, unit, plannedOrderDate, plannedArrivalDate, action, supplier,
+    status:'已创建', createTime:new Date().toLocaleString()
+  });
+  savePlannedOrdersToStorage();
+  renderProcurementList(appData.mrpResult);
+  showToast('✅ 计划订单 '+orderNo+' 已创建','success');
+}
+
+// 初始化规则列表（优先级：localStorage > appData内存 > 默认）
+function initRuleList(){
+  if(appData.naturalRules && appData.naturalRules.ruleList){
+    return JSON.parse(JSON.stringify(appData.naturalRules.ruleList));
+  }
+  if(loadRulesFromStorage() && appData.naturalRules.ruleList){
+    return JSON.parse(JSON.stringify(appData.naturalRules.ruleList));
+  }
+  return getDefaultRuleList();
+}
+
+// 渲染所有规则卡片到容器（textarea内容用.value设置，保证换行格式精确可控）
+function renderRuleList(){
+  const container=document.getElementById('ruleListContainer');
+  if(!container)return;
+  const rules=initRuleList();
+  let html='';
+  rules.forEach((rule,idx)=>{
+    const idAttr='rule_'+rule.id;
+
+    html+='<div class="card" data-rule-id="'+rule.id+'">';
+    html+='<div class="rule-card-header">';
+    html+='<div class="rule-card-title">';
+    html+='📌 <input class="rule-title-input" id="title_'+idAttr+'" value="'+escapeHtml(rule.title)+'" placeholder="输入规则名称...">';
+    html+='</div>';
+    html+='<div style="display:flex;gap:6px;flex-shrink:0">';
+    html+='<button class="btn btn-sm btn-success" onclick="saveSingleRule(\''+rule.id+'\')">💾 保存</button>';
+    html+='<button class="btn btn-sm btn-outline-danger" onclick="deleteRule(\''+rule.id+'\')">🗑️ 删除</button>';
+    html+='</div>';
+    html+='</div>';
+
+    if(rule.config==='childFormula'){
+      // 规则二：可编辑描述 + 净需求传递配置控件
+      html+='<textarea class="rule-desc-textarea" id="desc_'+idAttr+'_config" placeholder="输入规则描述..." style="min-height:50px;margin-bottom:10px"></textarea>';
+      html+='<div class="rule-config-box">';
+      html+='<div style="font-size:13px;margin-bottom:8px"><strong>顶层制程（FT）</strong>：净需求 = 订单需求数量</div>';
+      html+='<div style="font-size:13px"><strong>子制程</strong>：净需求 = 父制程毛需求 ';
+      html+='<select id="ruleChildFormula" onchange="onConfigChange()" style="width:auto;display:inline-block;padding:3px 6px;border:1px solid var(--gray-300);border-radius:4px;font-size:13px;margin:0 4px;background:#fff">';
+      html+='<option value="divide">除以</option><option value="multiply">乘以</option>';
+      html+='</select> BOM单位用量';
+      html+='<span style="color:var(--gray-400);font-size:12px;margin-left:6px">（AB→CP用量120表示：120颗AB对应1片CP，净需求=父毛需求÷120）</span>';
+      html+='</div></div>';
+    } else if(rule.config==='expand'){
+      // 规则五：可编辑描述 + 展开条件配置控件
+      html+='<textarea class="rule-desc-textarea" id="desc_'+idAttr+'_config" placeholder="输入规则描述..." style="min-height:50px;margin-bottom:10px"></textarea>';
+      html+='<div class="rule-config-box">';
+      html+='<span style="font-size:13px">净待补</span> ';
+      html+='<select id="ruleExpandOp" onchange="onConfigChange()" style="width:auto;display:inline-block;padding:3px 6px;border:1px solid var(--gray-300);border-radius:4px;font-size:13px;margin:0 4px;background:#fff">';
+      html+='<option value="gt">&gt;</option><option value="gte">≥</option>';
+      html+='</select> ';
+      html+='<input type="number" id="ruleExpandThreshold" value="0" min="0" onchange="onConfigChange()" style="width:60px;display:inline-block;padding:3px 6px;border:1px solid var(--gray-300);border-radius:4px;font-size:13px;text-align:center;background:#fff"> ';
+      html+='<span style="font-size:13px">时展开</span>';
+      html+='<span style="color:var(--gray-400);font-size:12px;margin-left:10px">（设为0表示只要有需求就展开）</span>';
+      html+='</div>';
+    } else {
+      // 普通规则：可编辑的文本描述
+      html+='<textarea class="rule-desc-textarea" id="desc_'+idAttr+'" placeholder="输入规则描述..."></textarea>';
+    }
+
+    html+='</div>';
+  });
+  container.innerHTML=html;
+
+  // 用 .value 设置 textarea 内容（保证换行格式精确保留）
+  rules.forEach(rule=>{
+    const idAttr='rule_'+rule.id;
+    const descId=rule.config ? 'desc_'+idAttr+'_config' : 'desc_'+idAttr;
+    const el=document.getElementById(descId);
+    if(el) el.value=rule.desc;
+    // 同步标题输入框
+    const titleEl=document.getElementById('title_'+idAttr);
+    if(titleEl) titleEl.value=rule.title;
+  });
+
+  // 恢复已保存的配置值
+  if(appData.naturalRules){
+    const childSelect=document.getElementById('ruleChildFormula');
+    if(childSelect) childSelect.value=appData.naturalRules.childFormula||'divide';
+    const opSelect=document.getElementById('ruleExpandOp');
+    if(opSelect) opSelect.value=appData.naturalRules.expandOp||'gt';
+    const thresh=document.getElementById('ruleExpandThreshold');
+    if(thresh) thresh.value=appData.naturalRules.expandThreshold||'0';
+  }
+}
+
+// 转义HTML特殊字符
+function escapeHtml(str){
+  const div=document.createElement('div');
+  div.textContent=str;
+  return div.innerHTML;
+}
+
+// 从UI读取规则列表（合并编辑后的标题和描述）
+function readRulesFromUI(){
+  const base=appData.naturalRules && appData.naturalRules.ruleList
+    ? JSON.parse(JSON.stringify(appData.naturalRules.ruleList))
+    : getDefaultRuleList();
+  base.forEach(rule=>{
+    const idAttr='rule_'+rule.id;
+    const titleEl=document.getElementById('title_'+idAttr);
+    if(titleEl) rule.title=titleEl.value.trim()||rule.title;
+    // 所有规则类型都读取描述（含config类型）
+    const descId=rule.config ? 'desc_'+idAttr+'_config' : 'desc_'+idAttr;
+    const descEl=document.getElementById(descId);
+    if(descEl) rule.desc=descEl.value.trim()||rule.desc;
+  });
+  return base;
+}
+
+// 单条规则保存
+function saveSingleRule(ruleId){
+  // 读取所有规则，更新指定规则的内容
+  const rules=readRulesFromUI();
+  const childFormula=document.getElementById('ruleChildFormula')?.value||'divide';
+  const expandOp=document.getElementById('ruleExpandOp')?.value||'gt';
+  const expandThreshold=parseFloat(document.getElementById('ruleExpandThreshold')?.value)||0;
+  const core=compileRulesFromUI();
+  appData.naturalRules={
+    childFormula: childFormula,
+    expandOp: expandOp,
+    expandThreshold: expandThreshold,
+    ruleList: rules,
+    core: core
+  };
+  saveRulesToStorage();
+  const rule=rules.find(r=>r.id===ruleId);
+  const tip=document.getElementById('naturalRulesSaveTip');
+  if(tip){
+    tip.textContent='✅ 「'+(rule?rule.title:'')+'」已保存（共'+rules.length+'条规则）';
+    tip.style.color='var(--success)';
+  }
+  showToast('✅ 「'+(rule?rule.title:'')+'」已保存','success');
+}
+
+// 新增规则
+function addRule(){
+  const rules=readRulesFromUI();
+  const newId='custom-'+(Date.now());
+  rules.push({
+    id:newId,
+    title:'新规则 '+(rules.filter(r=>r.type==='custom').length+1),
+    type:'custom',
+    desc:'请在此输入规则描述...'
+  });
+  // 保存当前配置
+  const childFormula=document.getElementById('ruleChildFormula')?.value||'divide';
+  const expandOp=document.getElementById('ruleExpandOp')?.value||'gt';
+  const expandThreshold=parseFloat(document.getElementById('ruleExpandThreshold')?.value)||0;
+  appData.naturalRules=appData.naturalRules||{};
+  appData.naturalRules.childFormula=childFormula;
+  appData.naturalRules.expandOp=expandOp;
+  appData.naturalRules.expandThreshold=expandThreshold;
+  appData.naturalRules.ruleList=rules;
+  appData.naturalRules.core=compileRulesFromUI();
+  saveRulesToStorage();
+  renderRuleList();
+  showToast('已新增规则卡片，编辑后点击保存生效','info');
+}
+
+// 删除规则
+function deleteRule(ruleId){
+  const rules=readRulesFromUI();
+  const rule=rules.find(r=>r.id===ruleId);
+  if(!rule) return;
+  const isSystem=rule.type==='system';
+  if(isSystem){
+    if(!confirm('确定要删除系统规则「'+rule.title+'」吗？删除后可通过「恢复默认」找回。')) return;
+  }
+  const idx=rules.findIndex(r=>r.id===ruleId);
+  if(idx<0) return;
+  rules.splice(idx,1);
+  // 更新保存
+  const childFormula=document.getElementById('ruleChildFormula')?.value||'divide';
+  const expandOp=document.getElementById('ruleExpandOp')?.value||'gt';
+  const expandThreshold=parseFloat(document.getElementById('ruleExpandThreshold')?.value)||0;
+  appData.naturalRules=appData.naturalRules||{};
+  appData.naturalRules.childFormula=childFormula;
+  appData.naturalRules.expandOp=expandOp;
+  appData.naturalRules.expandThreshold=expandThreshold;
+  appData.naturalRules.ruleList=rules;
+  appData.naturalRules.core=compileRulesFromUI();
+  saveRulesToStorage();
+  renderRuleList();
+  showToast('已删除「'+rule.title+'」','info');
+}
+
+// 配置控件变更回调
+function onConfigChange(){
+  // 实时更新tip提示
+  const tip=document.getElementById('naturalRulesSaveTip');
+  if(tip){
+    tip.textContent='✏️ 配置已更新，点击"保存规则"生效';
+    tip.style.color='var(--warning)';
+  }
+}
+
+// 从自然语言规则UI编译运算核心
+function compileRulesFromUI(){
+  const formula=document.getElementById('ruleChildFormula')?.value||'divide';
+  const op=document.getElementById('ruleExpandOp')?.value||'gt';
+  const threshold=parseFloat(document.getElementById('ruleExpandThreshold')?.value)||0;
+  return {
+    calcChildNetReq: formula==='divide'
+      ? function(grossReq,usage,process){return Math.ceil(grossReq/usage);}
+      : function(grossReq,usage,process){return Math.ceil(grossReq*usage);},
+    calcGrossReq: function(netReq,scrapRate){return Math.ceil(netReq*(1+scrapRate/100));},
+    calcNetRemaining: function(grossReq,stock,wip){return Math.max(0,grossReq-stock-wip);},
+    shouldExpandChildren: op==='gt'
+      ? function(netRemaining){return netRemaining>threshold;}
+      : function(netRemaining){return netRemaining>=threshold;}
+  };
+}
+
+// 保存自然语言规则
+function saveNaturalRules(){
+  const rules=readRulesFromUI();
+  const childFormula=document.getElementById('ruleChildFormula')?.value||'divide';
+  const expandOp=document.getElementById('ruleExpandOp')?.value||'gt';
+  const expandThreshold=parseFloat(document.getElementById('ruleExpandThreshold')?.value)||0;
+  const core=compileRulesFromUI();
+  appData.naturalRules={
+    childFormula: childFormula,
+    expandOp: expandOp,
+    expandThreshold: expandThreshold,
+    ruleList: rules,
+    core: core
+  };
+  saveRulesToStorage();
+  const tip=document.getElementById('naturalRulesSaveTip');
+  if(tip){
+    tip.textContent='✅ 规则已保存（共'+rules.length+'条），执行MRP时将按当前规则运算（更新于 '+new Date().toLocaleTimeString()+')';
+    tip.style.color='var(--success)';
+  }
+  showToast('✅ 运算规则已保存（共'+rules.length+'条）','success');
+}
+
+// 恢复默认规则
+function resetNaturalRules(){
+  if(!confirm('确定恢复默认规则吗？当前所有自定义规则和修改将丢失。')) return;
+  if(appData.naturalRules) delete appData.naturalRules;
+  localStorage.removeItem(STORAGE_KEY_RULES);
+  renderRuleList();
+  const tip=document.getElementById('naturalRulesSaveTip');
+  if(tip){
+    tip.textContent='↻ 已恢复默认规则（5条系统规则）';
+    tip.style.color='var(--gray-400)';
+  }
+  showToast('已恢复默认规则','info');
+}
+
+// 渲染规则信息（进入规则页时调用）
+function renderMrpRulesInfo(){
+  renderRuleList();
+  const tip=document.getElementById('naturalRulesSaveTip');
+  if(!tip) return;
+  // 尝试从 localStorage 恢复
+  if(!appData.naturalRules || !appData.naturalRules.ruleList){
+    loadRulesFromStorage();
+  }
+  if(appData.naturalRules && appData.naturalRules.ruleList){
+    const count=appData.naturalRules.ruleList.length;
+    tip.textContent='✅ 当前使用已保存的自定义规则（共'+count+'条）';
+    tip.style.color='var(--success)';
+  } else {
+    tip.textContent='📌 使用系统默认规则（5条）';
+    tip.style.color='var(--gray-400)';
+  }
+}
+
+// 获取当前生效的核心规则（供executeMRP调用）
+function getActiveMrpCore(){
+  if(appData.naturalRules&&appData.naturalRules.core){
+    return appData.naturalRules.core;
+  }
+  return defaultMrpCore;
+}
+
+// 采购/委外建议清单
+function renderProcurementList(results){
+  const needProcurement=results.filter(r=>r.netRemaining>0);
+  document.getElementById('procurementCount').textContent=needProcurement.length+'项';
+  const container=document.getElementById('procurementTable');
+  if(!needProcurement.length){container.querySelector('tbody').innerHTML='<tr><td colspan="11" style="text-align:center;color:var(--gray-400)">所有物料库存充足，无需采购/委外</td></tr>';return;}
+  let html='';
+  needProcurement.forEach((r,idx)=>{
+    const isPurchase=r.action.indexOf('采购')>=0;
+    const po=appData.plannedOrders.find(o=>o.materialCode===r.matCode&&o.plannedArrivalDate===r.plannedArrival);
+    const btnHtml=po?'<span class="tag-status tag-green" title="'+po.orderNo+'">✅ '+po.orderNo+'</span>'
+      :'<button class="btn btn-sm btn-primary" onclick="createPlannedOrder(\''+r.matCode+'\',\''+r.matName+'\',\''+r.process+'\','+r.netRemaining+',\''+r.unit+'\',\''+(r.plannedOrderDate||'')+'\',\''+r.plannedArrival+'\',\''+r.action+'\',\''+(r.supplier||'')+'\')">📋 创建计划订单</button>';
+    html+='<tr><td>'+(idx+1)+'</td><td style="font-weight:500">'+r.matCode+'</td><td>'+r.matName+'</td><td>'+r.process+'</td><td>'+r.action+'</td><td class="font-bold" style="color:'+(isPurchase?'var(--warning)':'var(--primary)')+'">'+r.netRemaining.toLocaleString()+'</td><td>'+r.unit+'</td><td>'+(r.plannedArrival||'-')+'</td><td>'+(r.plannedOrderDate||'-')+'</td><td>'+r.supplier+'</td><td><span class="tag-status '+(isPurchase?'tag-yellow':'tag-blue')+'">'+(isPurchase?'采购':'委外')+'</span></td><td>'+btnHtml+'</td></tr>';
+  });
+  container.querySelector('tbody').innerHTML=html;
+}
+function exportProcurementList(){
+  const rows=[];
+  document.querySelectorAll('#procurementTable tbody tr').forEach(tr=>{
+    const tds=tr.querySelectorAll('td');
+    if(tds.length>=11)rows.push({'序号':tds[0].textContent.trim(),'物料编码':tds[1].textContent.trim(),'物料名称':tds[2].textContent.trim(),'制程':tds[3].textContent.trim(),'建议动作':tds[4].textContent.trim(),'净需求数量':tds[5].textContent.trim(),'单位':tds[6].textContent.trim(),'计划到货日':tds[7].textContent.trim(),'计划下单日':tds[8].textContent.trim(),'供应商':tds[9].textContent.trim(),'类型':tds[10].textContent.trim()});
+  });
+  if(!rows.length){showToast('没有可导出的数据','warning');return;}
+  const ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'采购委外建议清单');
+  XLSX.writeFile(wb,'采购委外建议清单_'+new Date().toISOString().split('T')[0]+'.xlsx');
+  showToast('✅ 采购/委外清单导出成功','success');
+}
+
+// 甘特图
+function renderGantt(results){
+  const container=document.getElementById('ganttChart');container.innerHTML='';
+  if(!results.length){container.innerHTML='<div style="padding:20px;text-align:center;color:var(--gray-400)">无有效时间数据</div>';return;}
+  let minDate='9999-12-31',maxDate='0000-01-01';
+  results.forEach(r=>{if(r.plannedOrderDate&&r.plannedOrderDate<minDate)minDate=r.plannedOrderDate;if(r.plannedArrival&&r.plannedArrival>maxDate)maxDate=r.plannedArrival;});
+  if(minDate==='9999-12-31'||maxDate==='0000-01-01'){container.innerHTML='<div style="padding:20px;text-align:center;color:var(--gray-400)">无有效时间数据</div>';return;}
+  const padDays=3,d0=new Date(minDate);d0.setDate(d0.getDate()-padDays);
+  const dEnd=new Date(maxDate);dEnd.setDate(dEnd.getDate()+padDays);
+  const totalDays=Math.ceil((dEnd-d0)/(1000*60*60*24));if(totalDays<=0)return;
+  const dayWidth=Math.max(36,Math.min(70,700/totalDays)),totalWidth=totalDays*dayWidth,barHeight=32,rowGap=6,labelWidth=70,chartHeight=results.length*(barHeight+rowGap)+30;
+  container.style.position='relative';container.style.height=chartHeight+'px';container.style.width=(labelWidth+totalWidth+20)+'px';container.style.minHeight=chartHeight+'px';
+  for(let d=new Date(d0);d<=dEnd;d.setDate(d.getDate()+1)){const x=((d-d0)/(1000*60*60*24))*dayWidth;const grid=document.createElement('div');grid.className='gantt-grid';grid.style.left=(labelWidth+x)+'px';grid.style.height=(chartHeight-8)+'px';grid.style.borderLeft='1px dashed #e2e8f0';container.appendChild(grid);if(d.getDate()===1||d===d0){const hdr=document.createElement('div');hdr.className='gantt-header-date';hdr.style.left=(labelWidth+x)+'px';hdr.style.top='0px';hdr.textContent=(d.getMonth()+1)+'/'+d.getDate();container.appendChild(hdr);}}
+  const colors=['linear-gradient(135deg,#2563eb,#3b82f6)','linear-gradient(135deg,#7c3aed,#8b5cf6)','linear-gradient(135deg,#059669,#10b981)','linear-gradient(135deg,#d97706,#f59e0b)','linear-gradient(135deg,#dc2626,#ef4444)'];
+  results.forEach((r,idx)=>{const y=24+idx*(barHeight+rowGap),color=colors[idx%colors.length];const label=document.createElement('div');label.className='gantt-label';label.style.left='2px';label.style.top=(y+6)+'px';label.style.width=(labelWidth-4)+'px';label.style.fontSize='11px';label.style.fontWeight=r.level===0?'600':'400';label.textContent=r.process+'('+r.unit+')';container.appendChild(label);if(r.plannedOrderDate&&r.plannedArrival&&r.netRemaining>0){const start=new Date(r.plannedOrderDate),end=new Date(r.plannedArrival),x1=((start-d0)/(1000*60*60*24))*dayWidth,x2=((end-d0)/(1000*60*60*24))*dayWidth,w=Math.max(dayWidth*0.4,x2-x1);const bar=document.createElement('div');bar.className='gantt-bar';bar.style.left=(labelWidth+x1)+'px';bar.style.top=y+'px';bar.style.width=w+'px';bar.style.height=barHeight+'px';bar.style.background=color;bar.textContent=r.plannedOrderDate+' → '+r.plannedArrival;container.appendChild(bar);}else if(r.netRemaining<=0){const x=((new Date(r.plannedArrival)-d0)/(1000*60*60*24))*dayWidth;const bar=document.createElement('div');bar.className='gantt-bar';bar.style.left=(labelWidth+x-16)+'px';bar.style.top=y+'px';bar.style.width='32px';bar.style.height=barHeight+'px';bar.style.background='linear-gradient(135deg,#10b981,#34d399)';bar.textContent='✓';bar.style.justifyContent='center';container.appendChild(bar);}});
+  document.getElementById('ganttLegend').innerHTML='<div class="gantt-legend-item"><div class="dot" style="background:linear-gradient(135deg,#2563eb,#3b82f6)"></div>采购+生产周期</div><div class="gantt-legend-item"><div class="dot" style="background:linear-gradient(135deg,#10b981,#34d399)"></div>库存满足</div>';
+}
+function exportMRPResult(){
+  const rows=[];document.querySelectorAll('#mrpResultTable tbody tr').forEach(tr=>{const tds=tr.querySelectorAll('td');if(tds.length>=16)rows.push({'层级':tds[0].textContent.trim(),'制程':tds[1].textContent.trim(),'物料编码':tds[2].textContent.trim(),'物料名称':tds[3].textContent.trim(),'建议动作':tds[4].textContent.trim(),'供应商':tds[5].textContent.trim(),'需求类型':tds[6].textContent.trim(),'单位':tds[7].textContent.trim(),'净需求':tds[8].textContent.trim(),'损耗率':tds[9].textContent.trim(),'毛需求':tds[10].textContent.trim(),'可用库存':tds[11].textContent.trim(),'WIP':tds[12].textContent.trim(),'净待补':tds[13].textContent.trim(),'计划到货日':tds[14].textContent.trim(),'计划下单日':tds[15].textContent.trim()});});
+  if(!rows.length){showToast('没有可导出的数据','warning');return;}
+  const ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'MRP运算结果');XLSX.writeFile(wb,'MRP运算结果_'+new Date().toISOString().split('T')[0]+'.xlsx');showToast('✅ 导出成功','success');
+}
+function resetMRP(){document.getElementById('mrpResultArea').style.display='none';document.getElementById('mrpEmpty').style.display='block';document.getElementById('mrpQuantity').value='120000';const d=new Date();d.setDate(d.getDate()+30);document.getElementById('mrpDueDate').value=d.toISOString().split('T')[0];}
+
+// 供给平衡
+function switchBalanceTab(tab){
+  document.querySelectorAll('#balanceTabs .tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('#section-balance .tab-content').forEach(t=>t.classList.remove('active'));
+  document.querySelector('#balanceTabs .tab[data-tab="'+tab+'"]').classList.add('active');
+  document.getElementById('tab-'+tab).classList.add('active');
+  if(tab==='balance-compare'){renderBalanceCompare();renderSupplySimulation();}if(tab==='balance-gap')renderBalanceGap();if(tab==='balance-replenish')renderBalanceReplenish();
+}
+function updateBalance(){renderBalanceCompare();renderBalanceGap();renderBalanceReplenish();renderSupplySimulation();}
+function renderSupplySimulation(){
+  const container=document.getElementById('supplySimContent');
+  if(!appData.mrpResult||!appData.mrpResult.length){container.innerHTML='请先执行MRP运算后查看供需模拟';return;}
+  const results=appData.mrpResult;
+  // 1. 按制程汇总MRP结果
+  const procOrder=['FT','AB','CP','BP','Wafer'];
+  const procSum={};
+  procOrder.forEach(p=>{procSum[p]={grossReq:0,stock:0,wip:0,netRemaining:0,plannedOrderDate:'',plannedArrival:'',action:''};});
+  results.forEach(r=>{
+    const p=r.process;
+    if(!procSum[p])return;
+    procSum[p].grossReq+=r.grossReq;
+    procSum[p].stock+=r.stock;
+    procSum[p].wip+=r.wipAvailable;
+    procSum[p].netRemaining+=r.netRemaining;
+    if(r.plannedOrderDate&&(!procSum[p].plannedOrderDate||r.plannedOrderDate<procSum[p].plannedOrderDate))procSum[p].plannedOrderDate=r.plannedOrderDate;
+    if(r.plannedArrival&&(!procSum[p].plannedArrival||r.plannedArrival<procSum[p].plannedArrival))procSum[p].plannedArrival=r.plannedArrival;
+    if(r.action&&!procSum[p].action)procSum[p].action=r.action;
+  });
+
+  // 2. BOM工具函数
+  function getUpstreamBom(upstreamProc){return appData.bom.find(b=>b.child===upstreamProc);}
+
+  // 3. 反算：各制程供给充足率，自动找出瓶颈
+  const supplyRatio={};
+  let bottleneck='',bottleneckRatio=999,bottleneckSupply=0;
+  procOrder.forEach(p=>{
+    const d=procSum[p];
+    const totalSupply=d.stock+d.wip;
+    const demand=d.grossReq;
+    const ratio=demand>0?totalSupply/demand:999;
+    supplyRatio[p]={totalSupply,demand,ratio,shortage:d.netRemaining,action:d.action};
+    if(ratio<bottleneckRatio&&demand>0){bottleneckRatio=ratio;bottleneck=p;bottleneckSupply=totalSupply;}
+  });
+  if(bottleneckRatio>=1){bottleneck='无';bottleneckSupply=0;}
+
+  // 4. 正向推算：瓶颈可用量 → FT可交付量
+  function calcForwardFromBottleneck(bneckProc,availQty){
+    const forwardChain=[];
+    let current=bneckProc;
+    while(current!=='FT'){
+      const bomEntry=getUpstreamBom(current);
+      if(!bomEntry)break;
+      const parent=bomEntry.parent;
+      forwardChain.push({from:current,to:parent,usage:bomEntry.usage,scrap:bomEntry.scrap});
+      current=parent;
+    }
+    let qty=availQty;
+    const stepDetails=[{process:bneckProc,desc:'可用量',qty:availQty,unit:appData.unitMap[bneckProc]||'',deliveryDays:0}];
+    forwardChain.forEach(step=>{
+      const toQty=Math.floor(qty*step.usage/(1+step.scrap/100));
+      stepDetails.push({process:step.to,desc:'BOM用量×'+step.usage+' → ÷(1+'+step.scrap+'%)',qty:toQty,unit:appData.unitMap[step.to]||'',deliveryDays:0});
+      qty=toQty;
+    });
+    return {finalFT:qty,steps:stepDetails,bneckProc,availQty};
+  }
+
+  // 5. 日期推算
+  const today=new Date();
+  const todayStr=today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+  const approvalDays=appData.approvals.reduce((s,a)=>s+a.days,0);
+  function addDays(dateStr,days){
+    const d=new Date(dateStr);d.setDate(d.getDate()+days);
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  }
+
+  // 从瓶颈到FT的链路
+  function buildChain(bneckProc){
+    const chain=[];
+    let current=bneckProc;
+    while(current!=='FT'){
+      const bomEntry=getUpstreamBom(current);
+      if(!bomEntry)break;
+      chain.push({from:current,to:bomEntry.parent});
+      current=bomEntry.parent;
+    }
+    return chain;
+  }
+
+  // 5a. 部分交付日期：瓶颈现有库存/WIP → 逐级累加交付周期至FT
+  function calcPartialDeliveryDate(bneckProc){
+    const chain=buildChain(bneckProc);
+    // 从瓶颈开始，瓶颈的库存已存在，不需要生产时间
+    // 但从瓶颈要产出到上一级，需要瓶颈的交付周期
+    let totalDays=0;
+    const dateSteps=[];
+    // 瓶颈本身：已有库存，不需要生产时间
+    dateSteps.push({process:bneckProc,days:0,desc:'现有供给（库存+WIP）,无需生产',cumDays:0});
+    // 逐级向上累加交付周期
+    chain.forEach((step,idx)=>{
+      const curProc=step.from; // 当前制程（要加工产出到上一级）
+      const lt=appData.leadTimes.find(l=>l.process===curProc);
+      const procDays=lt?lt.prod+lt.trans+lt.inspect:0;
+      totalDays+=procDays;
+      dateSteps.push({process:step.to,days:procDays,
+        desc:'从'+curProc+'交付到'+step.to+' ('+(lt?lt.prod+'+'+lt.trans+'+'+lt.inspect:'0')+')',
+        cumDays:totalDays});
+    });
+    const deliveryDate=addDays(todayStr,totalDays);
+    return {totalDays,dateSteps,deliveryDate};
+  }
+
+  // 5b. 缺口补货日期：缺口从Wafer补，全部交付周期+审批
+  function calcGapDeliveryDate(){
+    // 从Wafer到FT的全链路交付周期（含审批）
+    const fullChain=[];
+    let cur='Wafer';
+    while(cur!=='FT'){
+      const bomEntry=getUpstreamBom(cur);
+      if(!bomEntry)break;
+      fullChain.push({from:cur,to:bomEntry.parent});
+      cur=bomEntry.parent;
+    }
+    let totalGapDays=0;
+    const gapSteps=[];
+    // Wafer需要采购，所以有审批+Wafer交付周期
+    const waferLt=appData.leadTimes.find(l=>l.process==='Wafer');
+    const waferDays=waferLt?waferLt.prod+waferLt.trans+waferLt.inspect:0;
+    totalGapDays+=approvalDays+waferDays;
+    gapSteps.push({process:'Wafer',days:approvalDays+waferDays,
+      desc:'审批'+approvalDays+'天+Wafer采购('+(waferLt?waferLt.prod+'+'+waferLt.trans+'+'+waferLt.inspect:'0')+'天)',
+      cumDays:totalGapDays});
+    // 逐级向上
+    fullChain.forEach((step,idx)=>{
+      const curProc=step.from; // Wafer→BP→CP→AB
+      if(curProc==='Wafer')return;
+      const lt=appData.leadTimes.find(l=>l.process===curProc);
+      const procDays=lt?lt.prod+lt.trans+lt.inspect:0;
+      totalGapDays+=procDays;
+      gapSteps.push({process:step.to,days:procDays,
+        desc:'从'+curProc+'交付到'+step.to+' ('+(lt?lt.prod+'+'+lt.trans+'+'+lt.inspect:'0')+')',
+        cumDays:totalGapDays});
+    });
+    const gapDeliveryDate=addDays(todayStr,totalGapDays);
+    return {totalGapDays,gapSteps,gapDeliveryDate};
+  }
+
+  // 6. 瓶颈正向推算
+  let simResult=null;
+  if(bottleneck!=='无'&&bottleneckSupply>0){
+    simResult=calcForwardFromBottleneck(bottleneck,bottleneckSupply);
+  }
+  // 7. 无瓶颈但仍有短缺时
+  if(!simResult&&bottleneck==='无'){
+    let minP='',minR=999,minS=0;
+    procOrder.forEach(p=>{
+      if(supplyRatio[p].ratio<minR){minR=supplyRatio[p].ratio;minP=p;minS=supplyRatio[p].totalSupply;}
+    });
+    if(minP&&minR<999){bottleneck=minP;bottleneckSupply=minS;simResult=calcForwardFromBottleneck(bottleneck,bottleneckSupply);}
+  }
+
+  // 8. 日期推算
+  let partialDate=null,gapDate=null;
+  if(bottleneck!=='无'&&bottleneckSupply>0){
+    partialDate=calcPartialDeliveryDate(bottleneck);
+  }
+  const ftDemand=procSum['FT']?procSum['FT'].grossReq:0;
+  const ftAvailable=simResult?simResult.finalFT:0;
+  const gapQty=Math.max(0,ftDemand-ftAvailable);
+  if(gapQty>0){
+    gapDate=calcGapDeliveryDate();
+  }
+
+  // 9. 渲染
+  let html='';
+
+  // 9a. 反算：各制程供需比+自动瓶颈
+  html+='<div style="margin-bottom:16px"><div style="font-size:14px;font-weight:600;color:var(--gray-700);margin-bottom:8px">📉 反算分析 - 各制程供需比率（自动判定瓶颈）</div>';
+  html+='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px">';
+  procOrder.forEach(p=>{
+    const d=supplyRatio[p];
+    const isBottleneck=(p===bottleneck);
+    const borderColor=isBottleneck?'var(--danger)':d.ratio>=1?'var(--success)':'var(--warning)';
+    const bgColor=isBottleneck?'#fef2f2':'#fff';
+    html+='<div style="padding:10px 14px;border-radius:8px;border:1px solid '+borderColor+';background:'+bgColor+';position:relative">'+
+      (isBottleneck?'<span style="position:absolute;top:-8px;right:8px;background:var(--danger);color:#fff;padding:0 8px;border-radius:4px;font-size:10px;font-weight:600">瓶颈</span>':'')+
+      '<div style="font-size:15px;font-weight:700;color:var(--gray-800)">'+p+'</div>'+
+      '<div style="font-size:11px;color:var(--gray-500);margin:4px 0"><span>毛需求 '+d.demand.toLocaleString()+'</span> | <span>供给 '+d.totalSupply.toLocaleString()+'</span></div>'+
+      '<div style="font-size:13px;font-weight:600;color:'+(d.ratio>=1?'var(--success)':'var(--danger)')+'">供给率 '+(d.ratio>=999?'∞':(d.ratio*100).toFixed(0)+'%')+'</div>'+
+      '<div style="font-size:11px;color:var(--gray-500)">短缺 '+d.shortage.toLocaleString()+'</div>'+
+      '</div>';
+  });
+  html+='</div></div>';
+
+  // 9b. 正向推算链路
+  if(simResult){
+    html+='<div style="margin-bottom:16px"><div style="font-size:14px;font-weight:600;color:var(--gray-700);margin-bottom:8px">📈 瓶颈正向推算 —— 以 <span style="color:var(--danger)">'+bottleneck+'</span> 瓶颈供给 <strong>'+bottleneckSupply.toLocaleString()+'</strong>'+appData.unitMap[bottleneck]+'</span> 为基准</div>';
+    html+='<div class="table-wrapper"><table style="font-size:12px"><thead><tr><th>制程</th><th>推算说明</th><th>可支撑量</th></tr></thead><tbody>';
+    simResult.steps.forEach(s=>{
+      const isBottleneckStep=(s.process===bottleneck);
+      html+='<tr style="'+(isBottleneckStep?'background:#fef2f2;font-weight:600':'')+'"><td>'+(isBottleneckStep?'🔴 ':'')+s.process+'</td><td style="color:var(--gray-500)">'+s.desc+'</td><td style="font-weight:600;color:var(--primary)">'+s.qty.toLocaleString()+' '+s.unit+'</td></tr>';
+    });
+    html+='</tbody></table></div>';
+    // 部分交付量
+    html+='<div style="margin-top:10px;padding:12px 16px;background:linear-gradient(135deg,#eff6ff,#f0fdf4);border-radius:8px;font-size:15px;font-weight:600;color:var(--gray-800)">✅ 当前瓶颈供给条件下，可交付 <span style="color:var(--primary);font-size:18px">'+ftAvailable.toLocaleString()+'</span> 颗FT成品（总需求 '+ftDemand.toLocaleString()+'颗）</div>';
+  }else{
+    html+='<div style="padding:12px 16px;background:#f0fdf4;border-radius:8px;font-size:13px;color:var(--success);font-weight:600">✅ 各制程供给充足率≥100%，无瓶颈</div>';
+  }
+
+  // 9c. 部分交付日期
+  if(partialDate){
+    html+='<div style="margin-top:16px"><div style="font-size:14px;font-weight:600;color:var(--gray-700);margin-bottom:8px">📅 部分交付 —— 现有供给交付日期推算</div>';
+    html+='<div class="table-wrapper"><table style="font-size:12px"><thead><tr><th>阶段</th><th>说明</th><th>天数</th><th>累计</th></tr></thead><tbody>';
+    partialDate.dateSteps.forEach(s=>{
+      html+='<tr><td>'+(s.process===bottleneck?'🔴 ':'')+s.process+'</td><td style="color:var(--gray-500)">'+s.desc+'</td><td>'+(s.days>0?s.days+'天':'-')+'</td><td style="font-weight:600">'+(s.cumDays>0?s.cumDays+'天':'0')+'</td></tr>';
+    });
+    html+='</tbody></table></div>';
+    html+='<div style="margin-top:8px;padding:10px 14px;background:#eff6ff;border-radius:8px;font-size:14px;font-weight:600;color:var(--primary)">📦 <strong>'+ftAvailable.toLocaleString()+'</strong> 颗FT可于 <strong>'+partialDate.deliveryDate+'</strong>（今天起'+partialDate.totalDays+'天）交付</div>';
+  }
+
+  // 9d. 缺口补货日期
+  if(gapDate){
+    html+='<div style="margin-top:16px"><div style="font-size:14px;font-weight:600;color:var(--gray-700);margin-bottom:8px">🔄 缺口补货 —— 剩余 <span style="color:var(--danger)">'+gapQty.toLocaleString()+'</span> 颗FT的补货时间推算</div>';
+    html+='<div style="padding:8px 12px;background:#fef3c7;border-radius:6px;font-size:12px;color:#92400e;margin-bottom:10px">⚠️ 现有供给无法满足全部需求，需从Wafer采购补足缺口。以下为从今天起补货的交付周期</div>';
+    html+='<div class="table-wrapper"><table style="font-size:12px"><thead><tr><th>阶段</th><th>说明</th><th>天数</th><th>累计</th></tr></thead><tbody>';
+    gapDate.gapSteps.forEach(s=>{
+      html+='<tr><td>'+s.process+'</td><td style="color:var(--gray-500)">'+s.desc+'</td><td>'+s.days+'天</td><td style="font-weight:600">'+s.cumDays+'天</td></tr>';
+    });
+    html+='</tbody></table></div>';
+    // 缺口量对应Wafer采购量：直接从MRP结果中取Wafer的净待补
+    const waferNetReq=procSum['Wafer']?procSum['Wafer'].netRemaining:0;
+    html+='<div style="margin-top:8px;padding:10px 14px;background:#fef2f2;border-radius:8px;font-size:14px;font-weight:600;color:var(--danger)">🛒 缺口补货需Wafer采购 <strong>'+(waferNetReq>0?waferNetReq.toLocaleString():'（按MRP结果）')+'</strong> 片，从今天下单起 <strong>'+gapDate.totalGapDays+'</strong> 天后（<strong>'+gapDate.gapDeliveryDate+'</strong>）可交付FT</div>';
+  }
+
+  // 9e. 综合结论
+  const canMeet=(bottleneck==='无'||ftAvailable>=ftDemand);
+  html+='<div style="margin-top:12px;padding:14px 18px;border-radius:8px;background:'+(canMeet?'#f0fdf4':'#fef2f2')+';border:1px solid '+(canMeet?'var(--success)':'var(--danger)')+'">';
+  html+='<div style="font-size:15px;font-weight:600;color:'+(canMeet?'var(--success)':'var(--danger)')+'">'+(canMeet?'✅ 结论：当前供给可满足成品交付需求':'❌ 结论：当前供给不足以满足成品交付需求')+'</div>';
+  html+='<div style="font-size:12px;color:var(--gray-500);margin-top:4px">';
+  if(bottleneck!=='无'){
+    html+='瓶颈制程：<strong>'+bottleneck+'</strong>（供给率'+(bottleneckRatio*100).toFixed(0)+'%），';
+    html+='瓶颈可用量 '+bottleneckSupply.toLocaleString()+appData.unitMap[bottleneck]+' → 正向推算FT产量 '+ftAvailable.toLocaleString()+'颗';
+    if(ftAvailable<ftDemand)html+='，缺口 '+gapQty.toLocaleString()+'颗';
+    if(gapDate)html+='<br>⏱ 部分交付：'+partialDate.deliveryDate+' ｜ 补货交付：'+gapDate.gapDeliveryDate;
+  }else{
+    html+='无瓶颈制程，各制程供给充足率均≥100%';
+  }
+  html+='</div></div>';
+
+  container.innerHTML=html;
+}
+function renderBalanceCompare(){
+  // 构建需求明细（按物料+日期展开）
+  const demandEntries=[];  // [{matCode, matName, process, demandDate, demandQty}]
+  
+  // 1. 独立需求（FT级）：来自 appData.demands，按物料+需求日期分组
+  const indepDemands={};
+  appData.demands.forEach(d=>{
+    const key=d.material+'|'+d.demandDate;
+    if(!indepDemands[key]) indepDemands[key]={matCode:d.material, demandDate:d.demandDate, qty:0};
+    indepDemands[key].qty+=d.quantity;
+  });
+  Object.values(indepDemands).forEach(entry=>{
+    const mat=appData.materials.find(m=>m.code===entry.matCode);
+    const process=mat? (()=>{for(const p of appData.processOrder){if(appData.materialCodeMap[p]===entry.matCode)return p;}return '';})() :'';
+    demandEntries.push({
+      matCode:entry.matCode, matName:mat?mat.name:entry.matCode,
+      process:process||'FT', demandDate:entry.demandDate, demandQty:entry.qty,
+      source:'独立需求'
+    });
+  });
+  
+  // 2. 相关需求（下阶物料）：来自 MRP 结果，使用与MRP结果表一致的 demandDate 分组
+  if(appData.mrpResult&&appData.mrpResult.length){
+    const depDemands={};
+    appData.mrpResult.forEach(r=>{
+      if(r.level===0) return; // 顶层已在独立需求中体现
+      const dateKey=r.demandDate||r.plannedArrival;
+      const key=r.matCode+'|'+dateKey;
+      if(!depDemands[key]) depDemands[key]={matCode:r.matCode, demandDate:dateKey, qty:0};
+      depDemands[key].qty+=r.grossReq;
+    });
+    Object.values(depDemands).forEach(entry=>{
+      const mr=appData.mrpResult.find(r=>r.matCode===entry.matCode);
+      demandEntries.push({
+        matCode:entry.matCode, matName:mr?mr.matName:entry.matCode,
+        process:mr?mr.process:'', demandDate:entry.demandDate,
+        demandQty:entry.qty, source:'相关需求'
+      });
+    });
+  }
+  
+  // 3. 构建供给数据：库存+在制 按物料汇总
+  const invSupply={};
+  appData.inventory.forEach(i=>{
+    invSupply[i.materialCode]={stock:i.stock||0, transit:i.transit||0, transitArrival:i.transitArrival||''};
+  });
+  
+  // 4. FIFO池初始化（在制+计划订单按物料跟踪，支持多日期先到先得）
+  const fifoPool={};
+  appData.inventory.forEach(i=>{
+    fifoPool[i.materialCode]={stock:i.stock||0, wip:i.transit||0, wipArrival:i.transitArrival||''};
+  });
+  const fifoPo={}; // matCode -> {remainingQty, orders[]}
+  (appData.plannedOrders||[]).forEach(po=>{
+    if(!fifoPo[po.materialCode]) fifoPo[po.materialCode]={remainingQty:0, orders:[]};
+    fifoPo[po.materialCode].remainingQty+=po.quantity;
+    fifoPo[po.materialCode].orders.push(po);
+  });
+  Object.keys(fifoPo).forEach(k=>fifoPo[k].orders.sort((a,b)=>(a.plannedArrivalDate||'').localeCompare(b.plannedArrivalDate||'')));
+  
+  // 5. 汇总按物料+日期计算供需缺口
+  const aggregated={}; // key=matCode|demandDate
+  demandEntries.forEach(de=>{
+    const key=de.matCode+'|'+de.demandDate;
+    if(!aggregated[key]){
+      aggregated[key]={
+        matCode:de.matCode, matName:de.matName, process:de.process,
+        demandDate:de.demandDate, demandQty:0, sources:[]
+      };
+    }
+    aggregated[key].demandQty+=de.demandQty;
+    aggregated[key].sources.push(de.source);
+  });
+  
+  let tableHtml=''; const labels=[], demandData=[], supplyData=[];
+  
+  // 先按需求日期分组，再按物料排序
+  const byDate={};
+  Object.keys(aggregated).forEach(key=>{
+    const entry=aggregated[key];
+    if(!byDate[entry.demandDate]) byDate[entry.demandDate]=[];
+    byDate[entry.demandDate].push(entry);
+  });
+  const sortedDates=Object.keys(byDate).sort();
+  const hasMultiDate=sortedDates.length>1;
+  
+  sortedDates.forEach(date=>{
+    if(hasMultiDate) tableHtml+='<tr style="background:#f0f7ff"><td colspan="13" style="font-weight:600;padding:8px 12px">📅 需求日期 '+date+'</td></tr>';
+    byDate[date].sort((a,b)=>a.matCode.localeCompare(b.matCode));
+    byDate[date].forEach(entry=>{
+      const pool=fifoPool[entry.matCode]||{stock:0,wip:0,wipArrival:''};
+      // FIFO：库存先消耗
+      let remaining=entry.demandQty;
+      const stockEff=Math.min(pool.stock,remaining);
+      remaining-=stockEff; pool.stock-=stockEff;
+      // FIFO：在制消耗（在制到货日 ≤ 需求日期才计入）
+      let wipEff=0;
+      if(pool.wip>0&&pool.wipArrival&&pool.wipArrival<=date){
+        wipEff=Math.min(pool.wip,remaining);
+        remaining-=wipEff; pool.wip-=wipEff;
+      }
+      // FIFO：计划订单消耗（计划到货日 ≤ 需求日期才计入）
+      let poEff=0,poNos=[],poDates=[];
+      const poPool=fifoPo[entry.matCode];
+      if(poPool){
+        for(const po of poPool.orders){
+          if((po.plannedArrivalDate||'')>date) break;
+          if(po._consumed) continue;
+          if(remaining<=0) break;
+          const take=Math.min(po.quantity,remaining);
+          poEff+=take; remaining-=take;
+          poNos.push(po.orderNo); poDates.push(po.plannedOrderDate||'');
+          if(take>=po.quantity) po._consumed=true;
+        }
+      }
+      const totalSupply=stockEff+wipEff+poEff;
+      const gap=totalSupply-entry.demandQty;
+      const status=gap>=0?'<span class="tag-status tag-green">盈余</span>':'<span class="tag-status tag-red">短缺</span>';
+      const poInfo=poNos.length?poNos.join(', '):'-';
+      const poQtyStr=poEff>0?poEff.toLocaleString():'-';
+      const poDateStr=poDates.length?poDates.join(', '):'-';
+      tableHtml+='<tr><td>'+entry.matCode+'</td><td>'+entry.matName+'</td><td>'+entry.process+'</td><td>'+entry.demandDate+'</td><td class="font-bold">'+entry.demandQty.toLocaleString()+'</td><td>'+stockEff.toLocaleString()+'</td><td>'+wipEff.toLocaleString()+'</td><td>'+poInfo+'</td><td>'+poQtyStr+'</td><td>'+poDateStr+'</td><td class="font-bold">'+totalSupply.toLocaleString()+'</td><td style="color:'+(gap>=0?'var(--success)':'var(--danger)')+';font-weight:600">'+(gap>=0?'+':'')+gap.toLocaleString()+'</td><td>'+status+'</td></tr>';
+      labels.push(entry.matCode+' ('+entry.demandDate+')');demandData.push(entry.demandQty);supplyData.push(totalSupply);
+    });
+  });
+  
+  document.querySelector('#balanceCompareTable tbody').innerHTML=tableHtml||'<tr><td colspan="13" style="text-align:center;color:var(--gray-400)">暂无数据</td></tr>';
+  
+  // 更新图表
+  if(supplyChartInstance){supplyChartInstance.destroy();supplyChartInstance=null;}
+  if(labels.length){const ctx=document.getElementById('balanceCompareChart').getContext('2d');supplyChartInstance=new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'总需求',data:demandData,backgroundColor:'rgba(239,68,68,.7)',borderRadius:4},{label:'总供给',data:supplyData,backgroundColor:'rgba(16,185,129,.7)',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true,ticks:{callback:v=>v.toLocaleString()}}}}});}
+}
+function renderBalanceGap(){
+  const gaps=[];
+  // 从独立需求计算顶层物料缺口
+  const demandByMat={};appData.demands.forEach(d=>{demandByMat[d.material]=(demandByMat[d.material]||0)+d.quantity;});
+  appData.inventory.forEach(i=>{
+    const demand=demandByMat[i.materialCode]||0,supply=i.stock+(i.transit||0);
+    if(demand>supply)gaps.push({material:i.materialCode,name:i.materialName,shortage:demand-supply,earliestDate:i.transitArrival||new Date().toISOString().split('T')[0],replenish:demand-supply,urgency:(demand-supply)>100000?'高':(demand-supply)>50000?'中':'低'});
+  });
+  // 从MRP结果补充下阶物料缺口
+  if(appData.mrpResult&&appData.mrpResult.length){
+    appData.mrpResult.forEach(r=>{
+      if(r.level===0) return; // 顶层已处理
+      if(r.netRemaining>0){
+        // 检查是否已有缺口记录
+        const existing=gaps.findIndex(g=>g.material===r.matCode);
+        if(existing>=0) gaps[existing].shortage+=r.netRemaining;
+        else gaps.push({
+          material:r.matCode, name:r.matName, shortage:r.netRemaining,
+          earliestDate:r.plannedArrival, replenish:r.netRemaining,
+          urgency:r.netRemaining>100000?'高':r.netRemaining>50000?'中':'低'
+        });
+      }
+    });
+  }
+  const totalShort=gaps.reduce((s,g)=>s+g.shortage,0),highUrgency=gaps.filter(g=>g.urgency==='高').length;
+  document.getElementById('gapSummaryCards').innerHTML='<div class="summary-card red"><div class="lbl">⚠️ 短缺物料数</div><div class="num" style="color:var(--danger)">'+gaps.length+'</div></div><div class="summary-card yellow"><div class="lbl">📦 总短缺量</div><div class="num" style="color:var(--warning)">'+totalShort.toLocaleString()+'</div></div><div class="summary-card red"><div class="lbl">🔴 高紧急度</div><div class="num" style="color:var(--danger)">'+highUrgency+'</div></div>';
+  let ghtml='';gaps.forEach(g=>{const urgColor=g.urgency==='高'?'tag-red':g.urgency==='中'?'tag-yellow':'tag-blue';ghtml+='<tr><td>'+g.material+' - '+g.name+'</td><td class="font-bold" style="color:var(--danger)">'+g.shortage.toLocaleString()+'</td><td>'+g.earliestDate+'</td><td>'+g.replenish.toLocaleString()+'</td><td><span class="tag-status '+urgColor+'">'+g.urgency+'</span></td></tr>';});
+  document.querySelector('#gapTable tbody').innerHTML=ghtml||'<tr><td colspan="5" style="text-align:center;color:var(--gray-400)">暂无短缺物料，供需平衡 ✅</td></tr>';
+}
+function renderBalanceReplenish(){
+  let rhtml='';
+  // 来自MRP运算的补货建议
+  appData.mrpResult.forEach(r=>{if(r.netRemaining>0&&r.plannedOrderDate)rhtml+='<tr><td>'+r.matCode+' - '+r.matName+'</td><td class="font-bold">'+r.netRemaining.toLocaleString()+'</td><td>'+r.plannedOrderDate+'</td><td>'+r.plannedArrival+'</td><td>'+(r.supplier||'-')+'</td></tr>';});
+  // 补充已创建计划订单但尚未覆盖完的补货建议
+  appData.plannedOrders.forEach(po=>{
+    // 检查是否已在MRP补货建议中
+    const exists=appData.mrpResult.some(r=>r.matCode===po.materialCode&&r.netRemaining>0);
+    if(!exists) rhtml+='<tr><td>'+po.materialCode+' - '+po.materialName+'</td><td class="font-bold">'+po.quantity.toLocaleString()+'</td><td>'+po.plannedOrderDate+'</td><td>'+po.plannedArrivalDate+'</td><td>'+(po.supplier||'-')+'</td></tr>';
+  });
+  document.querySelector('#replenishTable tbody').innerHTML=rhtml||'<tr><td colspan="5" style="text-align:center;color:var(--gray-400)">暂无补货建议，请先执行MRP运算</td></tr>';
+}
+
+// 产销协同
+function switchCollabTab(tab){
+  document.querySelectorAll('#collabTabs .tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('#section-collaboration .tab-content').forEach(t=>t.classList.remove('active'));
+  document.querySelector('#collabTabs .tab[data-tab="'+tab+'"]').classList.add('active');
+  document.getElementById('tab-'+tab).classList.add('active');
+  if(tab==='collab-board')renderCollabBoard();if(tab==='collab-production')renderProductionAdvice();if(tab==='collab-purchase')renderPurchaseList();if(tab==='collab-tasks')renderTasks();
+}
+function updateCollaboration(){renderCollabBoard();renderProductionAdvice();renderPurchaseList();}
+function renderCollabBoard(){
+  const totalDemand=appData.demands.reduce((s,d)=>s+d.quantity,0),totalStock=appData.inventory.reduce((s,i)=>s+i.stock,0),totalTransit=appData.inventory.reduce((s,i)=>s+(i.transit||0),0),shortageCount=appData.mrpResult.filter(r=>r.netRemaining>0).length;
+  document.getElementById('collabSummaryCards').innerHTML='<div class="summary-card blue"><div class="lbl">📦 总需求</div><div class="num" style="color:var(--primary)">'+totalDemand.toLocaleString()+'</div></div><div class="summary-card green"><div class="lbl">🏭 可用库存</div><div class="num" style="color:var(--success)">'+totalStock.toLocaleString()+'</div></div><div class="summary-card cyan"><div class="lbl">🚚 在制供给</div><div class="num" style="color:var(--info)">'+totalTransit.toLocaleString()+'</div></div><div class="summary-card '+(shortageCount>0?'red':'green')+'"><div class="lbl">⚠️ 短缺物料数</div><div class="num" style="color:'+(shortageCount>0?'var(--danger)':'var(--success)')+'">'+shortageCount+'</div></div>';
+  if(window.collabChartInstance){window.collabChartInstance.destroy();}
+  const ctx=document.getElementById('collabChart').getContext('2d');
+  const months=['7月','8月','9月'],salesPlan=[],prodPlan=[];
+  months.forEach((m,idx)=>{const mStart='2026-0'+(7+idx);const mDemand=appData.demands.filter(d=>d.demandDate.startsWith(mStart)).reduce((s,d)=>s+d.quantity,0);salesPlan.push(mDemand);const mProd=appData.mrpResult.filter(r=>r.plannedArrival&&r.plannedArrival.startsWith(mStart)).reduce((s,r)=>s+r.netRemaining,0);prodPlan.push(mProd||Math.round(mDemand*0.95));});
+  window.collabChartInstance=new Chart(ctx,{type:'bar',data:{labels:months,datasets:[{label:'销售计划',data:salesPlan,backgroundColor:'rgba(37,99,235,.7)',borderRadius:4},{label:'生产计划',data:prodPlan,backgroundColor:'rgba(16,185,129,.7)',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true,ticks:{callback:v=>v.toLocaleString()}}}}});
+  let schtml='';appData.mrpResult.filter(r=>r.netRemaining>0).forEach(r=>{schtml+='<tr><td>'+r.matCode+' ('+r.process+')</td><td>'+r.netRemaining.toLocaleString()+'</td><td>'+(r.plannedOrderDate||'-')+'</td><td>'+r.plannedArrival+'</td><td><span class="tag-status '+(r.plannedOrderDate&&r.plannedOrderDate<new Date().toISOString().split('T')[0]?'tag-red':'tag-green')+'">'+(r.plannedOrderDate&&r.plannedOrderDate<new Date().toISOString().split('T')[0]?'⚠️ 逾期':'✅ 正常')+'</span></td></tr>';});
+  document.querySelector('#productionScheduleTable tbody').innerHTML=schtml||'<tr><td colspan="5" style="text-align:center;color:var(--gray-400)">暂无生产排程，请执行MRP运算</td></tr>';
+}
+function renderProductionAdvice(){
+  let html='';appData.mrpResult.filter(r=>r.netRemaining>0).forEach((r,i)=>{const prio=i===0?'高':i===1?'高':'中',today=new Date().toISOString().split('T')[0],startDate=r.plannedOrderDate&&r.plannedOrderDate>today?r.plannedOrderDate:today;html+='<tr><td>'+r.process+'</td><td>'+r.matCode+'</td><td class="font-bold">'+r.netRemaining.toLocaleString()+'</td><td>'+startDate+'</td><td>'+r.plannedArrival+'</td><td><span class="tag-status '+(prio==='高'?'tag-red':'tag-yellow')+'">'+prio+'</span></td></tr>';});
+  document.querySelector('#productionAdviceTable tbody').innerHTML=html||'<tr><td colspan="6" style="text-align:center;color:var(--gray-400)">暂无生产建议，请先执行MRP运算</td></tr>';
+}
+function renderPurchaseList(){
+  let html='';appData.mrpResult.filter(r=>r.netRemaining>0).forEach(r=>{const mat=appData.materials.find(m=>m.code===r.matCode),isPurchase=mat&&mat.type==='采购';if(isPurchase||r.process==='Wafer')html+='<tr><td>'+r.matCode+'</td><td>'+r.matName+'</td><td class="font-bold">'+r.netRemaining.toLocaleString()+'</td><td>'+(r.plannedOrderDate||'-')+'</td><td>'+r.plannedArrival+'</td><td>'+(r.supplier||'-')+'</td></tr>';});
+  document.querySelector('#purchaseTable tbody').innerHTML=html||'<tr><td colspan="6" style="text-align:center;color:var(--gray-400)">暂无采购建议</td></tr>';
+}
+function exportPurchaseList(){
+  const rows=[];document.querySelectorAll('#purchaseTable tbody tr').forEach(tr=>{const tds=tr.querySelectorAll('td');if(tds.length>=6)rows.push({'物料编码':tds[0].textContent.trim(),'物料名称':tds[1].textContent.trim(),'建议采购量':tds[2].textContent.trim(),'建议下单日':tds[3].textContent.trim(),'期望到货日':tds[4].textContent.trim(),'推荐供应商':tds[5].textContent.trim()});});
+  if(!rows.length){showToast('没有可导出的数据','warning');return;}
+  const ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'采购建议清单');XLSX.writeFile(wb,'采购建议清单_'+new Date().toISOString().split('T')[0]+'.xlsx');showToast('✅ 导出成功','success');
+}
+function renderTasks(){
+  let html='';appData.tasks.forEach((t,i)=>{const pColor=t.priority==='高'?'tag-red':t.priority==='中'?'tag-yellow':'tag-blue',sColor=t.status==='已完成'?'tag-green':t.status==='进行中'?'tag-blue':'tag-yellow',canComplete=t.status!=='已完成';html+='<tr><td>'+t.id+'</td><td>'+t.name+'</td><td>'+t.assignee+'</td><td>'+t.dueDate+'</td><td><span class="tag-status '+pColor+'">'+t.priority+'</span></td><td><span class="tag-status '+sColor+'">'+t.status+'</span></td><td>'+(canComplete?'<button class="btn btn-sm btn-success" onclick="completeTask('+i+')">✅ 完成</button> ':'')+'<button class="btn btn-sm btn-outline" onclick="deleteTask('+i+')">🗑️</button></td></tr>';});
+  document.querySelector('#taskTable tbody').innerHTML=html||'<tr><td colspan="7" style="text-align:center;color:var(--gray-400)">暂无任务</td></tr>';
+}
+function completeTask(idx){if(appData.tasks[idx]){appData.tasks[idx].status='已完成';renderTasks();showToast('✅ 任务已完成','success');}}
+function deleteTask(idx){appData.tasks.splice(idx,1);renderTasks();}
+function openAddTaskModal(){
+  openModal('<div class="modal-title">新建协同任务 <button class="modal-close" onclick="closeModal()">×</button></div>'+
+    '<div class="grid-2"><div class="form-group"><label>任务名称</label><input id="formTaskName" placeholder="任务名称"></div><div class="form-group"><label>负责人</label><input id="formTaskAssignee" placeholder="负责人"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>截止日期</label><input type="date" id="formTaskDue"></div><div class="form-group"><label>优先级</label><select id="formTaskPriority"><option>高</option><option selected>中</option><option>低</option></select></div></div>'+
+    '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveNewTask()">保存</button></div>');
+}
+function saveNewTask(){
+  const name=document.getElementById('formTaskName').value.trim();if(!name){showToast('请输入任务名称','error');return;}
+  appData.tasks.push({id:'TASK-'+String(appData.tasks.length+1).padStart(3,'0'),name,assignee:document.getElementById('formTaskAssignee').value.trim()||'未指派',dueDate:document.getElementById('formTaskDue').value,priority:document.getElementById('formTaskPriority').value,status:'待开始'});
+  closeModal();renderTasks();updateDashboard();showToast('✅ 任务创建成功','success');
+}
+
+function switchMasterdataTab(tab){
+  document.querySelectorAll('#masterdataTabs .tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('#section-masterdata .tab-content').forEach(t=>t.classList.remove('active'));
+  document.querySelector('#masterdataTabs .tab[data-tab="'+tab+'"]').classList.add('active');
+  document.getElementById('tab-'+tab).classList.add('active');
+  if(tab==='md-materials'||tab==='md-bom'||tab==='md-routing'||tab==='md-suppliers'||tab==='md-inventory')renderAllMasterdata();
+}
+
+function renderBomTree(){
+  const container=document.getElementById('bomTreeView'),btn=document.querySelector('.card-actions .btn-outline');
+  if(container.style.display==='block'){container.style.display='none';btn.textContent='🌳 BOM树形图';return;}
+  container.style.display='block';btn.textContent='📋 表格视图';
+  let html='<div style="padding:16px;background:var(--gray-50);border-radius:8px;font-size:13px;line-height:2">';
+  function renderTree(parent,indent){const children=appData.boms.filter(b=>b.parent===parent);children.forEach(c=>{const pad='&nbsp;'.repeat(indent*4);html+='<div style="padding:4px 0">'+pad+'└─ <strong>'+c.parent+'</strong> → <strong>'+c.child+'</strong> (用量:'+c.usage+',损耗:'+c.scrap+'%)</div>';renderTree(c.child,indent+1);});}
+  const topMats=appData.materials.filter(m=>!appData.boms.some(b=>b.child===m.code));
+  topMats.forEach(m=>{html+='<div style="padding:4px 0;font-weight:600;color:var(--primary)">📦 '+m.code+' ('+m.name+')</div>';renderTree(m.code,1);});
+  html+='</div>';container.innerHTML=html;
+}
+
+function updateDashboard(){
+  const totalDemand=appData.demands.reduce((s,d)=>s+d.quantity,0),totalSupply=appData.inventory.reduce((s,i)=>s+i.stock+(i.transit||0),0),shortageRate=totalDemand>0?Math.max(0,((totalDemand-totalSupply)/totalDemand*100).toFixed(1)):0,invDays=totalDemand>0?Math.round(totalSupply/(totalDemand/30)):0,highPriorityTasks=appData.tasks.filter(t=>t.priority==='高'&&t.status!=='已完成').length;
+  document.getElementById('dashboardKPI').innerHTML='<div class="summary-card blue"><div class="lbl">📦 总需求</div><div class="num" style="color:var(--primary)">'+totalDemand.toLocaleString()+'</div><div class="sub-text">含所有订单</div></div><div class="summary-card green"><div class="lbl">🏭 总供给(库存+在制)</div><div class="num" style="color:var(--success)">'+totalSupply.toLocaleString()+'</div><div class="sub-text">含库存与在制</div></div><div class="summary-card '+(shortageRate>0?'red':'green')+'"><div class="lbl">⚠️ 缺货率</div><div class="num" style="color:'+(shortageRate>0?'var(--danger)':'var(--success)')+'">'+shortageRate+'%</div><div class="sub-text">'+(shortageRate>0?'需关注供给':'供需平衡')+'</div></div><div class="summary-card '+(invDays<30?'yellow':'green')+'"><div class="lbl">📊 库存周转天数</div><div class="num" style="color:'+(invDays<30?'var(--warning)':'var(--success)')+'">'+invDays+'天</div><div class="sub-text">'+(invDays<30?'周转较快':'库存充足')+'</div></div><div class="summary-card '+(highPriorityTasks>0?'red':'cyan')+'"><div class="lbl">⏰ 高优先级待办</div><div class="num" style="color:'+(highPriorityTasks>0?'var(--danger)':'var(--info)')+'">'+highPriorityTasks+'项</div><div class="sub-text">需及时处理</div></div>';
+  document.getElementById('dashboardDataStatus').innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div style="padding:12px;border-radius:6px;background:var(--gray-50)"><div style="font-size:12px;color:var(--gray-500)">🏭 物料数</div><div style="font-size:20px;font-weight:600;margin-top:4px">'+appData.materials.length+'</div></div><div style="padding:12px;border-radius:6px;background:var(--gray-50)"><div style="font-size:12px;color:var(--gray-500)">🔗 BOM条数</div><div style="font-size:20px;font-weight:600;margin-top:4px">'+appData.boms.length+'</div></div><div style="padding:12px;border-radius:6px;background:var(--gray-50)"><div style="font-size:12px;color:var(--gray-500)">📝 需求订单</div><div style="font-size:20px;font-weight:600;margin-top:4px">'+appData.demands.length+'</div></div><div style="padding:12px;border-radius:6px;background:var(--gray-50)"><div style="font-size:12px;color:var(--gray-500)">📋 协同任务</div><div style="font-size:20px;font-weight:600;margin-top:4px">'+appData.tasks.length+'</div></div></div>';
+  const pendingTasks=appData.tasks.filter(t=>t.status!=='已完成');
+  if(pendingTasks.length){let thtml='<div class="timeline">';pendingTasks.forEach(t=>{const isOverdue=t.dueDate&&t.dueDate<new Date().toISOString().split('T')[0];thtml+='<div class="timeline-item"><div class="time">'+(isOverdue?'⚠️ 逾期: ':'📅 ')+t.dueDate+'</div><div class="content">['+t.priority+'] '+t.name+' - '+t.assignee+'</div></div>';});thtml+='</div>';document.getElementById('dashboardTodos').innerHTML=thtml;}else{document.getElementById('dashboardTodos').innerHTML='<div class="empty-state"><span class="icon">✅</span><div class="text">所有任务已完成！</div></div>';}
+  if(demandChartInstance){demandChartInstance.destroy();demandChartInstance=null;}
+  const byDate={};appData.demands.forEach(d=>{const month=d.demandDate.substring(0,7);byDate[month]=(byDate[month]||0)+d.quantity;});
+  const labels=Object.keys(byDate).sort(),data=labels.map(l=>byDate[l]);
+  if(labels.length){const ctx=document.getElementById('dashboardDemandChart').getContext('2d');demandChartInstance=new Chart(ctx,{type:'line',data:{labels,datasets:[{label:'需求量',data,borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.1)',fill:true,tension:.4,pointBackgroundColor:'#2563eb',pointRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{callback:v=>v.toLocaleString()}}}}});}
+  if(supplyChartInstance){supplyChartInstance.destroy();supplyChartInstance=null;}
+  const dByMat={};appData.demands.forEach(d=>{dByMat[d.material]=(dByMat[d.material]||0)+d.quantity;});
+  const sByMat={};appData.inventory.forEach(i=>{sByMat[i.materialCode]=(sByMat[i.materialCode]||0)+i.stock+(i.transit||0);});
+  const matLabels=Object.keys(dByMat);
+  if(matLabels.length){const ctx2=document.getElementById('dashboardSupplyChart').getContext('2d');supplyChartInstance=new Chart(ctx2,{type:'bar',data:{labels:matLabels,datasets:[{label:'需求',data:matLabels.map(l=>dByMat[l]||0),backgroundColor:'rgba(239,68,68,.6)',borderRadius:4},{label:'供给',data:matLabels.map(l=>sByMat[l]||0),backgroundColor:'rgba(16,185,129,.6)',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true,ticks:{callback:v=>v.toLocaleString()}}}}});}
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
