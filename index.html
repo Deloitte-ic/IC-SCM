@@ -58,6 +58,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica N
 .nav-item .nav-text{overflow:hidden;transition:var(--transition)}
 .sidebar.collapsed .nav-item .nav-text{opacity:0;width:0}
 .nav-item .badge{background:var(--danger);color:#fff;font-size:9px;padding:1px 6px;border-radius:8px;margin-left:auto;flex-shrink:0;min-width:18px;text-align:center}
+.nav-children{padding-left:12px;margin-bottom:2px}
+.nav-sub-item{display:flex;align-items:center;gap:10px;padding:7px 12px;border-radius:8px;cursor:pointer;transition:var(--transition);color:var(--gray-400);font-size:12px;white-space:nowrap;overflow:hidden;margin-bottom:1px}
+.nav-sub-item:hover{background:rgba(255,255,255,.06);color:#fff}
+.nav-sub-item.active{background:linear-gradient(135deg,rgba(37,99,235,.25),rgba(124,58,237,.1));color:#fff;font-weight:500}
+.sidebar.collapsed .nav-children{opacity:0;height:0;overflow:hidden}
 .sidebar-footer{padding:14px 16px;border-top:1px solid rgba(255,255,255,.06);font-size:10px;color:var(--gray-500);white-space:nowrap;overflow:hidden;transition:var(--transition)}
 .sidebar.collapsed .sidebar-footer{opacity:0;height:0;padding:0;overflow:hidden}
 .toggle-btn{position:absolute;bottom:16px;right:-14px;width:28px;height:28px;background:var(--gray-800);border:2px solid var(--gray-700);border-radius:50%;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;z-index:101;transition:var(--transition)}
@@ -257,8 +262,17 @@ tbody tr:hover td{background:var(--primary-bg)}
         <span class="nav-icon">📦</span><span class="nav-text">主数据</span>
         <span class="badge" id="masterdataBadge" style="display:none">!</span>
       </div>
-      <div class="nav-item" data-section="business" onclick="switchSection('business')">
+      <div class="nav-item" onclick="toggleBusinessSubnav()" style="cursor:pointer">
         <span class="nav-icon">📊</span><span class="nav-text">业务数据</span>
+        <span style="margin-left:auto;font-size:10px;opacity:0.7" id="businessArrow">▾</span>
+      </div>
+      <div id="businessSubnav" class="nav-children" style="display:block">
+        <div class="nav-sub-item" data-section="business" onclick="switchSection('business');switchBusinessTab('bd-inventory')">
+          <span style="width:22px;text-align:center;flex-shrink:0;font-size:13px">📦</span><span class="nav-text">当前库存</span>
+        </div>
+        <div class="nav-sub-item" data-section="business" onclick="switchSection('business');switchBusinessTab('bd-wip')">
+          <span style="width:22px;text-align:center;flex-shrink:0;font-size:13px">🏗️</span><span class="nav-text">在制品</span>
+        </div>
       </div>
     </div>
     <div class="nav-group">
@@ -403,19 +417,35 @@ tbody tr:hover td{background:var(--primary-bg)}
     <!-- ==================== 业务数据 ==================== -->
     <div class="section" id="section-business">
       <div class="tabs" id="businessTabs">
-        <div class="tab active" data-tab="bd-inventory" onclick="switchBusinessTab('bd-inventory')">📦 库存</div>
+        <div class="tab active" data-tab="bd-inventory" onclick="switchBusinessTab('bd-inventory')">📦 当前库存</div>
+        <div class="tab" data-tab="bd-wip" onclick="switchBusinessTab('bd-wip')">🏗️ 在制品</div>
       </div>
 
       <div class="tab-content active" id="tab-bd-inventory">
         <div class="card">
           <div class="card-header">
-            <div class="card-title">📦 库存数据 <span class="tag" id="invCount">0条</span></div>
+            <div class="card-title">📦 当前库存 <span class="tag" id="invCount">0条</span></div>
             <div class="card-actions">
+              <button class="btn btn-sm btn-outline" onclick="importToType('inventory')">📥 导入</button>
+              <input type="file" id="importFile_inventory" accept=".xlsx,.xls" onchange="handleTypeImport(event,'inventory')" style="display:none">
               <button class="btn btn-sm btn-primary" onclick="openAddInventoryModal()">➕ 新增</button>
-              <button class="btn btn-sm btn-outline" onclick="openAddWipModal()">📥 在制录入</button>
             </div>
           </div>
-          <div class="table-wrapper"><table id="inventoryTable"><thead><tr><th>物料编码</th><th>物料名称</th><th>仓库</th><th>可用库存</th><th>在制数量</th><th>在制到货日</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+          <div class="table-wrapper"><table id="inventoryTable"><thead><tr><th>物料编码</th><th>物料名称</th><th>仓库</th><th>可用库存</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+        </div>
+      </div>
+
+      <div class="tab-content" id="tab-bd-wip">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">🏗️ 在制品 <span class="tag" id="wipCount">0条</span></div>
+            <div class="card-actions">
+              <button class="btn btn-sm btn-outline" onclick="importToType('wip')">📥 导入</button>
+              <input type="file" id="importFile_wip" accept=".xlsx,.xls" onchange="handleTypeImport(event,'wip')" style="display:none">
+              <button class="btn btn-sm btn-primary" onclick="openAddWipModal()">➕ 新增</button>
+            </div>
+          </div>
+          <div class="table-wrapper"><table id="wipTable"><thead><tr><th>物料编码</th><th>物料名称</th><th>在制数量</th><th>在制到货日</th><th>操作</th></tr></thead><tbody></tbody></table></div>
         </div>
       </div>
     </div>
@@ -808,6 +838,19 @@ function switchSection(id) {
   if(id==='collaboration') updateCollaboration();
 }
 
+// 业务数据侧栏展开/收起
+function toggleBusinessSubnav(){
+  const sub=document.getElementById('businessSubnav');
+  const arrow=document.getElementById('businessArrow');
+  if(sub.style.display==='none'){
+    sub.style.display='block';
+    if(arrow) arrow.textContent='▾';
+  }else{
+    sub.style.display='none';
+    if(arrow) arrow.textContent='▸';
+  }
+}
+
 // ======================== Toast通知 ========================
 function showToast(msg, type) {
   const existing = document.querySelector('.toast-container');
@@ -985,10 +1028,12 @@ function handleTypeImport(event,type){
           case 'bom': parseBomSheetDirect(data,sheetName); break;
           case 'routing': parseRoutingSheet(data,sheetName); break;
           case 'suppliers': parseSupplierSheet(data,sheetName); break;
+          case 'inventory': parseInventorySheet(data,sheetName); break;
+          case 'wip': parseWipSheet(data,sheetName); break;
         }
       });
       renderAllMasterdata();
-      showToast('✅ '+({materials:'物料',bom:'BOM',routing:'工艺路线',suppliers:'供应商'}[type]||type)+'数据导入完成','success');
+      showToast('✅ '+({materials:'物料',bom:'BOM',routing:'工艺路线',suppliers:'供应商',inventory:'库存',wip:'在制品'}[type]||type)+'数据导入完成','success');
     }catch(err){showToast('❌ 导入失败：'+err.message,'error');}
   };
   reader.readAsArrayBuffer(file);
@@ -1225,6 +1270,33 @@ function parseMaterialSheet(data, sheetName) {
   showToast('✅ 物料数据已导入','success');
 }
 
+// 在制品导入
+function parseWipSheet(data,sheetName){
+  if(data.length<2) return;
+  const h=data[0].map(c=>String(c||'').trim());
+  const matIdx=h.findIndex(c=>/(物料编码|物料|编码|material|code)/i.test(c));
+  const transitIdx=h.findIndex(c=>/(在制|WIP|在制数量|transit)/i.test(c));
+  const arrivalIdx=h.findIndex(c=>/(到货|到货日|预计|arrival|date)/i.test(c));
+  if(matIdx<0||transitIdx<0) return;
+  let count=0;
+  for(let i=1;i<data.length;i++){
+    const row=data[i];if(!row[matIdx]) continue;
+    const matCode=String(row[matIdx]).trim();
+    const transit=parseFloat(row[transitIdx])||0;
+    const arrival=arrivalIdx>=0&&row[arrivalIdx]?String(row[arrivalIdx]).trim():'';
+    const idx=appData.inventory.findIndex(inv=>inv.materialCode===matCode);
+    if(idx>=0){
+      appData.inventory[idx].transit=transit;
+      if(arrival) appData.inventory[idx].transitArrival=arrival;
+    }else{
+      const mat=appData.materials.find(m=>m.code===matCode);
+      appData.inventory.push({materialCode:matCode,materialName:mat?mat.name:'',warehouse:'',stock:0,transit:transit,transitArrival:arrival||''});
+    }
+    count++;
+  }
+  showToast('✅ 在制品导入完成（'+count+'条）','success');
+}
+
 // 解析供应商Sheet
 function parseSupplierSheet(data, sheetName) {
   if(data.length < 2) return;
@@ -1416,10 +1488,18 @@ function renderAllMasterdata() {
   document.getElementById('supplierCount').textContent = appData.suppliers.length+'条';
   let ihtml = '';
   appData.inventory.forEach((inv,idx)=>{
-    ihtml += '<tr><td>'+inv.materialCode+'</td><td>'+inv.materialName+'</td><td>'+inv.warehouse+'</td><td class="font-bold">'+inv.stock.toLocaleString()+'</td><td>'+(inv.transit||0).toLocaleString()+'</td><td>'+(inv.transitArrival||'-')+'</td><td><button class="btn btn-sm btn-outline" onclick="editInventory('+idx+')">✏️</button><button class="btn btn-sm btn-outline" onclick="deleteInventory('+idx+')">🗑️</button></td></tr>';
+    ihtml += '<tr><td>'+inv.materialCode+'</td><td>'+inv.materialName+'</td><td>'+inv.warehouse+'</td><td class="font-bold">'+inv.stock.toLocaleString()+'</td><td><button class="btn btn-sm btn-outline" onclick="editInventory('+idx+')">✏️</button><button class="btn btn-sm btn-outline" onclick="deleteInventory('+idx+')">🗑️</button></td></tr>';
   });
-  document.querySelector('#inventoryTable tbody').innerHTML = ihtml || '<tr><td colspan="7" style="text-align:center;color:var(--gray-400)">暂无数据</td></tr>';
+  document.querySelector('#inventoryTable tbody').innerHTML = ihtml || '<tr><td colspan="5" style="text-align:center;color:var(--gray-400)">暂无数据</td></tr>';
   document.getElementById('invCount').textContent = appData.inventory.length+'条';
+  let whtml = '';
+  const wipItems = appData.inventory.filter(inv=>inv.transit&&inv.transit>0);
+  wipItems.forEach((inv,idx)=>{
+    const origIdx = appData.inventory.indexOf(inv);
+    whtml += '<tr><td>'+inv.materialCode+'</td><td>'+inv.materialName+'</td><td class="font-bold">'+(inv.transit||0).toLocaleString()+'</td><td>'+(inv.transitArrival||'-')+'</td><td><button class="btn btn-sm btn-outline" onclick="editWip('+origIdx+')">✏️</button><button class="btn btn-sm btn-outline" onclick="clearWip('+origIdx+')">🗑️</button></td></tr>';
+  });
+  document.querySelector('#wipTable tbody').innerHTML = whtml || '<tr><td colspan="5" style="text-align:center;color:var(--gray-400)">暂无在制数据</td></tr>';
+  document.getElementById('wipCount').textContent = wipItems.length+'条';
   // 每次渲染主数据时同步保存到 localStorage（确保编辑/删除/新增后持久化）
   saveMasterdataToStorage();
 }
@@ -1610,6 +1690,29 @@ function saveWip() {
   if(inv){inv.transit=(inv.transit||0)+qty;inv.transitArrival=arrival;}
   else{const mat=appData.materials.find(m=>m.code===matCode);appData.inventory.push({materialCode:matCode,materialName:mat?mat.name:'',warehouse:'在制',stock:0,transit:qty,transitArrival:arrival});}
   closeModal();renderAllMasterdata();showToast('✅ 在制信息已更新','success');
+}
+function editWip(idx){
+  const inv=appData.inventory[idx];
+  if(!inv) return;
+  openModal('<div class="modal-title">编辑在制品 <button class="modal-close" onclick="closeModal()">×</button></div>'+
+    '<div class="form-group"><label>物料编码</label><input id="formWipMatEdit" value="'+escapeHtml(inv.materialCode)+'" readonly></div>'+
+    '<div class="grid-2"><div class="form-group"><label>在制数量</label><input type="number" id="formWipTransitEdit" value="'+(inv.transit||0)+'"></div>'+
+    '<div class="form-group"><label>在制到货日</label><input type="date" id="formWipArrivalEdit" value="'+(inv.transitArrival||'')+'"></div></div>'+
+    '<input type="hidden" id="editWipIdx" value="'+idx+'">'+
+    '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveEditWip()">保存</button></div>');
+}
+function saveEditWip(){
+  const idx=parseInt(document.getElementById('editWipIdx').value);
+  if(isNaN(idx)||!appData.inventory[idx]){showToast('数据异常','error');return;}
+  appData.inventory[idx].transit=parseFloat(document.getElementById('formWipTransitEdit').value)||0;
+  appData.inventory[idx].transitArrival=document.getElementById('formWipArrivalEdit').value||'';
+  closeModal();renderAllMasterdata();showToast('✅ 在制品已更新','success');
+}
+function clearWip(idx){
+  appData.inventory[idx].transit=0;
+  appData.inventory[idx].transitArrival='';
+  renderAllMasterdata();
+  showToast('✅ 在制已清除','success');
 }
 
 // 需求预测
@@ -2863,7 +2966,7 @@ function switchBusinessTab(tab){
   document.querySelectorAll('#section-business .tab-content').forEach(t=>t.classList.remove('active'));
   document.querySelector('#businessTabs .tab[data-tab="'+tab+'"]').classList.add('active');
   document.getElementById('tab-'+tab).classList.add('active');
-  if(tab==='bd-inventory')renderAllMasterdata();
+  renderAllMasterdata();
 }
 
 function renderBomTree(){
