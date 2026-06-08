@@ -408,14 +408,14 @@ tbody tr:hover td{background:var(--primary-bg)}
     <!-- ==================== 业务数据 ==================== -->
     <div class="section" id="section-business">
       <div class="tabs" id="businessTabs">
-        <div class="tab active" data-tab="bd-inventory" onclick="switchBusinessTab('bd-inventory')">📦 当前库存</div>
+        <div class="tab active" data-tab="bd-inventory" onclick="switchBusinessTab('bd-inventory')">📦 库存</div>
         <div class="tab" data-tab="bd-wip" onclick="switchBusinessTab('bd-wip')">🏗️ 在制品</div>
       </div>
 
       <div class="tab-content active" id="tab-bd-inventory">
         <div class="card">
           <div class="card-header">
-            <div class="card-title">📦 当前库存 <span class="tag" id="invCount">0条</span></div>
+            <div class="card-title">📦 库存 <span class="tag" id="invCount">0条</span></div>
             <div class="card-actions">
               <button class="btn btn-sm btn-outline" onclick="importToType('inventory')">📥 导入</button>
               <input type="file" id="importFile_inventory" accept=".xlsx,.xls" onchange="handleTypeImport(event,'inventory')" style="display:none">
@@ -997,6 +997,12 @@ function handleTypeImport(event,type){
   reader.onload=function(e){
     try{
       const wb=XLSX.read(e.target.result,{type:'array'});
+      if(type==='inventory'){
+        // 库存导入走字段映射弹窗
+        window._invMappingWb=wb;
+        showInventoryMappingModal(wb);
+        return;
+      }
       wb.SheetNames.forEach(sheetName=>{
         const sheet=wb.Sheets[sheetName];
         const data=XLSX.utils.sheet_to_json(sheet,{header:1,defval:''});
@@ -1187,7 +1193,108 @@ function parseDemandSheet(data, sheetName) {
   showToast('✅ 需求数据已导入','success');
 }
 
-// 解析库存Sheet
+// 库存字段映射配置
+const inventoryFields = [
+  {key:'materialCode', label:'物料编码', required:true},
+  {key:'materialName', label:'物料名称', required:false},
+  {key:'warehouse', label:'仓库', required:false},
+  {key:'stock', label:'可用库存', required:true}
+];
+
+// 显示库存字段映射弹窗
+function showInventoryMappingModal(wb){
+  const sheetName=wb.SheetNames[0];
+  const sheet=wb.Sheets[sheetName];
+  const data=XLSX.utils.sheet_to_json(sheet,{header:1,defval:''});
+  if(data.length<2){showToast('文件无数据','error');return;}
+  const headers=data[0].map(c=>String(c||'').trim()).filter(h=>h);
+  let opts=headers.map(h=>'<option value="'+h.replace(/"/g,'&quot;')+'">'+h+'</option>').join('');
+  opts='<option value="">— 不导入 —</option>'+opts;
+  let html='<div class="modal-title">库存字段映射 <button class="modal-close" onclick="closeModal()">×</button></div>';
+  html+='<p style="font-size:12px;color:var(--gray-500);margin-bottom:12px">请将Excel列映射到系统字段：</p>';
+  html+='<table style="width:100%;border-collapse:collapse"><thead><tr style="background:var(--gray-100)"><th style="padding:8px;text-align:left;font-size:13px">系统字段</th><th style="padding:8px;text-align:left;font-size:13px">Excel列</th></tr></thead><tbody>';
+  inventoryFields.forEach(f=>{
+    const autoMatch=headers.find(h=>{
+      const keywords={
+        materialCode:['物料编码','物料代码','物料','编码','code','material'],
+        materialName:['物料名称','名称','name','物料描述','物料名'],
+        warehouse:['仓库','warehouse','wh','库位','存储地'],
+        stock:['库存','stock','可用库存','数量','库存数量','现存量']
+      };
+      return (keywords[f.key]||[f.key]).some(k=>new RegExp(k,'i').test(h));
+    });
+    const selected=autoMatch||'';
+    html+='<tr><td style="padding:8px;font-size:13px">'+f.label+(f.required?' <span style="color:var(--danger)">*</span>':'')+'</td>'+
+      '<td style="padding:8px"><select class="inv-field-map" data-key="'+f.key+'" data-required="'+f.required+'">'+
+      opts.replace('value="'+selected.replace(/"/g,'&quot;')+'"','value="'+selected.replace(/"/g,'&quot;')+'" selected')+
+      '</select></td></tr>';
+  });
+  html+='</tbody></table>';
+  html+='<div style="margin-top:12px;font-size:12px;color:var(--gray-400)">数据预览（前3行）：<br>';
+  for(let i=1;i<Math.min(4,data.length);i++){
+    html+=data[i].slice(0,5).join(' | ')+'<br>';
+  }
+  html+='</div>';
+  html+='<input type="hidden" id="invMappingSheetName" value="'+sheetName+'">';
+  html+='<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="confirmInventoryMapping()">确认导入</button></div>';
+  openModal(html);
+}
+
+// 确认映射并执行导入
+function confirmInventoryMapping(){
+  const sheetName=document.getElementById('invMappingSheetName').value;
+  const wb=window._invMappingWb;
+  if(!wb){showToast('文件数据已丢失，请重新选择文件','error');closeModal();return;}
+  const sheet=wb.Sheets[sheetName];
+  const data=XLSX.utils.sheet_to_json(sheet,{header:1,defval:''});
+  const selects=document.querySelectorAll('.inv-field-map');
+  const mapping={};
+  let valid=true;
+  selects.forEach(sel=>{
+    const key=sel.dataset.key;
+    const val=sel.value;
+    if(sel.dataset.required==='true'&&!val){valid=false;return;}
+    mapping[key]=val;
+  });
+  if(!valid){showToast('请为所有必填字段选择对应列','error');return;}
+  
+  const h=data[0].map(c=>String(c||'').trim());
+  let count=0;
+  for(let i=1;i<data.length;i++){
+    const r=data[i];if(!r||!r[0]) continue;
+    const getVal=(fieldKey,defaultVal='')=>{
+      const colName=mapping[fieldKey];
+      if(!colName) return defaultVal;
+      const colIdx=h.indexOf(colName);
+      return colIdx>=0&&r[colIdx]?String(r[colIdx]).trim():defaultVal;
+    };
+    const getNum=(fieldKey,defaultVal=0)=>{
+      const colName=mapping[fieldKey];
+      if(!colName) return defaultVal;
+      const colIdx=h.indexOf(colName);
+      return colIdx>=0?parseFloat(r[colIdx])||0:defaultVal;
+    };
+    const matCode=getVal('materialCode');
+    if(!matCode) continue;
+    const entry={
+      materialCode: matCode,
+      materialName: getVal('materialName'),
+      warehouse: getVal('warehouse','主仓库'),
+      stock: getNum('stock',0),
+      transit: 0,
+      transitArrival: ''
+    };
+    const idx=appData.inventory.findIndex(inv=>inv.materialCode===matCode);
+    if(idx>=0) appData.inventory[idx]=entry;
+    else appData.inventory.push(entry);
+    count++;
+  }
+  closeModal();
+  renderAllMasterdata();
+  showToast('✅ 库存导入完成（'+count+'条）','success');
+}
+
+// 解析库存Sheet（保留原自动匹配方式）
 function parseInventorySheet(data, sheetName) {
   if(data.length < 2) return;
   const h = data[0].map(c=>String(c||''));
