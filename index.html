@@ -487,21 +487,31 @@ tbody tr:hover td{background:var(--primary-bg)}
       <div class="tab-content active" id="tab-mrp-config">
         <div class="alert alert-info">💡 所有参数在线可编辑，修改后自动保存。</div>
         <div class="card">
-          <div class="card-title">🏗️ 制程层级</div>
-          <div class="table-wrapper"><table id="processLevelTable"><thead><tr><th>层级</th><th>制程名称</th><th>描述</th><th>单位</th></tr></thead><tbody></tbody></table></div>
+          <div class="card-header">
+            <div class="card-title">🏗️ 制程层级 <span class="tag" id="processCount">0条</span></div>
+            <div class="card-actions">
+              <button class="btn btn-sm btn-primary" onclick="openAddProcessModal()">➕ 新增</button>
+            </div>
+          </div>
+          <div class="table-wrapper"><table id="processLevelTable"><thead><tr><th>层级</th><th>制程名称</th><th>描述</th><th>单位</th><th>操作</th></tr></thead><tbody></tbody></table></div>
         </div>
         <div class="card">
-          <div class="card-title">🔗 BOM结构配置 <span class="tag">可编辑</span></div>
+          <div class="card-header">
+            <div class="card-title">🔗 BOM结构配置 <span class="tag" id="bomConfigCount">0条</span></div>
+            <div class="card-actions">
+              <button class="btn btn-sm btn-primary" onclick="openAddBomConfigModal()">➕ 新增</button>
+            </div>
+          </div>
           <div class="table-wrapper"><table id="bomConfigTable"><thead><tr><th>父项制程</th><th>子项制程</th><th>单位用量</th><th>损耗率(%)</th><th>操作</th></tr></thead><tbody></tbody></table></div>
         </div>
         <div class="card">
-          <div class="card-title">⏱️ 交期配置 <span class="tag">可编辑</span></div>
-          <div class="table-wrapper"><table id="leadTimeTable"><thead><tr><th>制程</th><th>供应商编码</th><th>供应商名称</th><th>生产交期(天)</th><th>运输(天)</th><th>检验(天)</th></tr></thead><tbody></tbody></table></div>
-        </div>
-        <div class="card">
-          <div class="card-title">📋 审批周期 <span class="tag">可编辑</span></div>
-          <div class="table-wrapper"><table id="approvalTable"><thead><tr><th>审批节点</th><th>耗时(天)</th></tr></thead><tbody></tbody></table></div>
-          <div style="margin-top:10px;font-size:13px;color:var(--gray-500)">审批总天数：<strong id="approvalTotal">4</strong> 天</div>
+          <div class="card-header">
+            <div class="card-title">⏱️ 交期配置 <span class="tag" id="leadTimeCount">0条</span></div>
+            <div class="card-actions">
+              <button class="btn btn-sm btn-primary" onclick="openAddLeadTimeModal()">➕ 新增</button>
+            </div>
+          </div>
+          <div class="table-wrapper"><table id="leadTimeTable"><thead><tr><th>制程</th><th>供应商编码</th><th>供应商名称</th><th>生产交期(天)</th><th>运输(天)</th><th>检验(天)</th><th>操作</th></tr></thead><tbody></tbody></table></div>
         </div>
         <div style="text-align:right;margin-top:8px">
           <button class="btn btn-success" onclick="saveAllParams()">💾 保存全部参数</button>
@@ -1934,24 +1944,81 @@ function switchMrpTab(tab){
   if(tab==='mrp-rules')renderMrpRulesInfo();
 }
 function renderConfigTables(){
-  let html1='';appData.processes.forEach(p=>{html1+='<tr><td>'+p.level+'</td><td>'+p.name+'</td><td>'+p.desc+'</td><td>'+p.unit+'</td></tr>';});
+  let html1='';appData.processes.forEach((p,i)=>{html1+='<tr><td>'+p.level+'</td><td>'+p.name+'</td><td>'+(p.desc||'')+'</td><td>'+p.unit+'</td><td><button class="btn btn-sm btn-outline" onclick="deleteProcess('+i+')">🗑️</button></td></tr>';});
   document.querySelector('#processLevelTable tbody').innerHTML=html1;
+  document.getElementById('processCount').textContent=appData.processes.length+'条';
   let html2='';appData.bom.forEach((b,i)=>{html2+='<tr><td>'+b.parent+'</td><td>'+b.child+'</td><td><input class="editable" type="number" step="any" value="'+b.usage+'" data-bom-idx="'+i+'" data-field="usage"></td><td><input class="editable" type="number" step="any" value="'+b.scrap+'" data-bom-idx="'+i+'" data-field="scrap"></td><td><button class="btn btn-sm btn-outline" onclick="deleteMrpBom('+i+')">🗑️</button></td></tr>';});
   document.querySelector('#bomConfigTable tbody').innerHTML=html2;
-  let html3='';appData.leadTimes.forEach((l,i)=>{html3+='<tr><td>'+l.process+'</td><td><input class="editable" value="'+l.code+'" data-lt-idx="'+i+'" data-field="code"></td><td><input class="editable" value="'+l.name+'" data-lt-idx="'+i+'" data-field="name"></td><td><input class="editable" type="number" min="0" value="'+l.prod+'" data-lt-idx="'+i+'" data-field="prod"></td><td><input class="editable" type="number" min="0" value="'+l.trans+'" data-lt-idx="'+i+'" data-field="trans"></td><td><input class="editable" type="number" min="0" value="'+l.inspect+'" data-lt-idx="'+i+'" data-field="inspect"></td></tr>';});
+  document.getElementById('bomConfigCount').textContent=appData.bom.length+'条';
+  let html3='';appData.leadTimes.forEach((l,i)=>{html3+='<tr><td>'+l.process+'</td><td><input class="editable" value="'+l.code+'" data-lt-idx="'+i+'" data-field="code"></td><td><input class="editable" value="'+l.name+'" data-lt-idx="'+i+'" data-field="name"></td><td><input class="editable" type="number" min="0" value="'+l.prod+'" data-lt-idx="'+i+'" data-field="prod"></td><td><input class="editable" type="number" min="0" value="'+l.trans+'" data-lt-idx="'+i+'" data-field="trans"></td><td><input class="editable" type="number" min="0" value="'+l.inspect+'" data-lt-idx="'+i+'" data-field="inspect"></td><td><button class="btn btn-sm btn-outline" onclick="deleteLeadTime('+i+')">🗑️</button></td></tr>';});
   document.querySelector('#leadTimeTable tbody').innerHTML=html3;
-  let html4='';appData.approvals.forEach((a,i)=>{html4+='<tr><td>'+a.node+'</td><td><input class="editable" type="number" min="0" value="'+a.days+'" data-app-idx="'+i+'" data-field="days"></td></tr>';});
-  document.querySelector('#approvalTable tbody').innerHTML=html4;document.getElementById('approvalTotal').textContent=appData.approvals.reduce((s,a)=>s+a.days,0);
+  document.getElementById('leadTimeCount').textContent=appData.leadTimes.length+'条';
   document.querySelectorAll('#bomConfigTable .editable').forEach(el=>{el.addEventListener('change',function(){const idx=parseInt(this.dataset.bomIdx),field=this.dataset.field;if(!isNaN(idx)&&appData.bom[idx])appData.bom[idx][field]=field==='usage'||field==='scrap'?parseFloat(this.value)||0:this.value;});});
   document.querySelectorAll('#leadTimeTable .editable').forEach(el=>{el.addEventListener('change',function(){const idx=parseInt(this.dataset.ltIdx),field=this.dataset.field;if(!isNaN(idx)&&appData.leadTimes[idx]){if(field==='prod'||field==='trans'||field==='inspect')appData.leadTimes[idx][field]=parseInt(this.value)||0;else appData.leadTimes[idx][field]=this.value;}});});
-  document.querySelectorAll('#approvalTable .editable').forEach(el=>{el.addEventListener('change',function(){const idx=parseInt(this.dataset.appIdx);if(!isNaN(idx)&&appData.approvals[idx]){appData.approvals[idx].days=parseInt(this.value)||0;document.getElementById('approvalTotal').textContent=appData.approvals.reduce((s,a)=>s+a.days,0);}});});
 }
 function deleteMrpBom(idx){if(appData.bom.length<=1){showToast('至少保留一条BOM记录','warning');return;}appData.bom.splice(idx,1);appData.boms=appData.bom;renderConfigTables();}
 function saveAllParams(){
   document.querySelectorAll('#bomConfigTable .editable').forEach(el=>{const idx=parseInt(el.dataset.bomIdx),field=el.dataset.field;if(!isNaN(idx)&&appData.bom[idx])appData.bom[idx][field]=field==='usage'||field==='scrap'?parseFloat(el.value)||0:el.value;});
   document.querySelectorAll('#leadTimeTable .editable').forEach(el=>{const idx=parseInt(el.dataset.ltIdx),field=el.dataset.field;if(!isNaN(idx)&&appData.leadTimes[idx]){if(field==='prod'||field==='trans'||field==='inspect')appData.leadTimes[idx][field]=parseInt(el.value)||0;else appData.leadTimes[idx][field]=el.value;}});
-  document.querySelectorAll('#approvalTable .editable').forEach(el=>{const idx=parseInt(el.dataset.appIdx);if(!isNaN(idx)&&appData.approvals[idx])appData.approvals[idx].days=parseInt(el.value)||0;});
-  document.getElementById('approvalTotal').textContent=appData.approvals.reduce((s,a)=>s+a.days,0);showToast('✅ 所有参数已保存','success');
+  showToast('✅ 所有参数已保存','success');
+}
+function deleteProcess(idx){
+  appData.processes.splice(idx,1);
+  renderConfigTables();
+}
+function deleteLeadTime(idx){
+  appData.leadTimes.splice(idx,1);
+  renderConfigTables();
+}
+function openAddProcessModal(){
+  openModal('<div class="modal-title">新增制程 <button class="modal-close" onclick="closeModal()">×</button></div>'+
+    '<div class="grid-2"><div class="form-group"><label>层级</label><input type="number" id="formProcLevel" value="'+(appData.processes.length+1)+'" min="1"></div><div class="form-group"><label>制程名称</label><input id="formProcName" placeholder="如 FT"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>描述</label><input id="formProcDesc" placeholder="如 成品测试"></div><div class="form-group"><label>单位</label><input id="formProcUnit" value="EA" placeholder="如 EA"></div></div>'+
+    '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveNewProcess()">保存</button></div>');
+}
+function saveNewProcess(){
+  const name=document.getElementById('formProcName').value.trim();
+  if(!name){showToast('请输入制程名称','error');return;}
+  appData.processes.push({
+    level: parseInt(document.getElementById('formProcLevel').value)||appData.processes.length+1,
+    name: name,
+    desc: document.getElementById('formProcDesc').value.trim(),
+    unit: document.getElementById('formProcUnit').value.trim()||'EA'
+  });
+  closeModal();renderConfigTables();
+}
+function openAddBomConfigModal(){
+  const procOpts=appData.processes.map(p=>'<option value="'+p.name+'">'+p.name+'</option>').join('');
+  openModal('<div class="modal-title">新增BOM配置 <button class="modal-close" onclick="closeModal()">×</button></div>'+
+    '<div class="grid-2"><div class="form-group"><label>父项制程</label><select id="formBomParent">'+procOpts+'</select></div><div class="form-group"><label>子项制程</label><select id="formBomChild">'+procOpts+'</select></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>单位用量</label><input type="number" id="formBomUsage" value="1" step="any"></div><div class="form-group"><label>损耗率(%)</label><input type="number" id="formBomScrap" value="0" step="any"></div></div>'+
+    '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveNewBomConfig()">保存</button></div>');
+}
+function saveNewBomConfig(){
+  const parent=document.getElementById('formBomParent').value,child=document.getElementById('formBomChild').value;
+  if(parent===child){showToast('父项和子项不能相同','error');return;}
+  if(appData.bom.some(b=>b.parent===parent&&b.child===child)){showToast('该BOM配置已存在','warning');return;}
+  appData.bom.push({parent,child,usage:parseFloat(document.getElementById('formBomUsage').value)||1,scrap:parseFloat(document.getElementById('formBomScrap').value)||0});
+  appData.boms=appData.bom;
+  closeModal();renderConfigTables();
+}
+function openAddLeadTimeModal(){
+  const procOpts=appData.processes.map(p=>'<option value="'+p.name+'">'+p.name+'</option>').join('');
+  openModal('<div class="modal-title">新增交期配置 <button class="modal-close" onclick="closeModal()">×</button></div>'+
+    '<div class="grid-2"><div class="form-group"><label>制程</label><select id="formLtProcess">'+procOpts+'</select></div><div class="form-group"><label>供应商编码</label><input id="formLtCode" placeholder="如 SUP-FT"></div></div>'+
+    '<div class="grid-3"><div class="form-group"><label>生产交期(天)</label><input type="number" id="formLtProd" value="7" min="0"></div><div class="form-group"><label>运输(天)</label><input type="number" id="formLtTrans" value="2" min="0"></div><div class="form-group"><label>检验(天)</label><input type="number" id="formLtInspect" value="1" min="0"></div></div>'+
+    '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveNewLeadTime()">保存</button></div>');
+}
+function saveNewLeadTime(){
+  appData.leadTimes.push({
+    process: document.getElementById('formLtProcess').value,
+    code: document.getElementById('formLtCode').value.trim()||('SUP-'+document.getElementById('formLtProcess').value),
+    name: document.getElementById('formLtCode').value.trim()||('供应商-'+document.getElementById('formLtProcess').value),
+    prod: parseInt(document.getElementById('formLtProd').value)||0,
+    trans: parseInt(document.getElementById('formLtTrans').value)||0,
+    inspect: parseInt(document.getElementById('formLtInspect').value)||0
+  });
+  closeModal();renderConfigTables();
 }
 function refreshOrderSelect(){
   const sel=document.getElementById('mrpOrderSelect'),prevVal=sel.value;
