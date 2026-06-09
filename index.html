@@ -2999,6 +2999,8 @@ function renderBalanceCompare(){
   appData.inventory.forEach(i=>{
     fifoPool[i.materialCode]={stock:i.stock||0, wip:i.transit||0, wipArrival:i.transitArrival||''};
   });
+  // 清除上次渲染残留的 _consumed 标记
+  (appData.plannedOrders||[]).forEach(po=>delete po._consumed);
   const fifoPo={}; // matCode -> {remainingQty, orders[]}
   (appData.plannedOrders||[]).forEach(po=>{
     if(!fifoPo[po.materialCode]) fifoPo[po.materialCode]={remainingQty:0, orders:[]};
@@ -3062,11 +3064,24 @@ function renderBalanceCompare(){
           if(take>=po.quantity) po._consumed=true;
         }
       }
+      // 收集该物料下所有计划订单（用于显示，无论是否被FIFO消耗）
+      const allPos=(appData.plannedOrders||[]).filter(po=>po.materialCode===entry.matCode);
+      // 补充未消耗的未来订单到显示列表
+      if(allPos.length){
+        const existingSet=new Set(poNos);
+        allPos.forEach(po=>{
+          if(!existingSet.has(po.orderNo)){
+            poNos.push(po.orderNo);
+            poDates.push(po.plannedOrderDate||'');
+          }
+        });
+      }
       const totalSupply=stockEff+wipEff+poEff;
       const gap=totalSupply-entry.demandQty;
       const status=gap>=0?'<span class="tag-status tag-green">盈余</span>':'<span class="tag-status tag-red">短缺</span>';
       const poInfo=poNos.length?poNos.join(', '):'-';
-      const poQtyStr=poEff>0?poEff.toLocaleString():'-';
+      const poQtyTotal=allPos.reduce((sum,po)=>sum+po.quantity,0);
+      const poQtyStr=poQtyTotal>0?poQtyTotal.toLocaleString():'-';
       const poDateStr=poDates.length?poDates.join(', '):'-';
       tableHtml+='<tr><td>'+entry.matCode+'</td><td>'+entry.matName+'</td><td>'+entry.process+'</td><td>'+entry.demandDate+'</td><td class="font-bold">'+entry.demandQty.toLocaleString()+'</td><td>'+stockEff.toLocaleString()+'</td><td>'+wipEff.toLocaleString()+'</td><td>'+poInfo+'</td><td>'+poQtyStr+'</td><td>'+poDateStr+'</td><td class="font-bold">'+totalSupply.toLocaleString()+'</td><td style="color:'+(gap>=0?'var(--success)':'var(--danger)')+';font-weight:600">'+(gap>=0?'+':'')+gap.toLocaleString()+'</td><td>'+status+'</td></tr>';
       labels.push(entry.matCode+' ('+entry.demandDate+')');demandData.push(entry.demandQty);supplyData.push(totalSupply);
