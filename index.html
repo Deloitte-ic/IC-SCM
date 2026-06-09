@@ -1367,16 +1367,33 @@ function parseWipSheet(data,sheetName){
   if(data.length<2) return;
   const h=data[0].map(c=>String(c||'').trim());
   const matIdx=h.findIndex(c=>/(物料编码|物料|编码|material|code)/i.test(c));
-  const orderIdx=h.findIndex(c=>/(订单号|订单|order)/i.test(c));
-  const transitIdx=h.findIndex(c=>/(在制|WIP|在制数量|transit)/i.test(c));
-  const arrivalIdx=h.findIndex(c=>/(到货|到货时间|预计|arrival|date)/i.test(c));
+  const orderIdx=h.findIndex(c=>/(订单号|订单编号|订单|order)/i.test(c));
+  // 在制数量列：精确匹配优先，降级到包含"在制"的列
+  let transitIdx=h.findIndex(c=>/^(在制数量|WIP数量|在制|数量)$/i.test(c));
+  if(transitIdx<0) transitIdx=h.findIndex(c=>/(在制|WIP)/i.test(c));
+  // 到货时间列：精确匹配优先
+  let arrivalIdx=h.findIndex(c=>/^(在制到货时间|到货时间|预计到货时间|到货日期|预计到货日期)$/i.test(c));
+  if(arrivalIdx<0) arrivalIdx=h.findIndex(c=>/(到货|arrival|预计到达|预计到货)/i.test(c));
   if(matIdx<0||transitIdx<0) return;
-  let count=0;
+  let count=0, updCount=0, newCount=0;
   for(let i=1;i<data.length;i++){
-    const row=data[i];if(!row[matIdx]) continue;
+    const row=data[i];if(!row||!row[matIdx]) continue;
     const matCode=String(row[matIdx]).trim();
-    const transit=parseFloat(row[transitIdx])||0;
-    const arrival=arrivalIdx>=0&&row[arrivalIdx]?String(row[arrivalIdx]).trim():'';
+    // 处理在制数量：支持数值、字符串、Excel日期序列号
+    const transitRaw=row[transitIdx];
+    const transit=typeof transitRaw==='number'&&transitRaw>0&&transitRaw<100000000 ? transitRaw : (parseFloat(transitRaw)||0);
+    // 处理到货时间：支持日期字符串、Excel日期序列号
+    let arrival='';
+    if(arrivalIdx>=0&&row[arrivalIdx]!=null&&row[arrivalIdx]!==''){
+      const raw=row[arrivalIdx];
+      if(typeof raw==='number'&&raw>40000&&raw<200000){
+        // Excel日期序列号→转日期字符串
+        const d=new Date(Math.round((raw-25569)*86400*1000));
+        arrival=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+      }else{
+        arrival=String(raw).trim();
+      }
+    }
     const orderNo=orderIdx>=0&&row[orderIdx]?String(row[orderIdx]).trim():'';
     // 匹配逻辑：如果导入订单号为空，则仅按物料编码匹配（兼容旧数据）；否则双条件匹配
     let idx = -1;
@@ -1389,13 +1406,15 @@ function parseWipSheet(data,sheetName){
       appData.inventory[idx].transit=transit;
       if(arrival) appData.inventory[idx].transitArrival=arrival;
       if(orderNo) appData.inventory[idx].orderNo=orderNo;
+      updCount++;
     }else{
       const mat=appData.materials.find(m=>m.code===matCode);
       appData.inventory.push({materialCode:matCode,materialName:mat?mat.name:'',warehouse:'',stock:0,safetyStock:0,transit:transit,transitArrival:arrival||'',orderNo:orderNo});
+      newCount++;
     }
     count++;
   }
-  showToast('✅ 在制品导入完成（'+count+'条）','success');
+  showToast('✅ 在制品导入完成：共'+count+'条（更新'+updCount+'条，新增'+newCount+'条）','success');
 }
 
 // 解析供应商Sheet
