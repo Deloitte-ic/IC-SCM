@@ -2343,21 +2343,34 @@ function loadPlannedOrdersFromStorage(){
     const raw=localStorage.getItem(STORAGE_KEY_PLANNED);
     if(!raw) return false;
     appData.plannedOrders=JSON.parse(raw)||[];
+    // 数据迁移：计划订单号 PO- → PlOrd-，采购订单号 POC- → PO-
+    let migrated=false;
+    appData.plannedOrders.forEach(o=>{
+      if(o.orderNo&&o.orderNo.startsWith('PO-')){
+        o.orderNo='PlOrd'+o.orderNo.substring(2);
+        migrated=true;
+      }
+      if(o.poNumber&&o.poNumber.startsWith('POC-')){
+        o.poNumber='PO'+o.poNumber.substring(3);
+        migrated=true;
+      }
+    });
+    if(migrated) localStorage.setItem(STORAGE_KEY_PLANNED,JSON.stringify(appData.plannedOrders));
     return true;
   }catch(e){appData.plannedOrders=[];return false;}
 }
 
-// 生成计划订单号 PO-YYYYMMDD-NNN
+// 生成计划订单号 PlOrd-YYYYMMDD-NNN
 function generateOrderNo(){
   const today=new Date().toISOString().split('T')[0].replace(/-/g,'');
-  const existing=appData.plannedOrders.filter(o=>o.orderNo.startsWith('PO-'+today)).length;
-  return 'PO-'+today+'-'+String(existing+1).padStart(3,'0');
+  const existing=appData.plannedOrders.filter(o=>o.orderNo.startsWith('PlOrd-'+today)).length;
+  return 'PlOrd-'+today+'-'+String(existing+1).padStart(3,'0');
 }
 
-// 生成通用单据号 PR/POC-YYYYMMDD-NNN
+// 生成通用单据号 PR/PO-YYYYMMDD-NNN
 function generateDocNumber(prefix){
   const today=new Date().toISOString().split('T')[0].replace(/-/g,'');
-  const fieldMap={PR:'prNumber',POC:'poNumber'};
+  const fieldMap={PR:'prNumber',PO:'poNumber'};
   const field=fieldMap[prefix];
   const existing=appData.plannedOrders.filter(o=>o[field]&&o[field].startsWith(prefix+'-'+today)).length;
   return prefix+'-'+today+'-'+String(existing+1).padStart(3,'0');
@@ -2381,7 +2394,7 @@ function convertToPO(matCode,plannedArrivalDate){
   if(!po){showToast('⚠️ 请先创建计划订单','warning');return;}
   if(!po.prNumber){showToast('⚠️ 请先创建采购申请PR','warning');return;}
   if(po.poNumber){showToast('该订单已转PO：'+po.poNumber,'warning');return;}
-  po.poNumber=generateDocNumber('POC');
+  po.poNumber=generateDocNumber('PO');
   po.poDate=new Date().toLocaleString();
   savePlannedOrdersToStorage();
   renderProcurementList(appData.mrpResult);
