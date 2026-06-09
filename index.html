@@ -884,8 +884,13 @@ function handleUnifiedUpload(event) {
           parsedCount++;
           hasAutoJump = true;
           autoJumpTab = null; // 跳转到需求预测页
-        } else if (/(库存|WIP|在制)/.test(upperName)) {
+        } else if (/(库存)/.test(upperName)) {
           parseInventorySheet(data, sheetName);
+          parsedCount++;
+          hasAutoJump = true;
+          autoJumpTab = 'md-inventory';
+        } else if (/(WIP|在制)/.test(upperName)) {
+          parseWipSheet(data, sheetName);
           parsedCount++;
           hasAutoJump = true;
           autoJumpTab = 'md-inventory';
@@ -1271,16 +1276,17 @@ function confirmInventoryMapping(){
     };
     const matCode=getVal('materialCode');
     if(!matCode) continue;
+    const idx=appData.inventory.findIndex(inv=>inv.materialCode===matCode);
+    const existing = idx>=0 ? appData.inventory[idx] : null;
     const entry={
       materialCode: matCode,
-      materialName: getVal('materialName'),
-      safetyStock: getNum('safetyStock',0),
-      warehouse: getVal('warehouse','主仓库'),
-      stock: getNum('stock',0),
-      transit: 0,
-      transitArrival: ''
+      materialName: getVal('materialName') || (existing?existing.materialName:''),
+      safetyStock: getNum('safetyStock', existing ? (existing.safetyStock||0) : 0),
+      warehouse: getVal('warehouse', existing?existing.warehouse:'主仓库'),
+      stock: getNum('stock', existing?existing.stock:0),
+      transit: existing ? existing.transit : 0,
+      transitArrival: existing ? existing.transitArrival : ''
     };
-    const idx=appData.inventory.findIndex(inv=>inv.materialCode===matCode);
     if(idx>=0) appData.inventory[idx]=entry;
     else appData.inventory.push(entry);
     count++;
@@ -1308,16 +1314,17 @@ function parseInventorySheet(data, sheetName) {
     const r = data[i];
     if(!r || !r[mIdx]) continue;
     const matCode = String(r[mIdx]).trim();
+    const idx=appData.inventory.findIndex(inv=>inv.materialCode===matCode);
+    const existing = idx>=0 ? appData.inventory[idx] : null;
     const entry = {
       materialCode: matCode,
-      materialName: nIdx>=0 && r[nIdx] ? String(r[nIdx]).trim() : '',
-      safetyStock: saIdx>=0 ? parseFloat(r[saIdx])||0 : 0,
-      warehouse: wIdx>=0 && r[wIdx] ? String(r[wIdx]).trim() : '主仓库',
-      stock: sIdx>=0 ? parseFloat(r[sIdx])||0 : 0,
-      transit: tIdx>=0 ? parseFloat(r[tIdx])||0 : 0,
-      transitArrival: aIdx>=0 && r[aIdx] ? String(r[aIdx]).trim() : ''
+      materialName: nIdx>=0 && r[nIdx] ? String(r[nIdx]).trim() : (existing?existing.materialName:''),
+      safetyStock: saIdx>=0 ? parseFloat(r[saIdx])||0 : (existing?(existing.safetyStock||0):0),
+      warehouse: wIdx>=0 && r[wIdx] ? String(r[wIdx]).trim() : (existing?existing.warehouse:'主仓库'),
+      stock: sIdx>=0 ? parseFloat(r[sIdx])||0 : (existing?existing.stock:0),
+      transit: existing ? existing.transit : (tIdx>=0 ? parseFloat(r[tIdx])||0 : 0),
+      transitArrival: existing ? existing.transitArrival : (aIdx>=0 && r[aIdx] ? String(r[aIdx]).trim() : '')
     };
-    const idx=appData.inventory.findIndex(inv=>inv.materialCode===matCode);
     if(idx>=0) appData.inventory[idx]=entry;
     else appData.inventory.push(entry);
   }
@@ -1371,10 +1378,17 @@ function parseWipSheet(data,sheetName){
     const transit=parseFloat(row[transitIdx])||0;
     const arrival=arrivalIdx>=0&&row[arrivalIdx]?String(row[arrivalIdx]).trim():'';
     const orderNo=orderIdx>=0&&row[orderIdx]?String(row[orderIdx]).trim():'';
-    const idx=appData.inventory.findIndex(inv=>inv.materialCode===matCode&&inv.orderNo===orderNo);
+    // 匹配逻辑：如果导入订单号为空，则仅按物料编码匹配（兼容旧数据）；否则双条件匹配
+    let idx = -1;
+    if(orderNo) {
+      idx = appData.inventory.findIndex(inv=>inv.materialCode===matCode&&inv.orderNo===orderNo);
+    } else {
+      idx = appData.inventory.findIndex(inv=>inv.materialCode===matCode&&(!inv.orderNo||inv.orderNo===''));
+    }
     if(idx>=0){
       appData.inventory[idx].transit=transit;
       if(arrival) appData.inventory[idx].transitArrival=arrival;
+      if(orderNo) appData.inventory[idx].orderNo=orderNo;
     }else{
       const mat=appData.materials.find(m=>m.code===matCode);
       appData.inventory.push({materialCode:matCode,materialName:mat?mat.name:'',warehouse:'',stock:0,safetyStock:0,transit:transit,transitArrival:arrival||'',orderNo:orderNo});
@@ -1787,7 +1801,7 @@ function openAddWipModal() {
 function saveWip() {
   const matCode=document.getElementById('formWipMat').value,qty=parseFloat(document.getElementById('formWipQty').value)||0,arrival=document.getElementById('formWipArrival').value,orderNo=document.getElementById('formWipOrderNo').value.trim();
   if(!qty||!arrival){showToast('请填写数量和到货时间','error');return;}
-  const inv=appData.inventory.find(i=>i.materialCode===matCode&&i.orderNo===orderNo);
+  const inv=appData.inventory.find(i=>i.materialCode===matCode&&(orderNo ? i.orderNo===orderNo : (!i.orderNo||i.orderNo==='')));
   if(inv){inv.transit=(inv.transit||0)+qty;inv.transitArrival=arrival;inv.orderNo=orderNo;}
   else{const mat=appData.materials.find(m=>m.code===matCode);appData.inventory.push({materialCode:matCode,materialName:mat?mat.name:'',warehouse:'在制',stock:0,safetyStock:0,transit:qty,transitArrival:arrival,orderNo:orderNo});}
   closeModal();renderAllMasterdata();showToast('✅ 在制信息已更新','success');
