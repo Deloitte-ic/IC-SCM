@@ -446,7 +446,7 @@ tbody tr:hover td{background:var(--primary-bg)}
               <button class="btn btn-sm btn-primary" onclick="openAddPrpoModal()">➕ 新增</button>
             </div>
           </div>
-          <div class="table-wrapper"><table id="prpoTable"><thead><tr><th>订单类型</th><th>订单编号</th><th>物料编码</th><th>物料描述</th><th>数量</th><th>单位</th><th>需求日期</th></tr></thead><tbody></tbody></table></div>
+          <div class="table-wrapper"><table id="prpoTable"><thead><tr><th>订单类型</th><th>订单编号</th><th>物料编码</th><th>物料描述</th><th>数量</th><th>单位</th><th>到货日</th></tr></thead><tbody></tbody></table></div>
         </div>
       </div>
     </div>
@@ -1468,7 +1468,7 @@ function parsePrpoSheet(data,sheetName){
   const nameIdx=h.findIndex(c=>/^(物料描述|物料名称|描述|名称|description|materialname|name)$/i.test(c));
   const qtyIdx=h.findIndex(c=>/^(数量|采购数量|订单数量|quantity|qty|orderqty)$/i.test(c));
   const unitIdx=h.findIndex(c=>/^(单位|计量单位|unit|uom)$/i.test(c));
-  const dateIdx=h.findIndex(c=>/^(需求日期|日期|到货日期|交货日期|需求时间|date|demanddate|requireddate)$/i.test(c));
+  const dateIdx=h.findIndex(c=>/^(到货日|需求日期|日期|到货日期|交货日期|需求时间|date|demanddate|requireddate|arrivaldate)$/i.test(c));
   if(typeIdx<0||matIdx<0) return;
   let count=0;
   for(let i=1;i<data.length;i++){
@@ -1936,7 +1936,7 @@ function openAddPrpoModal() {
     '<div class="form-group"><label>物料</label><select id="formPrpoMat">'+matOpts+'</select></div></div>'+
     '<div class="grid-2"><div class="form-group"><label>数量</label><input type="number" id="formPrpoQty" value="0"></div>'+
     '<div class="form-group"><label>单位</label><input id="formPrpoUnit" placeholder="自动从物料带出"></div></div>'+
-    '<div class="form-group"><label>需求日期</label><input type="date" id="formPrpoDate"></div>'+
+    '<div class="form-group"><label>到货日</label><input type="date" id="formPrpoDate"></div>'+
     '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveNewPrpo()">保存</button></div>');
   // 物料选择联动：自动填充单位
   document.getElementById('formPrpoMat').onchange=function(){
