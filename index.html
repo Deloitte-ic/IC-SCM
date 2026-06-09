@@ -214,6 +214,8 @@ tbody tr:hover td{background:var(--primary-bg)}
 .tag-red{background:#fef2f2;color:#991b1b}
 .tag-yellow{background:#fffbeb;color:#92400e}
 .tag-blue{background:var(--primary-bg);color:var(--primary-dark)}
+.tag-indigo{background:#eef2ff;color:#3730a3}
+.tag-purple{background:#f5f3ff;color:#5b21b6}
 .tag-orange{background:#fff7ed;color:#9a3412}
 .progress-bar{height:8px;background:var(--gray-200);border-radius:4px;overflow:hidden;margin-top:6px}
 .progress-bar .fill{height:100%;border-radius:4px;transition:width .8s ease}
@@ -2352,6 +2354,40 @@ function generateOrderNo(){
   return 'PO-'+today+'-'+String(existing+1).padStart(3,'0');
 }
 
+// 生成通用单据号 PR/POC-YYYYMMDD-NNN
+function generateDocNumber(prefix){
+  const today=new Date().toISOString().split('T')[0].replace(/-/g,'');
+  const fieldMap={PR:'prNumber',POC:'poNumber'};
+  const field=fieldMap[prefix];
+  const existing=appData.plannedOrders.filter(o=>o[field]&&o[field].startsWith(prefix+'-'+today)).length;
+  return prefix+'-'+today+'-'+String(existing+1).padStart(3,'0');
+}
+
+// 计划订单转采购申请PR
+function convertToPR(matCode,plannedArrivalDate){
+  const po=appData.plannedOrders.find(o=>o.materialCode===matCode&&o.plannedArrivalDate===plannedArrivalDate);
+  if(!po){showToast('⚠️ 请先创建计划订单','warning');return;}
+  if(po.prNumber){showToast('该订单已创建PR：'+po.prNumber,'warning');return;}
+  po.prNumber=generateDocNumber('PR');
+  po.prDate=new Date().toLocaleString();
+  savePlannedOrdersToStorage();
+  renderProcurementList(appData.mrpResult);
+  showToast('✅ 采购申请 '+po.prNumber+' 已创建','success');
+}
+
+// 采购申请PR转采购订单PO
+function convertToPO(matCode,plannedArrivalDate){
+  const po=appData.plannedOrders.find(o=>o.materialCode===matCode&&o.plannedArrivalDate===plannedArrivalDate);
+  if(!po){showToast('⚠️ 请先创建计划订单','warning');return;}
+  if(!po.prNumber){showToast('⚠️ 请先创建采购申请PR','warning');return;}
+  if(po.poNumber){showToast('该订单已转PO：'+po.poNumber,'warning');return;}
+  po.poNumber=generateDocNumber('POC');
+  po.poDate=new Date().toLocaleString();
+  savePlannedOrdersToStorage();
+  renderProcurementList(appData.mrpResult);
+  showToast('✅ 采购订单 '+po.poNumber+' 已创建','success');
+}
+
 // 创建计划订单
 function createPlannedOrder(matCode,matName,process,quantity,unit,plannedOrderDate,plannedArrivalDate,action,supplier){
   const existing=appData.plannedOrders.find(o=>o.materialCode===matCode&&o.plannedArrivalDate===plannedArrivalDate);
@@ -2649,14 +2685,29 @@ function renderProcurementList(results){
   const needProcurement=results.filter(r=>r.netRemaining>0);
   document.getElementById('procurementCount').textContent=needProcurement.length+'项';
   const container=document.getElementById('procurementTable');
-  if(!needProcurement.length){container.querySelector('tbody').innerHTML='<tr><td colspan="11" style="text-align:center;color:var(--gray-400)">所有物料库存充足，无需采购/委外</td></tr>';return;}
+  if(!needProcurement.length){container.querySelector('tbody').innerHTML='<tr><td colspan="12" style="text-align:center;color:var(--gray-400)">所有物料库存充足，无需采购/委外</td></tr>';return;}
   let html='';
   needProcurement.forEach((r,idx)=>{
     const isPurchase=r.action.indexOf('采购')>=0;
     const po=appData.plannedOrders.find(o=>o.materialCode===r.matCode&&o.plannedArrivalDate===r.plannedArrival);
-    const btnHtml=po?'<span class="tag-status tag-green" title="'+po.orderNo+'">✅ '+po.orderNo+'</span>'
-      :'<button class="btn btn-sm btn-primary" onclick="createPlannedOrder(\''+r.matCode+'\',\''+r.matName+'\',\''+r.process+'\','+r.netRemaining+',\''+r.unit+'\',\''+(r.plannedOrderDate||'')+'\',\''+r.plannedArrival+'\',\''+r.action+'\',\''+(r.supplier||'')+'\')">📋 创建计划订单</button>';
-    html+='<tr><td>'+(idx+1)+'</td><td style="font-weight:500">'+r.matCode+'</td><td>'+r.matName+'</td><td>'+r.process+'</td><td>'+r.action+'</td><td class="font-bold" style="color:'+(isPurchase?'var(--warning)':'var(--primary)')+'">'+r.netRemaining.toLocaleString()+'</td><td>'+r.unit+'</td><td>'+(r.plannedArrival||'-')+'</td><td>'+(r.plannedOrderDate||'-')+'</td><td>'+r.supplier+'</td><td><span class="tag-status '+(isPurchase?'tag-yellow':'tag-blue')+'">'+(isPurchase?'采购':'委外')+'</span></td><td>'+btnHtml+'</td></tr>';
+    let btnHtml='';
+    if(!po){
+      btnHtml='<button class="btn btn-sm btn-primary" onclick="createPlannedOrder(\''+r.matCode+'\',\''+r.matName+'\',\''+r.process+'\','+r.netRemaining+',\''+r.unit+'\',\''+(r.plannedOrderDate||'')+'\',\''+r.plannedArrival+'\',\''+r.action+'\',\''+(r.supplier||'')+'\')">📋 创建计划订单</button>';
+    }else{
+      const actions=['<span class="tag-status tag-green" title="'+po.orderNo+'">✅ '+po.orderNo+'</span>'];
+      if(!po.prNumber){
+        actions.push('<button class="btn btn-sm btn-warning" onclick="convertToPR(\''+r.matCode+'\',\''+r.plannedArrival+'\')">📋 转采PR</button>');
+      }else{
+        actions.push('<span class="tag-status tag-indigo" title="'+po.prNumber+'">✅ '+po.prNumber+'</span>');
+        if(!po.poNumber){
+          actions.push('<button class="btn btn-sm btn-danger" onclick="convertToPO(\''+r.matCode+'\',\''+r.plannedArrival+'\')">📋 转PO</button>');
+        }else{
+          actions.push('<span class="tag-status tag-purple" title="'+po.poNumber+'">✅ '+po.poNumber+'</span>');
+        }
+      }
+      btnHtml=actions.join(' ');
+    }
+    html+='<tr><td>'+(idx+1)+'</td><td style="font-weight:500">'+r.matCode+'</td><td>'+r.matName+'</td><td>'+r.process+'</td><td>'+r.action+'</td><td class="font-bold" style="color:'+(isPurchase?'var(--warning)':'var(--primary)')+'">'+r.netRemaining.toLocaleString()+'</td><td>'+r.unit+'</td><td>'+(r.plannedArrival||'-')+'</td><td>'+(r.plannedOrderDate||'-')+'</td><td>'+r.supplier+'</td><td><span class="tag-status '+(isPurchase?'tag-yellow':'tag-blue')+'">'+(isPurchase?'采购':'委外')+'</span></td><td style="white-space:nowrap">'+btnHtml+'</td></tr>';
   });
   container.querySelector('tbody').innerHTML=html;
 }
