@@ -589,7 +589,7 @@ tbody tr:hover td{background:var(--primary-bg)}
               </div>
             </div>
             <div class="table-wrapper"><table id="mrpResultTable"><thead><tr>
-              <th>层级</th><th>制程</th><th>物料编码</th><th>物料名称</th><th>需求日期</th><th>建议动作</th><th>供应商</th><th>需求类型</th><th>单位</th><th>净需求</th><th>损耗率</th><th>毛需求</th><th>可用库存</th><th>WIP</th><th>WIP到货日</th><th>PR</th><th>PR到货日</th><th>PO</th><th>PO到货日</th><th>净待补</th><th>PlOrd到货日</th><th>PlOrd下单日</th>
+              <th>层级</th><th>制程</th><th>物料编码</th><th>物料名称</th><th>需求日期</th><th>建议动作</th><th>供应商</th><th>需求类型</th><th>单位</th><th>净需求</th><th>损耗率</th><th>毛需求</th><th>可用库存</th><th>WIP</th><th>WIP到货日</th><th>Open PR</th><th>Open PR到货日</th><th>Open PO</th><th>Open PO到货日</th><th>净待补</th><th>PlOrd到货日</th><th>PlOrd下单日</th>
             </tr></thead><tbody></tbody></table></div>
           </div>
 
@@ -2883,7 +2883,7 @@ function renderGantt(results){
   document.getElementById('ganttLegend').innerHTML='<div class="gantt-legend-item"><div class="dot" style="background:linear-gradient(135deg,#2563eb,#3b82f6)"></div>采购+生产周期</div><div class="gantt-legend-item"><div class="dot" style="background:linear-gradient(135deg,#10b981,#34d399)"></div>库存满足</div>';
 }
 function exportMRPResult(){
-  const rows=[];document.querySelectorAll('#mrpResultTable tbody tr').forEach(tr=>{const tds=tr.querySelectorAll('td');if(tds.length>=22)rows.push({'层级':tds[0].textContent.trim(),'制程':tds[1].textContent.trim(),'物料编码':tds[2].textContent.trim(),'物料名称':tds[3].textContent.trim(),'需求日期':tds[4].textContent.trim(),'建议动作':tds[5].textContent.trim(),'供应商':tds[6].textContent.trim(),'需求类型':tds[7].textContent.trim(),'单位':tds[8].textContent.trim(),'净需求':tds[9].textContent.trim(),'损耗率':tds[10].textContent.trim(),'毛需求':tds[11].textContent.trim(),'可用库存':tds[12].textContent.trim(),'WIP':tds[13].textContent.trim(),'WIP到货日':tds[14].textContent.trim(),'PR':tds[15].textContent.trim(),'PR到货日':tds[16].textContent.trim(),'PO':tds[17].textContent.trim(),'PO到货日':tds[18].textContent.trim(),'净待补':tds[19].textContent.trim(),'PlOrd到货日':tds[20].textContent.trim(),'PlOrd下单日':tds[21].textContent.trim()});});
+  const rows=[];document.querySelectorAll('#mrpResultTable tbody tr').forEach(tr=>{const tds=tr.querySelectorAll('td');if(tds.length>=22)rows.push({'层级':tds[0].textContent.trim(),'制程':tds[1].textContent.trim(),'物料编码':tds[2].textContent.trim(),'物料名称':tds[3].textContent.trim(),'需求日期':tds[4].textContent.trim(),'建议动作':tds[5].textContent.trim(),'供应商':tds[6].textContent.trim(),'需求类型':tds[7].textContent.trim(),'单位':tds[8].textContent.trim(),'净需求':tds[9].textContent.trim(),'损耗率':tds[10].textContent.trim(),'毛需求':tds[11].textContent.trim(),'可用库存':tds[12].textContent.trim(),'WIP':tds[13].textContent.trim(),'WIP到货日':tds[14].textContent.trim(),'Open PR':tds[15].textContent.trim(),'Open PR到货日':tds[16].textContent.trim(),'Open PO':tds[17].textContent.trim(),'Open PO到货日':tds[18].textContent.trim(),'净待补':tds[19].textContent.trim(),'PlOrd到货日':tds[20].textContent.trim(),'PlOrd下单日':tds[21].textContent.trim()});});
   if(!rows.length){showToast('没有可导出的数据','warning');return;}
   const ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'MRP运算结果');XLSX.writeFile(wb,'MRP运算结果_'+new Date().toISOString().split('T')[0]+'.xlsx');showToast('✅ 导出成功','success');
 }
