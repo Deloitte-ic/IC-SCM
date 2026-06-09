@@ -429,7 +429,7 @@ tbody tr:hover td{background:var(--primary-bg)}
               <button class="btn btn-sm btn-primary" onclick="openAddWipModal()">➕ 新增</button>
             </div>
           </div>
-          <div class="table-wrapper"><table id="wipTable"><thead><tr><th>物料编码</th><th>物料名称</th><th>在制数量</th><th>在制到货日</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+          <div class="table-wrapper"><table id="wipTable"><thead><tr><th>物料编码</th><th>物料名称</th><th>计量单位</th><th>订单号</th><th>在制数量</th><th>在制到货时间</th><th>操作</th></tr></thead><tbody></tbody></table></div>
         </div>
       </div>
     </div>
@@ -1355,8 +1355,9 @@ function parseWipSheet(data,sheetName){
   if(data.length<2) return;
   const h=data[0].map(c=>String(c||'').trim());
   const matIdx=h.findIndex(c=>/(物料编码|物料|编码|material|code)/i.test(c));
+  const orderIdx=h.findIndex(c=>/(订单号|订单|order)/i.test(c));
   const transitIdx=h.findIndex(c=>/(在制|WIP|在制数量|transit)/i.test(c));
-  const arrivalIdx=h.findIndex(c=>/(到货|到货日|预计|arrival|date)/i.test(c));
+  const arrivalIdx=h.findIndex(c=>/(到货|到货时间|预计|arrival|date)/i.test(c));
   if(matIdx<0||transitIdx<0) return;
   let count=0;
   for(let i=1;i<data.length;i++){
@@ -1364,13 +1365,14 @@ function parseWipSheet(data,sheetName){
     const matCode=String(row[matIdx]).trim();
     const transit=parseFloat(row[transitIdx])||0;
     const arrival=arrivalIdx>=0&&row[arrivalIdx]?String(row[arrivalIdx]).trim():'';
-    const idx=appData.inventory.findIndex(inv=>inv.materialCode===matCode);
+    const orderNo=orderIdx>=0&&row[orderIdx]?String(row[orderIdx]).trim():'';
+    const idx=appData.inventory.findIndex(inv=>inv.materialCode===matCode&&inv.orderNo===orderNo);
     if(idx>=0){
       appData.inventory[idx].transit=transit;
       if(arrival) appData.inventory[idx].transitArrival=arrival;
     }else{
       const mat=appData.materials.find(m=>m.code===matCode);
-      appData.inventory.push({materialCode:matCode,materialName:mat?mat.name:'',warehouse:'',stock:0,transit:transit,transitArrival:arrival||''});
+      appData.inventory.push({materialCode:matCode,materialName:mat?mat.name:'',warehouse:'',stock:0,transit:transit,transitArrival:arrival||'',orderNo:orderNo});
     }
     count++;
   }
@@ -1585,9 +1587,11 @@ function renderAllMasterdata() {
   const wipItems = appData.inventory.filter(inv=>inv.transit&&inv.transit>0);
   wipItems.forEach((inv,idx)=>{
     const origIdx = appData.inventory.indexOf(inv);
-    whtml += '<tr><td>'+inv.materialCode+'</td><td>'+inv.materialName+'</td><td class="font-bold">'+(inv.transit||0).toLocaleString()+'</td><td>'+(inv.transitArrival||'-')+'</td><td><button class="btn btn-sm btn-outline" onclick="editWip('+origIdx+')">✏️</button><button class="btn btn-sm btn-outline" onclick="clearWip('+origIdx+')">🗑️</button></td></tr>';
+    const mat = appData.materials.find(m=>m.code===inv.materialCode);
+    const unit = mat ? (mat.unit||'-') : '-';
+    whtml += '<tr><td>'+inv.materialCode+'</td><td>'+inv.materialName+'</td><td>'+unit+'</td><td>'+(inv.orderNo||'-')+'</td><td class="font-bold">'+(inv.transit||0).toLocaleString()+'</td><td>'+(inv.transitArrival||'-')+'</td><td><button class="btn btn-sm btn-outline" onclick="editWip('+origIdx+')">✏️</button><button class="btn btn-sm btn-outline" onclick="clearWip('+origIdx+')">🗑️</button></td></tr>';
   });
-  document.querySelector('#wipTable tbody').innerHTML = whtml || '<tr><td colspan="5" style="text-align:center;color:var(--gray-400)">暂无在制数据</td></tr>';
+  document.querySelector('#wipTable tbody').innerHTML = whtml || '<tr><td colspan="7" style="text-align:center;color:var(--gray-400)">暂无在制数据</td></tr>';
   document.getElementById('wipCount').textContent = wipItems.length+'条';
   // 每次渲染主数据时同步保存到 localStorage（确保编辑/删除/新增后持久化）
   saveMasterdataToStorage();
@@ -1768,33 +1772,39 @@ function saveNewInventory() {
   closeModal();renderAllMasterdata();showToast('✅ 库存添加成功','success');
 }
 function openAddWipModal() {
-  const matOpts=appData.materials.map(m=>'<option value="'+m.code+'">'+m.code+' - '+m.name+'</option>').join('');
+  const matOpts=appData.materials.map(m=>'<option value="'+m.code+'">'+m.code+' - '+m.name+'（'+m.unit+'）</option>').join('');
   openModal('<div class="modal-title">在制录入 <button class="modal-close" onclick="closeModal()">×</button></div>'+
     '<div class="form-group"><label>物料</label><select id="formWipMat">'+matOpts+'</select></div>'+
-    '<div class="grid-2"><div class="form-group"><label>在制数量</label><input type="number" id="formWipQty" value="0"></div><div class="form-group"><label>预计到货日</label><input type="date" id="formWipArrival"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>订单号</label><input type="text" id="formWipOrderNo"></div><div class="form-group"><label>在制数量</label><input type="number" id="formWipQty" value="0"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>预计到货时间</label><input type="date" id="formWipArrival"></div></div>'+
     '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveWip()">保存</button></div>');
 }
 function saveWip() {
-  const matCode=document.getElementById('formWipMat').value,qty=parseFloat(document.getElementById('formWipQty').value)||0,arrival=document.getElementById('formWipArrival').value;
-  if(!qty||!arrival){showToast('请填写数量和到货日','error');return;}
-  const inv=appData.inventory.find(i=>i.materialCode===matCode);
-  if(inv){inv.transit=(inv.transit||0)+qty;inv.transitArrival=arrival;}
-  else{const mat=appData.materials.find(m=>m.code===matCode);appData.inventory.push({materialCode:matCode,materialName:mat?mat.name:'',warehouse:'在制',stock:0,transit:qty,transitArrival:arrival});}
+  const matCode=document.getElementById('formWipMat').value,qty=parseFloat(document.getElementById('formWipQty').value)||0,arrival=document.getElementById('formWipArrival').value,orderNo=document.getElementById('formWipOrderNo').value.trim();
+  if(!qty||!arrival){showToast('请填写数量和到货时间','error');return;}
+  const inv=appData.inventory.find(i=>i.materialCode===matCode&&i.orderNo===orderNo);
+  if(inv){inv.transit=(inv.transit||0)+qty;inv.transitArrival=arrival;inv.orderNo=orderNo;}
+  else{const mat=appData.materials.find(m=>m.code===matCode);appData.inventory.push({materialCode:matCode,materialName:mat?mat.name:'',warehouse:'在制',stock:0,transit:qty,transitArrival:arrival,orderNo:orderNo});}
   closeModal();renderAllMasterdata();showToast('✅ 在制信息已更新','success');
 }
 function editWip(idx){
   const inv=appData.inventory[idx];
   if(!inv) return;
+  const mat = appData.materials.find(m=>m.code===inv.materialCode);
+  const unit = mat ? (mat.unit||'-') : '-';
   openModal('<div class="modal-title">编辑在制品 <button class="modal-close" onclick="closeModal()">×</button></div>'+
     '<div class="form-group"><label>物料编码</label><input id="formWipMatEdit" value="'+escapeHtml(inv.materialCode)+'" readonly></div>'+
-    '<div class="grid-2"><div class="form-group"><label>在制数量</label><input type="number" id="formWipTransitEdit" value="'+(inv.transit||0)+'"></div>'+
-    '<div class="form-group"><label>在制到货日</label><input type="date" id="formWipArrivalEdit" value="'+(inv.transitArrival||'')+'"></div></div>'+
+    '<div class="form-group"><label>计量单位</label><input value="'+unit+'" readonly></div>'+
+    '<div class="grid-2"><div class="form-group"><label>订单号</label><input type="text" id="formWipOrderNoEdit" value="'+escapeHtml(inv.orderNo||'')+'"></div>'+
+    '<div class="form-group"><label>在制数量</label><input type="number" id="formWipTransitEdit" value="'+(inv.transit||0)+'"></div></div>'+
+    '<div class="form-group"><label>在制到货时间</label><input type="date" id="formWipArrivalEdit" value="'+(inv.transitArrival||'')+'"></div>'+
     '<input type="hidden" id="editWipIdx" value="'+idx+'">'+
     '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveEditWip()">保存</button></div>');
 }
 function saveEditWip(){
   const idx=parseInt(document.getElementById('editWipIdx').value);
   if(isNaN(idx)||!appData.inventory[idx]){showToast('数据异常','error');return;}
+  appData.inventory[idx].orderNo=document.getElementById('formWipOrderNoEdit').value.trim();
   appData.inventory[idx].transit=parseFloat(document.getElementById('formWipTransitEdit').value)||0;
   appData.inventory[idx].transitArrival=document.getElementById('formWipArrivalEdit').value||'';
   closeModal();renderAllMasterdata();showToast('✅ 在制品已更新','success');
@@ -1802,6 +1812,7 @@ function saveEditWip(){
 function clearWip(idx){
   appData.inventory[idx].transit=0;
   appData.inventory[idx].transitArrival='';
+  appData.inventory[idx].orderNo='';
   renderAllMasterdata();
   showToast('✅ 在制已清除','success');
 }
