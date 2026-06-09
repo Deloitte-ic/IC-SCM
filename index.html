@@ -405,7 +405,7 @@ tbody tr:hover td{background:var(--primary-bg)}
       <div class="tabs" id="businessTabs">
         <div class="tab active" data-tab="bd-inventory" onclick="switchBusinessTab('bd-inventory')">📦 库存</div>
         <div class="tab" data-tab="bd-wip" onclick="switchBusinessTab('bd-wip')">🏗️ 在制品</div>
-        <div class="tab" data-tab="bd-prpo" onclick="switchBusinessTab('bd-prpo')">📋 PR/PO</div>
+        <div class="tab" data-tab="bd-prpo" onclick="switchBusinessTab('bd-prpo')">📋 Open PR/Open PO</div>
       </div>
 
       <div class="tab-content active" id="tab-bd-inventory">
@@ -439,7 +439,7 @@ tbody tr:hover td{background:var(--primary-bg)}
       <div class="tab-content" id="tab-bd-prpo">
         <div class="card">
           <div class="card-header">
-            <div class="card-title">📋 PR/PO <span class="tag" id="prpoCount">0条</span></div>
+            <div class="card-title">📋 Open PR/Open PO <span class="tag" id="prpoCount">0条</span></div>
             <div class="card-actions">
               <button class="btn btn-sm btn-outline" onclick="importToType('prpo')">📥 导入</button>
               <input type="file" id="importFile_prpo" accept=".xlsx,.xls" onchange="handleTypeImport(event,'prpo')" style="display:none">
@@ -1043,7 +1043,7 @@ function handleTypeImport(event,type){
         }
       });
       renderAllMasterdata();
-      showToast('✅ '+({materials:'物料',bom:'BOM',routing:'工艺路线',suppliers:'供应商',inventory:'库存',wip:'在制品',prpo:'PR/PO'}[type]||type)+'数据导入完成','success');
+      showToast('✅ '+({materials:'物料',bom:'BOM',routing:'工艺路线',suppliers:'供应商',inventory:'库存',wip:'在制品',prpo:'Open PR/Open PO'}[type]||type)+'数据导入完成','success');
     }catch(err){showToast('❌ 导入失败：'+err.message,'error');}
   };
   reader.readAsArrayBuffer(file);
@@ -1506,7 +1506,7 @@ function parsePrpoSheet(data,sheetName){
     }
     count++;
   }
-  showToast('✅ PR/PO导入完成：共'+count+'条','success');
+  showToast('✅ Open PR/Open PO导入完成：共'+count+'条','success');
 }
 function getMaterialName(code){
   const m=appData.materials.find(m=>m.code===code);
@@ -1732,7 +1732,7 @@ function renderAllMasterdata() {
   appData.prpo.forEach((p,i)=>{
     phtml += '<tr><td><span class="tag-status '+(p.orderType==='PR'?'tag-blue':'tag-green')+'">'+escapeHtml(p.orderType||'')+'</span></td><td>'+escapeHtml(p.orderNumber||'')+'</td><td>'+escapeHtml(p.materialCode||'')+'</td><td>'+escapeHtml(p.materialName||'')+'</td><td class="font-bold">'+(p.quantity||0).toLocaleString()+'</td><td>'+escapeHtml(p.unit||'')+'</td><td>'+(p.demandDate||'')+'</td></tr>';
   });
-  document.querySelector('#prpoTable tbody').innerHTML = phtml || '<tr><td colspan="7" style="text-align:center;color:var(--gray-400)">暂无数据，请导入PR/PO数据</td></tr>';
+  document.querySelector('#prpoTable tbody').innerHTML = phtml || '<tr><td colspan="7" style="text-align:center;color:var(--gray-400)">暂无数据，请导入Open PR/Open PO数据</td></tr>';
   document.getElementById('prpoCount').textContent = appData.prpo.length+'条';
   // 每次渲染主数据时同步保存到 localStorage（确保编辑/删除/新增后持久化）
   saveMasterdataToStorage();
@@ -1930,7 +1930,7 @@ function saveWip() {
 }
 function openAddPrpoModal() {
   const matOpts=appData.materials.map(m=>'<option value="'+m.code+'">'+m.code+' - '+m.name+'（'+m.unit+'）</option>').join('');
-  openModal('<div class="modal-title">新增 PR/PO <button class="modal-close" onclick="closeModal()">×</button></div>'+
+  openModal('<div class="modal-title">新增 Open PR/Open PO <button class="modal-close" onclick="closeModal()">×</button></div>'+
     '<div class="form-group"><label>订单类型</label><select id="formPrpoType"><option value="PR">PR - 采购申请</option><option value="PO">PO - 采购订单</option></select></div>'+
     '<div class="grid-2"><div class="form-group"><label>订单编号</label><input id="formPrpoNo" placeholder="如 PR-20260609-001"></div>'+
     '<div class="form-group"><label>物料</label><select id="formPrpoMat">'+matOpts+'</select></div></div>'+
@@ -1955,7 +1955,7 @@ function saveNewPrpo() {
   if(!orderNumber){showToast('请输入订单编号','error');return;}
   const mat=appData.materials.find(m=>m.code===matCode);
   appData.prpo.push({orderType,orderNumber,materialCode:matCode,materialName:mat?mat.name:'',quantity:qty,unit,demandDate});
-  closeModal();renderAllMasterdata();showToast('✅ PR/PO新增成功','success');
+  closeModal();renderAllMasterdata();showToast('✅ Open PR/Open PO新增成功','success');
 }
 function editWip(idx){
   const inv=appData.inventory[idx];
