@@ -1474,7 +1474,9 @@ function parsePrpoSheet(data,sheetName){
   for(let i=1;i<data.length;i++){
     const row=data[i];
     if(!row||!Array.isArray(row)||row.length===0) continue;
-    const orderType=typeIdx>=0&&row[typeIdx]?String(row[typeIdx]).trim():'';
+    const orderTypeRaw=typeIdx>=0&&row[typeIdx]?String(row[typeIdx]).trim():'';
+    // 标准化：采购申请/采购订单/PR/PO 统一映射
+    const orderType=/采购申请|采购请购|purchase.?requisition|purchaserequisition/i.test(orderTypeRaw)?'PR':/采购订单|采购单|purchase.?order|purchaseorder/i.test(orderTypeRaw)?'PO':orderTypeRaw;
     const orderNo=noIdx>=0&&row[noIdx]?String(row[noIdx]).trim():'';
     const matCode=matIdx>=0&&row[matIdx]?String(row[matIdx]).trim():'';
     if(!matCode) continue;
@@ -2295,27 +2297,6 @@ function executeMRP(){
   summaryHtml+='<div class="summary-card cyan"><div class="lbl" style="font-size:11px">🚚 WIP可用</div><div class="num" style="font-size:16px;color:var(--info)">'+procOrder.reduce((s,p)=>s+sum(p,'wip'),0).toLocaleString()+'</div><div style="display:flex;flex-wrap:wrap;gap:6px;font-size:11px;color:var(--gray-500);margin-top:4px">'+procOrder.filter(p=>procGroups[p]).map(p=>'<span style="white-space:nowrap">'+p+'&nbsp;'+sum(p,'wip').toLocaleString()+'</span>').join('｜')+'</div></div>';
   summaryHtml+='<div class="summary-card '+(shortItems.length>0?'red':'green')+'"><div class="lbl">⚠️ 待补制程数</div><div class="num" style="color:'+(shortItems.length>0?'var(--danger)':'var(--success)')+'">'+shortItems.length+'</div></div>';
   document.getElementById('mrpSummary').innerHTML=summaryHtml;
-  // 🔍 调试：检查PR/PO匹配情况
-  let debugHtml = '<div class="alert alert-warning" style="margin:8px 0;font-size:12px;line-height:1.6"><strong>🔍 Open PR/PO匹配调试：</strong><br>';
-  debugHtml += '📋 业务数据 Open PR/Open PO 共 <strong>'+appData.prpo.length+'</strong> 条记录<br>';
-  if(appData.prpo.length>0){
-    debugHtml += '各条记录的订单类型(orderType)：<strong>'+[...new Set(appData.prpo.map(p=>p.orderType))].join('</strong>、<strong>')+'</strong><br>';
-    debugHtml += '各条记录的物料编码：<strong>'+[...new Set(appData.prpo.map(p=>p.materialCode))].join('</strong>、<strong>')+'</strong><br>';
-  }
-  let allMatch=true;
-  results.forEach(r=>{
-    const prMatch = appData.prpo.filter(p => p.materialCode === r.matCode && p.orderType === 'PR');
-    const poMatch = appData.prpo.filter(p => p.materialCode === r.matCode && p.orderType === 'PO');
-    if(!prMatch.length && !poMatch.length){
-      debugHtml += '❌ <strong>'+r.process+'('+r.matCode+')</strong>：未匹配到 PR='+prMatch.length+' PO='+poMatch.length+'<br>';
-      allMatch=false;
-    }else{
-      debugHtml += '✅ <strong>'+r.process+'('+r.matCode+')</strong>：PR='+prMatch.length+'条(数量'+prMatch.reduce((s,p)=>s+(p.quantity||0),0)+') PO='+poMatch.length+'条(数量'+poMatch.reduce((s,p)=>s+(p.quantity||0),0)+')<br>';
-    }
-  });
-  if(allMatch) debugHtml += '✅ 所有物料均匹配成功';
-  debugHtml += '</div>';
-  document.getElementById('mrpSummary').insertAdjacentHTML('afterend', debugHtml);
 
   let tableHtml='';
   // 检查是否有多个需求日期，按日期分组显示（增加分隔行）
