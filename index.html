@@ -415,7 +415,7 @@ tbody tr:hover td{background:var(--primary-bg)}
               <button class="btn btn-sm btn-primary" onclick="openAddInventoryModal()">➕ 新增</button>
             </div>
           </div>
-          <div class="table-wrapper"><table id="inventoryTable"><thead><tr><th>物料编码</th><th>物料名称</th><th>仓库</th><th>可用库存</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+          <div class="table-wrapper"><table id="inventoryTable"><thead><tr><th>物料编码</th><th>物料名称</th><th>安全库存</th><th>当前可用库存</th><th>库存地点</th><th>操作</th></tr></thead><tbody></tbody></table></div>
         </div>
       </div>
 
@@ -1190,8 +1190,9 @@ function parseDemandSheet(data, sheetName) {
 const inventoryFields = [
   {key:'materialCode', label:'物料编码', required:true},
   {key:'materialName', label:'物料名称', required:false},
-  {key:'warehouse', label:'仓库', required:false},
-  {key:'stock', label:'可用库存', required:true}
+  {key:'safetyStock', label:'安全库存', required:false},
+  {key:'stock', label:'当前可用库存', required:true},
+  {key:'warehouse', label:'库存地点', required:false}
 ];
 
 // 显示库存字段映射弹窗
@@ -1211,8 +1212,9 @@ function showInventoryMappingModal(wb){
       const keywords={
         materialCode:['物料编码','物料代码','物料','编码','code','material'],
         materialName:['物料名称','名称','name','物料描述','物料名'],
-        warehouse:['仓库','warehouse','wh','库位','存储地'],
-        stock:['库存','stock','可用库存','数量','库存数量','现存量']
+        safetyStock:['安全库存','安全','safety','safetystock'],
+        warehouse:['库存地点','仓库','warehouse','wh','库位','存储地'],
+        stock:['库存','当前可用库存','可用库存','数量','库存数量','现存量']
       };
       return (keywords[f.key]||[f.key]).some(k=>new RegExp(k,'i').test(h));
     });
@@ -1272,6 +1274,7 @@ function confirmInventoryMapping(){
     const entry={
       materialCode: matCode,
       materialName: getVal('materialName'),
+      safetyStock: getNum('safetyStock',0),
       warehouse: getVal('warehouse','主仓库'),
       stock: getNum('stock',0),
       transit: 0,
@@ -1293,8 +1296,9 @@ function parseInventorySheet(data, sheetName) {
   const h = data[0].map(c=>String(c||''));
   const mIdx = h.findIndex(c=>/(物料|编码|code|material)/i.test(c));
   const nIdx = h.findIndex(c=>/(名称|name)/i.test(c));
-  const wIdx = h.findIndex(c=>/(仓库|warehouse)/i.test(c));
-  const sIdx = h.findIndex(c=>/(库存|stock|数量)/i.test(c));
+  const wIdx = h.findIndex(c=>/(仓库|库存地点|warehouse)/i.test(c));
+  const sIdx = h.findIndex(c=>/(库存|stock|数量|可用)/i.test(c));
+  const saIdx = h.findIndex(c=>/(安全库存|安全|safety)/i.test(c));
   const tIdx = h.findIndex(c=>/(在途|在制|transit|WIP)/i.test(c));
   const aIdx = h.findIndex(c=>/(到货|arrival)/i.test(c));
 
@@ -1307,6 +1311,7 @@ function parseInventorySheet(data, sheetName) {
     const entry = {
       materialCode: matCode,
       materialName: nIdx>=0 && r[nIdx] ? String(r[nIdx]).trim() : '',
+      safetyStock: saIdx>=0 ? parseFloat(r[saIdx])||0 : 0,
       warehouse: wIdx>=0 && r[wIdx] ? String(r[wIdx]).trim() : '主仓库',
       stock: sIdx>=0 ? parseFloat(r[sIdx])||0 : 0,
       transit: tIdx>=0 ? parseFloat(r[tIdx])||0 : 0,
@@ -1372,7 +1377,7 @@ function parseWipSheet(data,sheetName){
       if(arrival) appData.inventory[idx].transitArrival=arrival;
     }else{
       const mat=appData.materials.find(m=>m.code===matCode);
-      appData.inventory.push({materialCode:matCode,materialName:mat?mat.name:'',warehouse:'',stock:0,transit:transit,transitArrival:arrival||'',orderNo:orderNo});
+      appData.inventory.push({materialCode:matCode,materialName:mat?mat.name:'',warehouse:'',stock:0,safetyStock:0,transit:transit,transitArrival:arrival||'',orderNo:orderNo});
     }
     count++;
   }
@@ -1527,11 +1532,11 @@ function loadSampleData() {
     { process:'Wafer', code:'SUP-WF-001', name:'Wafer晶圆供应商', prod:40, trans:6, inspect:4 }
   ];
   appData.inventory = [
-    { materialCode:'IC-1000-FT', materialName:'FT测试后成品芯片', warehouse:'成品仓', stock:5000, transit:2400, transitArrival:'2026-07-15' },
-    { materialCode:'IC-1000-AB', materialName:'AB封装后芯片', warehouse:'半成品仓', stock:4000, transit:0, transitArrival:'' },
-    { materialCode:'IC-1000-CP', materialName:'CP测试后晶圆', warehouse:'半成品仓', stock:500, transit:0, transitArrival:'' },
-    { materialCode:'IC-1000-BP', materialName:'BP制造后晶圆', warehouse:'半成品仓', stock:400, transit:0, transitArrival:'' },
-    { materialCode:'IC-1000-Wafer', materialName:'Wafer晶圆', warehouse:'原材料仓', stock:300, transit:0, transitArrival:'' }
+    { materialCode:'IC-1000-FT', materialName:'FT测试后成品芯片', safetyStock:500, warehouse:'成品仓', stock:5000, transit:2400, transitArrival:'2026-07-15' },
+    { materialCode:'IC-1000-AB', materialName:'AB封装后芯片', safetyStock:300, warehouse:'半成品仓', stock:4000, transit:0, transitArrival:'' },
+    { materialCode:'IC-1000-CP', materialName:'CP测试后晶圆', safetyStock:200, warehouse:'半成品仓', stock:500, transit:0, transitArrival:'' },
+    { materialCode:'IC-1000-BP', materialName:'BP制造后晶圆', safetyStock:200, warehouse:'半成品仓', stock:400, transit:0, transitArrival:'' },
+    { materialCode:'IC-1000-Wafer', materialName:'Wafer晶圆', safetyStock:500, warehouse:'原材料仓', stock:300, transit:0, transitArrival:'' }
   ];
   appData.demands = [
     { orderNo:'ORD001', material:'IC-1000-FT', quantity:120000, demandDate:'2026-07-31', priority:'高', customer:'华为海思' },
@@ -1579,9 +1584,9 @@ function renderAllMasterdata() {
   document.getElementById('supplierCount').textContent = appData.suppliers.length+'条';
   let ihtml = '';
   appData.inventory.forEach((inv,idx)=>{
-    ihtml += '<tr><td>'+inv.materialCode+'</td><td>'+inv.materialName+'</td><td>'+inv.warehouse+'</td><td class="font-bold">'+inv.stock.toLocaleString()+'</td><td><button class="btn btn-sm btn-outline" onclick="editInventory('+idx+')">✏️</button><button class="btn btn-sm btn-outline" onclick="deleteInventory('+idx+')">🗑️</button></td></tr>';
+    ihtml += '<tr><td>'+inv.materialCode+'</td><td>'+inv.materialName+'</td><td class="font-bold">'+(inv.safetyStock||0).toLocaleString()+'</td><td class="font-bold">'+inv.stock.toLocaleString()+'</td><td>'+inv.warehouse+'</td><td><button class="btn btn-sm btn-outline" onclick="editInventory('+idx+')">✏️</button><button class="btn btn-sm btn-outline" onclick="deleteInventory('+idx+')">🗑️</button></td></tr>';
   });
-  document.querySelector('#inventoryTable tbody').innerHTML = ihtml || '<tr><td colspan="5" style="text-align:center;color:var(--gray-400)">暂无数据</td></tr>';
+  document.querySelector('#inventoryTable tbody').innerHTML = ihtml || '<tr><td colspan="6" style="text-align:center;color:var(--gray-400)">暂无数据</td></tr>';
   document.getElementById('invCount').textContent = appData.inventory.length+'条';
   let whtml = '';
   const wipItems = appData.inventory.filter(inv=>inv.transit&&inv.transit>0);
@@ -1690,9 +1695,9 @@ function editInventory(idx) {
   if(!inv) return;
   const matOpts = appData.materials.map(m=>'<option value="'+m.code+'" '+(m.code===inv.materialCode?'selected':'')+'>'+m.code+' - '+m.name+'</option>').join('');
   openModal('<div class="modal-title">编辑库存 <button class="modal-close" onclick="closeModal()">×</button></div>'+
-    '<div class="grid-2"><div class="form-group"><label>物料</label><select id="formInvMat">'+matOpts+'</select></div><div class="form-group"><label>仓库</label><input id="formInvWarehouse" value="'+escapeHtml(inv.warehouse)+'"></div></div>'+
-    '<div class="grid-2"><div class="form-group"><label>可用库存</label><input type="number" id="formInvStock" value="'+inv.stock+'"></div><div class="form-group"><label>在制数量</label><input type="number" id="formInvTransit" value="'+(inv.transit||0)+'"></div></div>'+
-    '<div class="form-group"><label>在制到货日</label><input type="date" id="formInvArrival" value="'+(inv.transitArrival||'')+'"></div>'+
+    '<div class="grid-2"><div class="form-group"><label>物料</label><select id="formInvMat">'+matOpts+'</select></div><div class="form-group"><label>库存地点</label><input id="formInvWarehouse" value="'+escapeHtml(inv.warehouse)+'"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>安全库存</label><input type="number" id="formInvSafety" value="'+(inv.safetyStock||0)+'"></div><div class="form-group"><label>当前可用库存</label><input type="number" id="formInvStock" value="'+inv.stock+'"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>在制数量</label><input type="number" id="formInvTransit" value="'+(inv.transit||0)+'"></div><div class="form-group"><label>在制到货日</label><input type="date" id="formInvArrival" value="'+(inv.transitArrival||'')+'"></div></div>'+
     '<input type="hidden" id="editInvIdx" value="'+idx+'">'+
     '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveEditInventory()">保存</button></div>');
 }
@@ -1700,7 +1705,7 @@ function saveEditInventory() {
   const idx=parseInt(document.getElementById('editInvIdx').value);
   if(isNaN(idx)||!appData.inventory[idx]){showToast('数据异常','error');return;}
   const matCode=document.getElementById('formInvMat').value,mat=appData.materials.find(m=>m.code===matCode);
-  appData.inventory[idx]={materialCode:matCode,materialName:mat?mat.name:'',warehouse:document.getElementById('formInvWarehouse').value.trim(),stock:parseFloat(document.getElementById('formInvStock').value)||0,transit:parseFloat(document.getElementById('formInvTransit').value)||0,transitArrival:document.getElementById('formInvArrival').value};
+  appData.inventory[idx]={materialCode:matCode,materialName:mat?mat.name:'',safetyStock:parseFloat(document.getElementById('formInvSafety').value)||0,warehouse:document.getElementById('formInvWarehouse').value.trim(),stock:parseFloat(document.getElementById('formInvStock').value)||0,transit:parseFloat(document.getElementById('formInvTransit').value)||0,transitArrival:document.getElementById('formInvArrival').value};
   closeModal();renderAllMasterdata();showToast('✅ 库存已更新','success');
 }
 
@@ -1761,14 +1766,14 @@ function saveNewSupplier() {
 function openAddInventoryModal() {
   const matOpts = appData.materials.map(m=>'<option value="'+m.code+'">'+m.code+' - '+m.name+'</option>').join('');
   openModal('<div class="modal-title">新增库存记录 <button class="modal-close" onclick="closeModal()">×</button></div>'+
-    '<div class="grid-2"><div class="form-group"><label>物料</label><select id="formInvMat">'+matOpts+'</select></div><div class="form-group"><label>仓库</label><input id="formInvWarehouse" placeholder="仓库名称"></div></div>'+
-    '<div class="grid-2"><div class="form-group"><label>可用库存</label><input type="number" id="formInvStock" value="0"></div><div class="form-group"><label>在制数量</label><input type="number" id="formInvTransit" value="0"></div></div>'+
-    '<div class="form-group"><label>在制到货日</label><input type="date" id="formInvArrival"></div>'+
+    '<div class="grid-2"><div class="form-group"><label>物料</label><select id="formInvMat">'+matOpts+'</select></div><div class="form-group"><label>库存地点</label><input id="formInvWarehouse" placeholder="库存地点"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>安全库存</label><input type="number" id="formInvSafety" value="0"></div><div class="form-group"><label>当前可用库存</label><input type="number" id="formInvStock" value="0"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>在制数量</label><input type="number" id="formInvTransit" value="0"></div><div class="form-group"><label>在制到货日</label><input type="date" id="formInvArrival"></div></div>'+
     '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveNewInventory()">保存</button></div>');
 }
 function saveNewInventory() {
   const matCode=document.getElementById('formInvMat').value,mat=appData.materials.find(m=>m.code===matCode);
-  appData.inventory.push({materialCode:matCode,materialName:mat?mat.name:'',warehouse:document.getElementById('formInvWarehouse').value.trim(),stock:parseFloat(document.getElementById('formInvStock').value)||0,transit:parseFloat(document.getElementById('formInvTransit').value)||0,transitArrival:document.getElementById('formInvArrival').value});
+  appData.inventory.push({materialCode:matCode,materialName:mat?mat.name:'',safetyStock:parseFloat(document.getElementById('formInvSafety').value)||0,warehouse:document.getElementById('formInvWarehouse').value.trim(),stock:parseFloat(document.getElementById('formInvStock').value)||0,transit:parseFloat(document.getElementById('formInvTransit').value)||0,transitArrival:document.getElementById('formInvArrival').value});
   closeModal();renderAllMasterdata();showToast('✅ 库存添加成功','success');
 }
 function openAddWipModal() {
@@ -1784,7 +1789,7 @@ function saveWip() {
   if(!qty||!arrival){showToast('请填写数量和到货时间','error');return;}
   const inv=appData.inventory.find(i=>i.materialCode===matCode&&i.orderNo===orderNo);
   if(inv){inv.transit=(inv.transit||0)+qty;inv.transitArrival=arrival;inv.orderNo=orderNo;}
-  else{const mat=appData.materials.find(m=>m.code===matCode);appData.inventory.push({materialCode:matCode,materialName:mat?mat.name:'',warehouse:'在制',stock:0,transit:qty,transitArrival:arrival,orderNo:orderNo});}
+  else{const mat=appData.materials.find(m=>m.code===matCode);appData.inventory.push({materialCode:matCode,materialName:mat?mat.name:'',warehouse:'在制',stock:0,safetyStock:0,transit:qty,transitArrival:arrival,orderNo:orderNo});}
   closeModal();renderAllMasterdata();showToast('✅ 在制信息已更新','success');
 }
 function editWip(idx){
