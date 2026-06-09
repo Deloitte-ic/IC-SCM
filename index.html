@@ -565,7 +565,12 @@ tbody tr:hover td{background:var(--primary-bg)}
 
           <!-- 改造二：MRP结果表增加全阶物料列 -->
           <div class="card">
-            <div class="card-title">📊 MRP运算结果表 <span class="tag" id="resultOrderInfo"></span></div>
+            <div class="card-header">
+              <div class="card-title">📊 MRP运算结果表 <span class="tag" id="resultOrderInfo"></span></div>
+              <div class="card-actions">
+                <button class="btn btn-sm btn-success" onclick="exportMRPResult()">📥 导出Excel</button>
+              </div>
+            </div>
             <div class="table-wrapper"><table id="mrpResultTable"><thead><tr>
               <th>层级</th><th>制程</th><th>物料编码</th><th>物料名称</th><th>需求日期</th><th>建议动作</th><th>供应商</th><th>需求类型</th><th>单位</th><th>净需求</th><th>损耗率</th><th>毛需求</th><th>可用库存</th><th>WIP</th><th>净待补</th><th>计划到货日</th><th>计划下单日</th>
             </tr></thead><tbody></tbody></table></div>
