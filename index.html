@@ -995,12 +995,6 @@ function handleTypeImport(event,type){
   reader.onload=function(e){
     try{
       const wb=XLSX.read(e.target.result,{type:'array'});
-      if(type==='inventory'){
-        // 库存导入走字段映射弹窗
-        window._invMappingWb=wb;
-        showInventoryMappingModal(wb);
-        return;
-      }
       wb.SheetNames.forEach(sheetName=>{
         const sheet=wb.Sheets[sheetName];
         const data=XLSX.utils.sheet_to_json(sheet,{header:1,defval:''});
@@ -1296,20 +1290,33 @@ function confirmInventoryMapping(){
   showToast('✅ 库存导入完成（'+count+'条）','success');
 }
 
-// 解析库存Sheet（保留原自动匹配方式）
+// 解析库存Sheet（精确匹配优先）
 function parseInventorySheet(data, sheetName) {
   if(data.length < 2) return;
   const h = data[0].map(c=>String(c||''));
-  const mIdx = h.findIndex(c=>/(物料|编码|code|material)/i.test(c));
-  const nIdx = h.findIndex(c=>/(名称|name)/i.test(c));
-  const wIdx = h.findIndex(c=>/(仓库|库存地点|warehouse)/i.test(c));
-  const sIdx = h.findIndex(c=>/(库存|stock|数量|可用)/i.test(c));
-  const saIdx = h.findIndex(c=>/(安全库存|安全|safety)/i.test(c));
+  // 物料编码列：精确匹配优先
+  let mIdx = h.findIndex(c=>/^(物料编码|物料代码|物料编码|编码|物料|material|materialCode|code)$/i.test(String(c||'').trim()));
+  if(mIdx<0) mIdx = h.findIndex(c=>/(物料|编码|code|material)/i.test(c));
+  // 物料名称列
+  let nIdx = h.findIndex(c=>/^(物料名称|物料描述|物料名|名称|物料|materialName|name|描述|description)$/i.test(String(c||'').trim()));
+  if(nIdx<0) nIdx = h.findIndex(c=>/(名称|name|描述|description)/i.test(c));
+  // 当前可用库存列：精确匹配优先，排除安全库存
+  let sIdx = h.findIndex(c=>/^(库存|当前可用库存|可用库存|库存数量|现存量|stock|inventory|quantity)$/i.test(String(c||'').trim()));
+  if(sIdx<0) sIdx = h.findIndex(c=>/(^库存$|库存数量|现存量|stock)/i.test(c));
+  if(sIdx<0) sIdx = h.findIndex(c=>/(库存|数量|可用)/i.test(c) && !/(安全|safety)/i.test(c));
+  // 安全库存列：精确匹配优先
+  let saIdx = h.findIndex(c=>/^(安全库存|安全存量|安全|safetyStock|safety)$/i.test(String(c||'').trim()));
+  if(saIdx<0) saIdx = h.findIndex(c=>/(安全库存|安全|safety)/i.test(c));
+  // 库存地点列
+  let wIdx = h.findIndex(c=>/^(库存地点|仓库|库位|存储地|warehouse|wh|location)$/i.test(String(c||'').trim()));
+  if(wIdx<0) wIdx = h.findIndex(c=>/(仓库|库存地点|warehouse|wh|库位)/i.test(c));
+  // 在制/在途列（仅当需要跨列导入时）
   const tIdx = h.findIndex(c=>/(在途|在制|transit|WIP)/i.test(c));
   const aIdx = h.findIndex(c=>/(到货|arrival)/i.test(c));
 
   if(mIdx<0) return;
 
+  let updated=0, added=0;
   for(let i=1; i<data.length; i++) {
     const r = data[i];
     if(!r || !r[mIdx]) continue;
@@ -1325,10 +1332,10 @@ function parseInventorySheet(data, sheetName) {
       transit: existing ? existing.transit : (tIdx>=0 ? parseFloat(r[tIdx])||0 : 0),
       transitArrival: existing ? existing.transitArrival : (aIdx>=0 && r[aIdx] ? String(r[aIdx]).trim() : '')
     };
-    if(idx>=0) appData.inventory[idx]=entry;
-    else appData.inventory.push(entry);
+    if(idx>=0){ appData.inventory[idx]=entry; updated++; }
+    else{ appData.inventory.push(entry); added++; }
   }
-  showToast('✅ 库存数据已导入','success');
+  showToast('✅ 库存导入完成：共'+(updated+added)+'条（更新'+updated+'条，新增'+added+'条）','success');
 }
 
 // 解析物料Sheet
