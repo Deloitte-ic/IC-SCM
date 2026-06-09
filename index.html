@@ -405,6 +405,7 @@ tbody tr:hover td{background:var(--primary-bg)}
       <div class="tabs" id="businessTabs">
         <div class="tab active" data-tab="bd-inventory" onclick="switchBusinessTab('bd-inventory')">📦 库存</div>
         <div class="tab" data-tab="bd-wip" onclick="switchBusinessTab('bd-wip')">🏗️ 在制品</div>
+        <div class="tab" data-tab="bd-prpo" onclick="switchBusinessTab('bd-prpo')">📋 PR/PO</div>
       </div>
 
       <div class="tab-content active" id="tab-bd-inventory">
@@ -432,6 +433,19 @@ tbody tr:hover td{background:var(--primary-bg)}
             </div>
           </div>
           <div class="table-wrapper"><table id="wipTable"><thead><tr><th>物料编码</th><th>物料名称</th><th>计量单位</th><th>订单号</th><th>在制数量</th><th>在制到货时间</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+        </div>
+      </div>
+
+      <div class="tab-content" id="tab-bd-prpo">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📋 PR/PO <span class="tag" id="prpoCount">0条</span></div>
+            <div class="card-actions">
+              <button class="btn btn-sm btn-outline" onclick="importToType('prpo')">📥 导入</button>
+              <input type="file" id="importFile_prpo" accept=".xlsx,.xls" onchange="handleTypeImport(event,'prpo')" style="display:none">
+            </div>
+          </div>
+          <div class="table-wrapper"><table id="prpoTable"><thead><tr><th>订单类型</th><th>订单编号</th><th>物料编码</th><th>物料描述</th><th>数量</th><th>单位</th><th>需求日期</th></tr></thead><tbody></tbody></table></div>
         </div>
       </div>
     </div>
@@ -727,6 +741,7 @@ const appData = {
   mrpResult: [],      // MRP运算结果
   mrpDetails: [],     // 运算明细
   plannedOrders: [],  // 用户创建的计划订单
+  prpo: [],           // PR/PO数据（采购申请/采购订单）
   tasks: [            // 协同任务
     { id:'TASK-001', name:'审核7月销售计划', assignee:'张三', dueDate:'2026-07-10', priority:'高', status:'进行中' },
     { id:'TASK-002', name:'确认Wafer采购订单', assignee:'李四', dueDate:'2026-07-05', priority:'高', status:'待开始' },
@@ -1023,10 +1038,11 @@ function handleTypeImport(event,type){
           case 'suppliers': parseSupplierSheet(data,sheetName); break;
           case 'inventory': parseInventorySheet(data,sheetName); break;
           case 'wip': parseWipSheet(data,sheetName); break;
+          case 'prpo': parsePrpoSheet(data,sheetName); break;
         }
       });
       renderAllMasterdata();
-      showToast('✅ '+({materials:'物料',bom:'BOM',routing:'工艺路线',suppliers:'供应商',inventory:'库存',wip:'在制品'}[type]||type)+'数据导入完成','success');
+      showToast('✅ '+({materials:'物料',bom:'BOM',routing:'工艺路线',suppliers:'供应商',inventory:'库存',wip:'在制品',prpo:'PR/PO'}[type]||type)+'数据导入完成','success');
     }catch(err){showToast('❌ 导入失败：'+err.message,'error');}
   };
   reader.readAsArrayBuffer(file);
@@ -1440,6 +1456,61 @@ function parseWipSheet(data,sheetName){
   }
   showToast('✅ 在制品导入完成：共'+count+'条（更新'+updCount+'条，新增'+newCount+'条）','success');
 }
+// PR/PO导入
+function parsePrpoSheet(data,sheetName){
+  if(data.length<2) return;
+  const h=data[0].map(c=>String(c||'').trim());
+  // 列匹配：订单类型、订单编号、物料编码、物料描述、数量、单位、需求日期
+  const typeIdx=h.findIndex(c=>/^(订单类型|类型|单据类型|单据类别|type|ordertype)$/i.test(c));
+  const noIdx=h.findIndex(c=>/^(订单编号|单据编号|编号|订单号|单号|number|ordernumber|docnumber)$/i.test(c));
+  const matIdx=h.findIndex(c=>/^(物料编码|物料代码|物料|物料号|编码|material|materialcode|code)$/i.test(c));
+  const nameIdx=h.findIndex(c=>/^(物料描述|物料名称|描述|名称|description|materialname|name)$/i.test(c));
+  const qtyIdx=h.findIndex(c=>/^(数量|采购数量|订单数量|quantity|qty|orderqty)$/i.test(c));
+  const unitIdx=h.findIndex(c=>/^(单位|计量单位|unit|uom)$/i.test(c));
+  const dateIdx=h.findIndex(c=>/^(需求日期|日期|到货日期|交货日期|需求时间|date|demanddate|requireddate)$/i.test(c));
+  if(typeIdx<0||matIdx<0) return;
+  let count=0;
+  for(let i=1;i<data.length;i++){
+    const row=data[i];
+    if(!row||!Array.isArray(row)||row.length===0) continue;
+    const orderType=typeIdx>=0&&row[typeIdx]?String(row[typeIdx]).trim():'';
+    const orderNo=noIdx>=0&&row[noIdx]?String(row[noIdx]).trim():'';
+    const matCode=matIdx>=0&&row[matIdx]?String(row[matIdx]).trim():'';
+    if(!matCode) continue;
+    const matName=nameIdx>=0&&row[nameIdx]?String(row[nameIdx]).trim():'';
+    // 处理数量：支持数值、字符串
+    let qty=0;
+    if(qtyIdx>=0&&row[qtyIdx]!=null&&row[qtyIdx]!==''){
+      const qRaw=row[qtyIdx];
+      qty=typeof qRaw==='number'?qRaw:(parseFloat(String(qRaw).replace(/[,\s]/g,''))||0);
+    }
+    const unit=unitIdx>=0&&row[unitIdx]?String(row[unitIdx]).trim():'';
+    // 处理需求日期：支持日期字符串、Excel日期序列号
+    let demandDate='';
+    if(dateIdx>=0&&row[dateIdx]!=null&&row[dateIdx]!==''){
+      const dRaw=row[dateIdx];
+      if(typeof dRaw==='number'&&dRaw>40000&&dRaw<200000){
+        const d=new Date(Math.round((dRaw-25569)*86400*1000));
+        demandDate=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+      }else{
+        demandDate=String(dRaw).trim();
+      }
+    }
+    // upsert：按订单编号匹配
+    const idx=orderNo?appData.prpo.findIndex(p=>p.orderNumber===orderNo):-1;
+    if(idx>=0){
+      appData.prpo[idx]={orderType,orderNumber:orderNo,materialCode:matCode,materialName:matName||getMaterialName(matCode),quantity:qty,unit,demandDate};
+    }else{
+      appData.prpo.push({orderType,orderNumber:orderNo,materialCode:matCode,materialName:matName||getMaterialName(matCode),quantity:qty,unit,demandDate});
+    }
+    count++;
+  }
+  showToast('✅ PR/PO导入完成：共'+count+'条','success');
+}
+function getMaterialName(code){
+  const m=appData.materials.find(m=>m.code===code);
+  return m?m.name:'';
+}
 
 // 解析供应商Sheet
 function parseSupplierSheet(data, sheetName) {
@@ -1655,6 +1726,13 @@ function renderAllMasterdata() {
   });
   document.querySelector('#wipTable tbody').innerHTML = whtml || '<tr><td colspan="7" style="text-align:center;color:var(--gray-400)">暂无在制数据</td></tr>';
   document.getElementById('wipCount').textContent = wipItems.length+'条';
+  // PR/PO渲染
+  let phtml = '';
+  appData.prpo.forEach((p,i)=>{
+    phtml += '<tr><td><span class="tag-status '+(p.orderType==='PR'?'tag-blue':'tag-green')+'">'+escapeHtml(p.orderType||'')+'</span></td><td>'+escapeHtml(p.orderNumber||'')+'</td><td>'+escapeHtml(p.materialCode||'')+'</td><td>'+escapeHtml(p.materialName||'')+'</td><td class="font-bold">'+(p.quantity||0).toLocaleString()+'</td><td>'+escapeHtml(p.unit||'')+'</td><td>'+(p.demandDate||'')+'</td></tr>';
+  });
+  document.querySelector('#prpoTable tbody').innerHTML = phtml || '<tr><td colspan="7" style="text-align:center;color:var(--gray-400)">暂无数据，请导入PR/PO数据</td></tr>';
+  document.getElementById('prpoCount').textContent = appData.prpo.length+'条';
   // 每次渲染主数据时同步保存到 localStorage（确保编辑/删除/新增后持久化）
   saveMasterdataToStorage();
 }
@@ -2296,7 +2374,8 @@ function saveMasterdataToStorage(){
       routings: appData.routings||[],
       suppliers: appData.suppliers||[],
       inventory: appData.inventory||[],
-      demands: appData.demands||[]
+      demands: appData.demands||[],
+      prpo: appData.prpo||[]
     };
     localStorage.setItem(STORAGE_KEY_MASTER,JSON.stringify(data));
   }catch(e){}
@@ -2316,6 +2395,7 @@ function loadMasterdataFromStorage(){
     appData.suppliers=data.suppliers||[];
     appData.inventory=data.inventory||[];
     appData.demands=data.demands||[];
+    appData.prpo=data.prpo||[];
     return true;
   }catch(e){return false;}
 }
