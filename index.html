@@ -1216,7 +1216,7 @@ function parseDemandSheet(data, sheetName) {
     const entry = {
       orderType, orderNo, material: matCode, quantity: qty,
       unit: uIdx>=0 && r[uIdx] ? String(r[uIdx]).trim() : '颗',
-      demandDate: dIdx>=0 && r[dIdx] ? String(r[dIdx]).trim() : new Date(Date.now()+30*86400000).toISOString().split('T')[0],
+      demandDate: dIdx>=0 && r[dIdx] ? (()=>{const v=Number(r[dIdx]);return (!isNaN(v)&&v>40000&&v<200000)?new Date(Math.floor(v-25569)*86400*1000).toISOString().split('T')[0]:String(r[dIdx]).trim();})() : new Date(Date.now()+30*86400000).toISOString().split('T')[0],
       priority: pIdx>=0 && r[pIdx] ? String(r[pIdx]).trim() : '中',
       customer: cIdx>=0 && r[cIdx] ? String(r[cIdx]).trim() : ''
     };
@@ -2019,6 +2019,7 @@ function renderDemand(){
   });
   document.querySelector('#demandTable tbody').innerHTML=html||'<tr><td colspan="9" style="text-align:center;color:var(--gray-400)">暂无需求数据</td></tr>';
   renderDemandSummary();renderDemandTrend();
+  saveMasterdataToStorage();
 }
 function renderDemandSummary(){
   const totalQty=appData.demands.reduce((s,d)=>s+d.quantity,0),totalOrders=appData.demands.length,uniqueMats=new Set(appData.demands.map(d=>d.material)).size,highP=appData.demands.filter(d=>d.priority==='高').length;
