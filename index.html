@@ -462,10 +462,14 @@ tbody tr:hover td{background:var(--primary-bg)}
       <div class="tab-content active" id="tab-demand-entry">
         <div class="card">
           <div class="card-header">
-            <div class="card-title">📝 独立需求录入</div>
-            <button class="btn btn-sm btn-success" onclick="openAddDemandModal()">➕ 新增需求</button>
+            <div class="card-title">📝 Independent Demand</div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-sm btn-outline" onclick="importToType('demand')">📥 导入</button>
+              <input type="file" id="importFile_demand" accept=".xlsx,.xls" onchange="handleTypeImport(event,'demand')" style="display:none">
+              <button class="btn btn-sm btn-success" onclick="openAddDemandModal()">➕ 新增</button>
+            </div>
           </div>
-          <div class="table-wrapper"><table id="demandTable"><thead><tr><th>订单号</th><th>物料编码</th><th>数量</th><th>需求日期</th><th>优先级</th><th>客户</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+          <div class="table-wrapper"><table id="demandTable"><thead><tr><th>订单类型</th><th>订单号</th><th>物料编码</th><th>数量</th><th>单位</th><th>需求日期</th><th>客户</th><th>优先级</th><th>操作</th></tr></thead><tbody></tbody></table></div>
         </div>
       </div>
 
@@ -1040,10 +1044,15 @@ function handleTypeImport(event,type){
           case 'inventory': parseInventorySheet(data,sheetName); break;
           case 'wip': parseWipSheet(data,sheetName); break;
           case 'prpo': parsePrpoSheet(data,sheetName); break;
+          case 'demand': parseDemandSheet(data,sheetName); break;
         }
       });
-      renderAllMasterdata();
-      showToast('✅ '+({materials:'物料',bom:'BOM',routing:'工艺路线',suppliers:'供应商',inventory:'库存',wip:'在制品',prpo:'Open PR/Open PO'}[type]||type)+'数据导入完成','success');
+      if(type==='demand'){
+        renderDemand();updateDashboard();
+      }else{
+        renderAllMasterdata();
+      }
+      showToast('✅ '+({materials:'物料',bom:'BOM',routing:'工艺路线',suppliers:'供应商',inventory:'库存',wip:'在制品',prpo:'Open PR/Open PO',demand:'Independent Demand'}[type]||type)+'数据导入完成','success');
     }catch(err){showToast('❌ 导入失败：'+err.message,'error');}
   };
   reader.readAsArrayBuffer(file);
@@ -1182,12 +1191,14 @@ function parseBomParamSheet(data, sheetName) {
 function parseDemandSheet(data, sheetName) {
   if(data.length < 2) return;
   const h = data[0].map(c=>String(c||''));
-  const oIdx = h.findIndex(c=>/(订单|order|ord|编号)/i.test(c));
+  const tIdx = h.findIndex(c=>/(订单类型|类型|单据类型|ordertype)/i.test(c));
+  const oIdx = h.findIndex(c=>/(订单号|订单编号|编号|单据编号|order|ord)/i.test(c));
   const mIdx = h.findIndex(c=>/(物料|材料|编码|code|material)/i.test(c));
   const qIdx = h.findIndex(c=>/(数量|qty|quantity|需求)/i.test(c));
+  const uIdx = h.findIndex(c=>/(单位|计量单位|unit|uom)/i.test(c));
   const dIdx = h.findIndex(c=>/(日期|date|需求日)/i.test(c));
-  const pIdx = h.findIndex(c=>/(优先级|priority|紧急)/i.test(c));
   const cIdx = h.findIndex(c=>/(客户|customer)/i.test(c));
+  const pIdx = h.findIndex(c=>/(优先级|priority|紧急)/i.test(c));
 
   if(mIdx<0 || qIdx<0) {
     showToast('ℹ️ Sheet「'+sheetName+'」未识别为需求数据,作为通用表展示','info');
@@ -1200,9 +1211,11 @@ function parseDemandSheet(data, sheetName) {
     const matCode = String(r[mIdx]).trim();
     const qty = parseFloat(r[qIdx])||0;
     if(qty<=0) continue;
+    const orderType = tIdx>=0 && r[tIdx] ? String(r[tIdx]).trim() : '独立需求';
     const orderNo = oIdx>=0 && r[oIdx] ? String(r[oIdx]).trim() : ('ORD'+String(appData.demands.length+1).padStart(3,'0'));
     const entry = {
-      orderNo, material: matCode, quantity: qty,
+      orderType, orderNo, material: matCode, quantity: qty,
+      unit: uIdx>=0 && r[uIdx] ? String(r[uIdx]).trim() : '颗',
       demandDate: dIdx>=0 && r[dIdx] ? String(r[dIdx]).trim() : new Date(Date.now()+30*86400000).toISOString().split('T')[0],
       priority: pIdx>=0 && r[pIdx] ? String(r[pIdx]).trim() : '中',
       customer: cIdx>=0 && r[cIdx] ? String(r[cIdx]).trim() : ''
@@ -1670,9 +1683,9 @@ function loadSampleData() {
     { materialCode:'IC-1000-Wafer', materialName:'Wafer晶圆', safetyStock:500, warehouse:'原材料仓', stock:300, transit:0, transitArrival:'' }
   ];
   appData.demands = [
-    { orderNo:'ORD001', material:'IC-1000-FT', quantity:120000, demandDate:'2026-07-31', priority:'高', customer:'华为海思' },
-    { orderNo:'ORD002', material:'IC-1000-FT', quantity:180000, demandDate:'2026-08-31', priority:'中', customer:'展讯通信' },
-    { orderNo:'ORD003', material:'IC-1000-FT', quantity:80000, demandDate:'2026-09-30', priority:'中', customer:'中兴微电子' }
+    { orderType:'独立需求', orderNo:'ORD001', material:'IC-1000-FT', quantity:120000, unit:'颗', demandDate:'2026-07-31', priority:'高', customer:'华为海思' },
+    { orderType:'独立需求', orderNo:'ORD002', material:'IC-1000-FT', quantity:180000, unit:'颗', demandDate:'2026-08-31', priority:'中', customer:'展讯通信' },
+    { orderType:'独立需求', orderNo:'ORD003', material:'IC-1000-FT', quantity:80000, unit:'颗', demandDate:'2026-09-30', priority:'中', customer:'中兴微电子' }
   ];
   appData.demandHistory = [
     { time:'2026-06-01 09:00', orderNo:'ORD001', type:'新建', content:'创建订单 ORD001, 数量120000, 需求日2026-07-31' },
@@ -2002,9 +2015,9 @@ function renderDemand(){
   let html='';
   appData.demands.forEach((d,i)=>{
     const pColor=d.priority==='高'?'tag-red':d.priority==='中'?'tag-yellow':'tag-blue';
-    html+='<tr><td>'+d.orderNo+'</td><td>'+d.material+'</td><td class="font-bold">'+d.quantity.toLocaleString()+'</td><td>'+d.demandDate+'</td><td><span class="tag-status '+pColor+'">'+d.priority+'</span></td><td>'+d.customer+'</td><td><button class="btn btn-sm btn-outline" onclick="deleteDemand('+i+')">🗑️</button></td></tr>';
+    html+='<tr><td><span class="tag-status tag-blue">'+escapeHtml(d.orderType||'独立需求')+'</span></td><td>'+d.orderNo+'</td><td>'+d.material+'</td><td class="font-bold">'+d.quantity.toLocaleString()+'</td><td>'+escapeHtml(d.unit||'颗')+'</td><td>'+d.demandDate+'</td><td>'+escapeHtml(d.customer||'')+'</td><td><span class="tag-status '+pColor+'">'+d.priority+'</span></td><td><button class="btn btn-sm btn-outline" onclick="editDemand('+i+')">✏️</button><button class="btn btn-sm btn-outline" onclick="deleteDemand('+i+')">🗑️</button></td></tr>';
   });
-  document.querySelector('#demandTable tbody').innerHTML=html||'<tr><td colspan="7" style="text-align:center;color:var(--gray-400)">暂无需求数据</td></tr>';
+  document.querySelector('#demandTable tbody').innerHTML=html||'<tr><td colspan="9" style="text-align:center;color:var(--gray-400)">暂无需求数据</td></tr>';
   renderDemandSummary();renderDemandTrend();
 }
 function renderDemandSummary(){
@@ -2033,21 +2046,39 @@ function renderDemandTrend(){
   const ctx=document.getElementById('demandTrendChart').getContext('2d');
   demandChartInstance=new Chart(ctx,{type:'line',data:{labels,datasets:[{label:'需求量',data,borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.1)',fill:true,tension:.4,pointBackgroundColor:'#2563eb',pointRadius:5,pointHoverRadius:8}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{callback:v=>v.toLocaleString()}}}}});
 }
-function openAddDemandModal(){
-  const matOpts=appData.materials.map(m=>'<option value="'+m.code+'">'+m.code+' - '+m.name+'</option>').join('');
-  openModal('<div class="modal-title">新增独立需求 <button class="modal-close" onclick="closeModal()">×</button></div>'+
-    '<div class="grid-2"><div class="form-group"><label>订单号</label><input id="formDemOrder" placeholder="如 ORD004"></div><div class="form-group"><label>物料</label><select id="formDemMat">'+matOpts+'</select></div></div>'+
-    '<div class="grid-2"><div class="form-group"><label>数量</label><input type="number" id="formDemQty" value="1000" min="1"></div><div class="form-group"><label>需求日期</label><input type="date" id="formDemDate"></div></div>'+
-    '<div class="grid-2"><div class="form-group"><label>优先级</label><select id="formDemPriority"><option>高</option><option selected>中</option><option>低</option></select></div><div class="form-group"><label>客户</label><input id="formDemCustomer" placeholder="客户名称"></div></div>'+
-    '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveNewDemand()">保存</button></div>');
-  document.getElementById('formDemDate').valueAsDate=new Date(new Date().getTime()+30*86400000);
+function openAddDemandModal(orderType,orderNo,material,quantity,unit,demandDate,priority,customer,idx){
+  const isEdit=idx!==undefined;
+  const matOpts=appData.materials.map(m=>'<option value="'+m.code+'" '+(material===m.code?'selected':'')+'>'+m.code+' - '+m.name+'</option>').join('');
+  openModal('<div class="modal-title">'+(isEdit?'编辑':'新增')+' Independent Demand <button class="modal-close" onclick="closeModal()">×</button></div>'+
+    '<div class="grid-2"><div class="form-group"><label>订单类型</label><input id="formDemType" value="'+escapeHtml(orderType||'独立需求')+'"></div><div class="form-group"><label>订单号</label><input id="formDemOrder" value="'+escapeHtml(orderNo||'')+'" placeholder="如 ORD004"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>物料</label><select id="formDemMat">'+matOpts+'</select></div><div class="form-group"><label>数量</label><input type="number" id="formDemQty" value="'+(quantity||1000)+'" min="1"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>单位</label><select id="formDemUnit"><option '+(unit==='颗'?'selected':'')+'>颗</option><option '+(unit==='片'?'selected':'')+'>片</option><option '+(unit==='个'?'selected':'')+'>个</option></select></div><div class="form-group"><label>需求日期</label><input type="date" id="formDemDate" value="'+(demandDate||'')+'"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>客户</label><input id="formDemCustomer" value="'+escapeHtml(customer||'')+'" placeholder="客户名称"></div><div class="form-group"><label>优先级</label><select id="formDemPriority"><option '+(priority==='高'?'selected':'')+'>高</option><option '+(priority==='中'?'selected':'')+'>中</option><option '+(priority==='低'?'selected':'')+'>低</option></select></div></div>'+
+    '<input type="hidden" id="formDemEditIdx" value="'+(isEdit?idx:'-1')+'">'+
+    '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveNewDemand()">'+(isEdit?'更新':'保存')+'</button></div>');
+  if(!demandDate) document.getElementById('formDemDate').valueAsDate=new Date(new Date().getTime()+30*86400000);
 }
 function saveNewDemand(){
-  const orderNo=document.getElementById('formDemOrder').value.trim()||('ORD'+String(appData.demands.length+1).padStart(3,'0')),material=document.getElementById('formDemMat').value,qty=parseInt(document.getElementById('formDemQty').value)||0;
+  const editIdx=parseInt(document.getElementById('formDemEditIdx').value);
+  const orderType=document.getElementById('formDemType').value.trim()||'独立需求';
+  const orderNo=document.getElementById('formDemOrder').value.trim()||('ORD'+String(appData.demands.length+1).padStart(3,'0'));
+  const material=document.getElementById('formDemMat').value;
+  const qty=parseInt(document.getElementById('formDemQty').value)||0;
   if(qty<=0){showToast('请输入有效数量','error');return;}
-  appData.demands.push({orderNo,material,quantity:qty,demandDate:document.getElementById('formDemDate').value,priority:document.getElementById('formDemPriority').value,customer:document.getElementById('formDemCustomer').value.trim()});
-  appData.demandHistory.push({time:new Date().toISOString().substring(0,16).replace('T',' '),orderNo,type:'新建',content:'创建订单 '+orderNo+', 数量'+qty+', 需求日'+document.getElementById('formDemDate').value});
-  closeModal();renderDemand();updateDashboard();refreshOrderSelect();showToast('✅ 需求添加成功','success');
+  const entry={orderType,orderNo,material,quantity:qty,unit:document.getElementById('formDemUnit').value,demandDate:document.getElementById('formDemDate').value,priority:document.getElementById('formDemPriority').value,customer:document.getElementById('formDemCustomer').value.trim()};
+  if(editIdx>=0){
+    appData.demands[editIdx]=entry;
+    appData.demandHistory.push({time:new Date().toISOString().substring(0,16).replace('T',' '),orderNo,type:'修改',content:'更新订单 '+orderNo+', 数量'+qty+', 需求日'+entry.demandDate});
+  }else{
+    appData.demands.push(entry);
+    appData.demandHistory.push({time:new Date().toISOString().substring(0,16).replace('T',' '),orderNo,type:'新建',content:'创建订单 '+orderNo+', 数量'+qty+', 需求日'+entry.demandDate});
+  }
+  closeModal();renderDemand();updateDashboard();refreshOrderSelect();showToast('✅ 需求'+(editIdx>=0?'更新':'添加')+'成功','success');
+}
+function editDemand(idx){
+  const d=appData.demands[idx];
+  if(!d) return;
+  openAddDemandModal(d.orderType,d.orderNo,d.material,d.quantity,d.unit,d.demandDate,d.priority,d.customer,idx);
 }
 
 // MRP
@@ -2454,9 +2485,9 @@ function loadMasterdataFromStorage(){
 // 加载默认需求数据（独立需求，不通过主数据导入）
 function loadSampleDemands(){
   appData.demands = [
-    { orderNo:'ORD001', material:'IC-1000-FT', quantity:120000, demandDate:'2026-07-31', priority:'高', customer:'华为海思' },
-    { orderNo:'ORD002', material:'IC-1000-FT', quantity:180000, demandDate:'2026-08-31', priority:'中', customer:'展讯通信' },
-    { orderNo:'ORD003', material:'IC-1000-FT', quantity:80000, demandDate:'2026-09-30', priority:'中', customer:'中兴微电子' }
+    { orderType:'独立需求', orderNo:'ORD001', material:'IC-1000-FT', quantity:120000, unit:'颗', demandDate:'2026-07-31', priority:'高', customer:'华为海思' },
+    { orderType:'独立需求', orderNo:'ORD002', material:'IC-1000-FT', quantity:180000, unit:'颗', demandDate:'2026-08-31', priority:'中', customer:'展讯通信' },
+    { orderType:'独立需求', orderNo:'ORD003', material:'IC-1000-FT', quantity:80000, unit:'颗', demandDate:'2026-09-30', priority:'中', customer:'中兴微电子' }
   ];
   appData.demandHistory = [
     { time:'2026-06-01 09:00', orderNo:'ORD001', type:'新建', content:'创建订单 ORD001, 数量120000, 需求日2026-07-31' },
