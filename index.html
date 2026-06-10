@@ -610,7 +610,7 @@ tbody tr:hover td{background:var(--primary-bg)}
               <span style="display:inline-flex;align-items:center;gap:4px;font-size:12px"><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#3b82f6"></span> 委外</span>
             </div>
             <div class="table-wrapper"><table id="procurementTable"><thead><tr>
-              <th>序号</th><th>物料编码</th><th>物料名称</th><th>制程</th><th>建议动作</th><th>净需求数量</th><th>单位</th><th>计划到货日</th><th>计划下单日</th><th>供应商</th><th>类型</th><th>操作</th>
+              <th>序号</th><th>物料编码</th><th>物料名称</th><th>制程</th><th>净需求数量</th><th>单位</th><th>计划下单日</th><th>计划到货日</th><th>计划订单号</th><th>供应商名称</th><th>类型</th><th>操作</th>
             </tr></thead><tbody></tbody></table></div>
           </div>
 
@@ -2210,7 +2210,7 @@ function executeMRP(){
     return entry?entry.scrap:0;
   }
   function getLeadTime(process){return appData.leadTimes.find(l=>l.process===process);}
-  function getSupplierName(process){const lt=appData.leadTimes.find(l=>l.process===process);return lt?lt.name:'-';}
+  function getSupplierName(process){const s=appData.suppliers.find(s=>s.processCode===process);return s?s.name:'-';}
   function getMaterialByProcess(process){const code=materialCodeMap[process]||'IC-1000-'+process;return appData.materials.find(m=>m.code===code);}
   function getInventoryByProcess(process){const matCode=materialCodeMap[process]||'IC-1000-'+process;return appData.inventory.find(i=>i.materialCode===matCode);}
   function addDays(dateStr,days){const d=new Date(dateStr);d.setDate(d.getDate()+days);return d.toISOString().split('T')[0];}
@@ -2865,33 +2865,49 @@ function renderProcurementList(results){
   let html='';
   needProcurement.forEach((r,idx)=>{
     const isPurchase=r.action.indexOf('采购')>=0;
-    const po=appData.plannedOrders.find(o=>o.materialCode===r.matCode&&o.plannedArrivalDate===r.plannedArrival);
-    let btnHtml='';
+    // 自动生成计划订单（如不存在）
+    let po=appData.plannedOrders.find(o=>o.materialCode===r.matCode&&o.plannedArrivalDate===r.plannedArrival);
     if(!po){
-      btnHtml='<button class="btn btn-sm btn-primary" onclick="createPlannedOrder(\''+r.matCode+'\',\''+r.matName+'\',\''+r.process+'\','+r.netRemaining+',\''+r.unit+'\',\''+(r.plannedOrderDate||'')+'\',\''+r.plannedArrival+'\',\''+r.action+'\',\''+(r.supplier||'')+'\')">📋 创建计划订单</button>';
-    }else{
-      const actions=['<span class="tag-status tag-green" title="'+po.orderNo+'">✅ '+po.orderNo+'</span>'];
-      if(!po.prNumber){
-        actions.push('<button class="btn btn-sm btn-warning" onclick="convertToPR(\''+r.matCode+'\',\''+r.plannedArrival+'\')">📋 转采PR</button>');
-      }else{
-        actions.push('<span class="tag-status tag-indigo" title="'+po.prNumber+'">✅ '+po.prNumber+'</span>');
-        if(!po.poNumber){
-          actions.push('<button class="btn btn-sm btn-danger" onclick="convertToPO(\''+r.matCode+'\',\''+r.plannedArrival+'\')">📋 转PO</button>');
-        }else{
-          actions.push('<span class="tag-status tag-purple" title="'+po.poNumber+'">✅ '+po.poNumber+'</span>');
-        }
-      }
-      btnHtml=actions.join(' ');
+      const orderNo=generateOrderNo();
+      po={orderNo,materialCode:r.matCode,materialName:r.matName,process:r.process,quantity:r.netRemaining,unit:r.unit,plannedOrderDate:r.plannedOrderDate||'',plannedArrivalDate:r.plannedArrival,action:r.action,supplier:r.supplier||'',status:'已创建',createTime:new Date().toLocaleString(),prNumber:'',prDate:'',sentToSap:false};
+      appData.plannedOrders.push(po);
+      savePlannedOrdersToStorage();
     }
-    html+='<tr><td>'+(idx+1)+'</td><td style="font-weight:500">'+r.matCode+'</td><td>'+r.matName+'</td><td>'+r.process+'</td><td>'+r.action+'</td><td class="font-bold" style="color:'+(isPurchase?'var(--warning)':'var(--primary)')+'">'+r.netRemaining.toLocaleString()+'</td><td>'+r.unit+'</td><td>'+(r.plannedArrival||'-')+'</td><td>'+(r.plannedOrderDate||'-')+'</td><td>'+r.supplier+'</td><td><span class="tag-status '+(isPurchase?'tag-yellow':'tag-blue')+'">'+(isPurchase?'采购':'委外')+'</span></td><td style="white-space:nowrap">'+btnHtml+'</td></tr>';
+    // 操作按钮
+    let btnHtml='';
+    if(!po.prNumber){
+      btnHtml='<button class="btn btn-sm btn-warning" onclick="convertToPR(\''+r.matCode+'\',\''+r.plannedArrival+'\')">📋 创建PR</button>';
+    }else{
+      btnHtml='<span class="tag-status tag-indigo" title="'+po.prNumber+'">✅ '+po.prNumber+'</span>';
+    }
+    btnHtml+=' ';
+    if(po.prNumber&&!po.sentToSap){
+      btnHtml+='<button class="btn btn-sm btn-primary" onclick="sendPRtoSAP(\''+r.matCode+'\',\''+r.plannedArrival+'\')">📤 传PR到SAP</button>';
+    }else if(po.sentToSap){
+      btnHtml+='<span class="tag-status tag-green">📤 已传SAP</span>';
+    }else{
+      btnHtml+='<button class="btn btn-sm btn-outline" disabled style="opacity:0.4">📤 传PR到SAP</button>';
+    }
+    html+='<tr><td>'+(idx+1)+'</td><td style="font-weight:500">'+r.matCode+'</td><td>'+r.matName+'</td><td>'+r.process+'</td><td class="font-bold" style="color:'+(isPurchase?'var(--warning)':'var(--primary)')+'">'+r.netRemaining.toLocaleString()+'</td><td>'+r.unit+'</td><td>'+(r.plannedOrderDate||'-')+'</td><td>'+(r.plannedArrival||'-')+'</td><td><span class="tag-status tag-green">'+po.orderNo+'</span></td><td>'+r.supplier+'</td><td><span class="tag-status '+(isPurchase?'tag-yellow':'tag-blue')+'">'+(isPurchase?'采购':'委外')+'</span></td><td style="white-space:nowrap">'+btnHtml+'</td></tr>';
   });
   container.querySelector('tbody').innerHTML=html;
+}
+// 传PR到SAP
+function sendPRtoSAP(matCode,plannedArrivalDate){
+  const po=appData.plannedOrders.find(o=>o.materialCode===matCode&&o.plannedArrivalDate===plannedArrivalDate);
+  if(!po||!po.prNumber){showToast('⚠️ 请先创建PR','warning');return;}
+  if(po.sentToSap){showToast('该PR已传SAP','warning');return;}
+  po.sentToSap=true;
+  po.sapSendTime=new Date().toLocaleString();
+  savePlannedOrdersToStorage();
+  if(appData.mrpResult)renderProcurementList(appData.mrpResult);
+  showToast('✅ PR '+po.prNumber+' 已传至SAP','success');
 }
 function exportProcurementList(){
   const rows=[];
   document.querySelectorAll('#procurementTable tbody tr').forEach(tr=>{
     const tds=tr.querySelectorAll('td');
-    if(tds.length>=11)rows.push({'序号':tds[0].textContent.trim(),'物料编码':tds[1].textContent.trim(),'物料名称':tds[2].textContent.trim(),'制程':tds[3].textContent.trim(),'建议动作':tds[4].textContent.trim(),'净需求数量':tds[5].textContent.trim(),'单位':tds[6].textContent.trim(),'计划到货日':tds[7].textContent.trim(),'计划下单日':tds[8].textContent.trim(),'供应商':tds[9].textContent.trim(),'类型':tds[10].textContent.trim()});
+    if(tds.length>=11)rows.push({'序号':tds[0].textContent.trim(),'物料编码':tds[1].textContent.trim(),'物料名称':tds[2].textContent.trim(),'制程':tds[3].textContent.trim(),'净需求数量':tds[4].textContent.trim(),'单位':tds[5].textContent.trim(),'计划下单日':tds[6].textContent.trim(),'计划到货日':tds[7].textContent.trim(),'计划订单号':tds[8].textContent.trim(),'供应商名称':tds[9].textContent.trim(),'类型':tds[10].textContent.trim()});
   });
   if(!rows.length){showToast('没有可导出的数据','warning');return;}
   const ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();
