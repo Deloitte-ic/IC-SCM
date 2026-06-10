@@ -593,7 +593,7 @@ tbody tr:hover td{background:var(--primary-bg)}
               </div>
             </div>
             <div class="table-wrapper"><table id="mrpResultTable"><thead><tr>
-              <th>物料编码</th><th>需求日期</th><th>需求类型</th><th>单位</th><th>毛需求</th><th>损耗率</th><th>净需求</th><th>WIP</th><th>WIP到货日</th><th>PR</th><th>PR到货日</th><th>PO</th><th>PO到货日</th><th>净待补</th><th>PlOrd到货日</th><th>PlOrd下单日</th>
+              <th>层级</th><th>制程</th><th>物料编码</th><th>物料名称</th><th>需求类型</th><th>需求日期</th><th>毛需求</th><th>损耗率</th><th>净需求</th><th>单位</th><th>WIP</th><th>WIP到货日</th><th>PR</th><th>PR到货日</th><th>PO</th><th>PO到货日</th><th>净待补</th>
             </tr></thead><tbody></tbody></table></div>
           </div>
 
@@ -2215,7 +2215,7 @@ function executeMRP(){
   function getInventoryByProcess(process){const matCode=materialCodeMap[process]||'IC-1000-'+process;return appData.inventory.find(i=>i.materialCode===matCode);}
   function addDays(dateStr,days){const d=new Date(dateStr);d.setDate(d.getDate()+days);return d.toISOString().split('T')[0];}
   const results=[],details=[];
-  function calcMRP(process,netReqQty,plannedArrival,level){
+  function calcMRP(process,netReqQty,plannedArrival,level,demandDate){
     // netReqQty = 净需求 = 该层级需要产出的数量（不含损耗）
     const lt=getLeadTime(process);if(!lt)return;
     const unit=unitMap[process]||'EA',totalDelivery=lt.prod+lt.trans+lt.inspect;
@@ -2242,7 +2242,7 @@ function executeMRP(){
     const isPurchase=mat&&mat.type==='采购';
     const effectiveApproval=isPurchase?approvalDays:0;
     if(netRemaining>0)plannedOrderDate=addDays(plannedArrival,-(totalDelivery+effectiveApproval));
-    results.push({level,process,matCode,matName,action,supplier,demandType,unit,netReq:netReqQty,scrapRate,grossReq,stock,wipAvailable,totalSupply,netRemaining,plannedArrival,plannedOrderDate,totalDelivery,approvalDays:effectiveApproval});
+    results.push({level,process,matCode,matName,action,supplier,demandType,unit,netReq:netReqQty,scrapRate,grossReq,stock,wipAvailable,totalSupply,netRemaining,plannedArrival,plannedOrderDate,totalDelivery,approvalDays:effectiveApproval,demandDate});
     let detailText='';
     if(level===0)detailText='【'+process+'】顶层净需求 = '+netReqQty.toLocaleString()+' '+unit;
     else detailText='【'+process+'】净需求(父毛需求÷BOM用量) = '+netReqQty.toLocaleString()+' '+unit;
@@ -2260,8 +2260,9 @@ function executeMRP(){
         const childProcess=processByMatCode[child.child]||child.child;
         // 子制程净需求 = 调用运算规则中的函数
         const childNetReq=core.calcChildNetReq(grossReq,child.usage,childProcess);
+        const childDemandDate=addDays(demandDate,-totalDelivery);
         const childArrival=addDays(plannedOrderDate,0);
-        calcMRP(childProcess,childNetReq,childArrival,level+1);
+        calcMRP(childProcess,childNetReq,childArrival,level+1,childDemandDate);
       });
     }
   }
@@ -2276,7 +2277,7 @@ function executeMRP(){
     sortedDates.forEach(date=>{
       const groupQty=dateMap[date];
       results.length=0;details.length=0;
-      calcMRP('FT',groupQty,date,0);
+      calcMRP('FT',groupQty,date,0,date);
       // FIFO库存+WIP扣减：各层级消耗了多少就从共享池扣除，先到先得
       results.forEach(r=>{
         const consumedStock=r.stock>0?Math.min(r.stock,Math.max(0,r.grossReq-r.wipAvailable-r.netRemaining)):0;
@@ -2284,7 +2285,6 @@ function executeMRP(){
         const consumedWip=r.wipAvailable>0?Math.min(r.wipAvailable,Math.max(0,r.grossReq-r.stock-r.netRemaining)):0;
         if(consumedWip>0){const inv=appData.inventory.find(i=>i.materialCode===r.matCode);if(inv)inv.transit=Math.max(0,inv.transit-consumedWip);}
       });
-      results.forEach(r=>{r.demandDate=date;});
       combResults=combResults.concat(results);
       combDetails=combDetails.concat(details);
     });
@@ -2293,8 +2293,7 @@ function executeMRP(){
     results.length=0;combResults.forEach(r=>results.push(r));
     details.length=0;combDetails.forEach(d=>details.push(d));
   }else{
-    calcMRP('FT',demandQty,dueDate,0);
-    results.forEach(r=>{r.demandDate=dueDate;});
+    calcMRP('FT',demandQty,dueDate,0,dueDate);
   }
   appData.mrpResult=results;appData.mrpDetails=details;
   document.querySelector('#mrpTabs .tab[data-tab="mrp-result"]').click();
@@ -2337,7 +2336,7 @@ function executeMRP(){
   if(hasMultiDate){
     dateSet.forEach(date=>{
       const groupRows=results.filter(r=>r.demandDate===date);
-      tableHtml+='<tr style="background:#f0f7ff"><td colspan="16" style="font-weight:600;padding:8px 12px">📅 需求日期 '+date+'</td></tr>';
+      tableHtml+='<tr style="background:#f0f7ff"><td colspan="17" style="font-weight:600;padding:8px 12px">📅 需求日期 '+date+'</td></tr>';
       groupRows.forEach(r=>{
         // 查找业务数据
         const wipInv = appData.inventory.find(i => i.materialCode === r.matCode && i.transit > 0);
@@ -2348,7 +2347,7 @@ function executeMRP(){
         const poItems = appData.prpo.filter(p => p.materialCode === r.matCode && p.orderType === 'PO');
         const poQty = poItems.reduce((s,p)=>s+(p.quantity||0),0).toLocaleString();
         const poDates = poItems.map(p=>p.demandDate||'').join(', ');
-        tableHtml+='<tr><td style="font-weight:500">'+r.matCode+'</td><td style="font-weight:600;color:var(--primary)">'+r.demandDate+'</td><td><span class="tag-status '+(r.demandType==='独立需求'?'tag-green':'tag-blue')+'">'+r.demandType+'</span></td><td>'+r.unit+'</td><td style="font-weight:500">'+r.grossReq.toLocaleString()+'</td><td>'+r.scrapRate+'%</td><td style="font-weight:600">'+r.netReq.toLocaleString()+'</td><td>'+r.wipAvailable.toLocaleString()+'</td><td>'+wipArrival+'</td><td style="font-size:11px">'+prQty+'</td><td style="font-size:11px">'+prDates+'</td><td style="font-size:11px">'+poQty+'</td><td style="font-size:11px">'+poDates+'</td><td style="font-weight:600;color:'+(r.netRemaining>0?'var(--danger)':'var(--success)')+'">'+r.netRemaining.toLocaleString()+'</td><td>'+r.plannedArrival+'</td><td style="color:'+(r.plannedOrderDate?r.plannedOrderDate<new Date().toISOString().split('T')[0]?'var(--danger)':'var(--gray-700)':'var(--gray-400)')+'">'+(r.plannedOrderDate||'N/A')+'</td></tr>';
+        tableHtml+='<tr><td style="text-align:center;font-weight:600;color:var(--gray-500)">'+r.level+'</td><td><span class="tag-status '+(r.process==='FT'?'tag-green':'tag-blue')+'">'+r.process+'</span></td><td style="font-weight:500">'+r.matCode+'</td><td>'+r.matName+'</td><td><span class="tag-status '+(r.demandType==='独立需求'?'tag-green':'tag-blue')+'">'+r.demandType+'</span></td><td style="font-weight:600;color:var(--primary)">'+r.demandDate+'</td><td style="font-weight:500">'+r.grossReq.toLocaleString()+'</td><td>'+r.scrapRate+'%</td><td style="font-weight:600">'+r.netReq.toLocaleString()+'</td><td>'+r.unit+'</td><td>'+r.wipAvailable.toLocaleString()+'</td><td>'+wipArrival+'</td><td style="font-size:11px">'+prQty+'</td><td style="font-size:11px">'+prDates+'</td><td style="font-size:11px">'+poQty+'</td><td style="font-size:11px">'+poDates+'</td><td style="font-weight:600;color:'+(r.netRemaining>0?'var(--danger)':'var(--success)')+'">'+r.netRemaining.toLocaleString()+'</td></tr>';
       });
     });
   }else{
@@ -2362,7 +2361,7 @@ function executeMRP(){
       const poItems = appData.prpo.filter(p => p.materialCode === r.matCode && p.orderType === 'PO');
       const poQty = poItems.reduce((s,p)=>s+(p.quantity||0),0).toLocaleString();
       const poDates = poItems.map(p=>p.demandDate||'').join(', ');
-      tableHtml+='<tr><td style="font-weight:500">'+r.matCode+'</td><td style="font-weight:600;color:var(--primary)">'+(r.demandDate||'')+'</td><td><span class="tag-status '+(r.demandType==='独立需求'?'tag-green':'tag-blue')+'">'+r.demandType+'</span></td><td>'+r.unit+'</td><td style="font-weight:500">'+r.grossReq.toLocaleString()+'</td><td>'+r.scrapRate+'%</td><td style="font-weight:600">'+r.netReq.toLocaleString()+'</td><td>'+r.wipAvailable.toLocaleString()+'</td><td>'+wipArrival+'</td><td style="font-size:11px">'+prQty+'</td><td style="font-size:11px">'+prDates+'</td><td style="font-size:11px">'+poQty+'</td><td style="font-size:11px">'+poDates+'</td><td style="font-weight:600;color:'+(r.netRemaining>0?'var(--danger)':'var(--success)')+'">'+r.netRemaining.toLocaleString()+'</td><td>'+r.plannedArrival+'</td><td style="color:'+(r.plannedOrderDate?r.plannedOrderDate<new Date().toISOString().split('T')[0]?'var(--danger)':'var(--gray-700)':'var(--gray-400)')+'">'+(r.plannedOrderDate||'N/A')+'</td></tr>';
+      tableHtml+='<tr><td style="text-align:center;font-weight:600;color:var(--gray-500)">'+r.level+'</td><td><span class="tag-status '+(r.process==='FT'?'tag-green':'tag-blue')+'">'+r.process+'</span></td><td style="font-weight:500">'+r.matCode+'</td><td>'+r.matName+'</td><td><span class="tag-status '+(r.demandType==='独立需求'?'tag-green':'tag-blue')+'">'+r.demandType+'</span></td><td style="font-weight:600;color:var(--primary)">'+(r.demandDate||'')+'</td><td style="font-weight:500">'+r.grossReq.toLocaleString()+'</td><td>'+r.scrapRate+'%</td><td style="font-weight:600">'+r.netReq.toLocaleString()+'</td><td>'+r.unit+'</td><td>'+r.wipAvailable.toLocaleString()+'</td><td>'+wipArrival+'</td><td style="font-size:11px">'+prQty+'</td><td style="font-size:11px">'+prDates+'</td><td style="font-size:11px">'+poQty+'</td><td style="font-size:11px">'+poDates+'</td><td style="font-weight:600;color:'+(r.netRemaining>0?'var(--danger)':'var(--success)')+'">'+r.netRemaining.toLocaleString()+'</td></tr>';
     });
   }
   document.querySelector('#mrpResultTable tbody').innerHTML=tableHtml;
@@ -2923,7 +2922,7 @@ function renderGantt(results){
   document.getElementById('ganttLegend').innerHTML='<div class="gantt-legend-item"><div class="dot" style="background:linear-gradient(135deg,#2563eb,#3b82f6)"></div>采购+生产周期</div><div class="gantt-legend-item"><div class="dot" style="background:linear-gradient(135deg,#10b981,#34d399)"></div>库存满足</div>';
 }
 function exportMRPResult(){
-  const rows=[];document.querySelectorAll('#mrpResultTable tbody tr').forEach(tr=>{const tds=tr.querySelectorAll('td');if(tds.length>=16)rows.push({'物料编码':tds[0].textContent.trim(),'需求日期':tds[1].textContent.trim(),'需求类型':tds[2].textContent.trim(),'单位':tds[3].textContent.trim(),'毛需求':tds[4].textContent.trim(),'损耗率':tds[5].textContent.trim(),'净需求':tds[6].textContent.trim(),'WIP':tds[7].textContent.trim(),'WIP到货日':tds[8].textContent.trim(),'PR':tds[9].textContent.trim(),'PR到货日':tds[10].textContent.trim(),'PO':tds[11].textContent.trim(),'PO到货日':tds[12].textContent.trim(),'净待补':tds[13].textContent.trim(),'PlOrd到货日':tds[14].textContent.trim(),'PlOrd下单日':tds[15].textContent.trim()});});
+  const rows=[];document.querySelectorAll('#mrpResultTable tbody tr').forEach(tr=>{const tds=tr.querySelectorAll('td');if(tds.length>=17)rows.push({'层级':tds[0].textContent.trim(),'制程':tds[1].textContent.trim(),'物料编码':tds[2].textContent.trim(),'物料名称':tds[3].textContent.trim(),'需求类型':tds[4].textContent.trim(),'需求日期':tds[5].textContent.trim(),'毛需求':tds[6].textContent.trim(),'损耗率':tds[7].textContent.trim(),'净需求':tds[8].textContent.trim(),'单位':tds[9].textContent.trim(),'WIP':tds[10].textContent.trim(),'WIP到货日':tds[11].textContent.trim(),'PR':tds[12].textContent.trim(),'PR到货日':tds[13].textContent.trim(),'PO':tds[14].textContent.trim(),'PO到货日':tds[15].textContent.trim(),'净待补':tds[16].textContent.trim()});});
   if(!rows.length){showToast('没有可导出的数据','warning');return;}
   const ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'MRP运算结果');XLSX.writeFile(wb,'MRP运算结果_'+new Date().toISOString().split('T')[0]+'.xlsx');showToast('✅ 导出成功','success');
 }
