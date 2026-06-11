@@ -395,7 +395,7 @@ tbody tr:hover td{background:var(--primary-bg)}
       <div class="tabs" id="businessTabs">
         <div class="tab active" data-tab="bd-inventory" onclick="switchBusinessTab('bd-inventory')">📦 库存</div>
         <div class="tab" data-tab="bd-wip" onclick="switchBusinessTab('bd-wip')">🏗️ 在制品</div>
-        <div class="tab" data-tab="bd-prpo" onclick="switchBusinessTab('bd-prpo')">📋 Open PR/Open PO</div>
+        <div class="tab" data-tab="bd-prpo" onclick="switchBusinessTab('bd-prpo')">📋 PR/PO</div>
       </div>
 
       <div class="tab-content active" id="tab-bd-inventory">
@@ -429,7 +429,7 @@ tbody tr:hover td{background:var(--primary-bg)}
       <div class="tab-content" id="tab-bd-prpo">
         <div class="card">
           <div class="card-header">
-            <div class="card-title">📋 Open PR/Open PO <span class="tag" id="prpoCount">0条</span></div>
+            <div class="card-title">📋 PR/PO <span class="tag" id="prpoCount">0条</span></div>
             <div class="card-actions">
               <button class="btn btn-sm btn-outline" onclick="importToType('prpo')">📥 导入</button>
               <input type="file" id="importFile_prpo" accept=".xlsx,.xls" onchange="handleTypeImport(event,'prpo')" style="display:none">
