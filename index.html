@@ -2679,6 +2679,7 @@ function convertToPR(matCode,plannedArrivalDate){
   savePlannedOrdersToStorage();
   saveMasterdataToStorage();
   renderProcurementList(appData.mrpResult);
+  renderAllMasterdata();
   showToast('✅ 采购申请 '+po.prNumber+' 已创建（数量='+(po.quantity||0).toLocaleString()+'，到货日='+(po.plannedArrivalDate||'')+'）','success');
 }
 
