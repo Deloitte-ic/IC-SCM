@@ -589,6 +589,7 @@ tbody tr:hover td{background:var(--primary-bg)}
           <div class="card">
             <div class="card-header">
               <div class="card-title">📊 MRP运算结果表 <span class="tag" id="resultOrderInfo"></span></div>
+            <div id="mrpConfigStatus" style="font-size:12px;color:var(--gray-500);margin:4px 0 8px 0;padding:4px 8px;background:#f8f9fa;border-radius:4px"></div>
               <div class="card-actions">
                 <button class="btn btn-sm btn-success" onclick="exportMRPResult()">📥 导出Excel</button>
               </div>
@@ -2266,8 +2267,8 @@ function executeMRP(){
     else detailText='【'+process+'】净需求(父毛需求÷BOM用量) = '+netReqQty.toLocaleString()+' '+unit;
     detailText+=' → 毛需求(含'+scrapRate+'%损耗) = '+grossReq.toLocaleString()+' '+unit;
     detailText+=' → 可用库存='+stock.toLocaleString()+' WIP='+wipAvailable.toLocaleString();
-    if(core.deductPR)detailText+=' PR='+prAvailable.toLocaleString();
-    if(core.deductPO)detailText+=' PO='+poAvailable.toLocaleString();
+    detailText+=' PR='+prAvailable.toLocaleString()+'('+(core.deductPR?'✅生效':'❌关闭')+')';
+    detailText+=' PO='+poAvailable.toLocaleString()+'('+(core.deductPO?'✅生效':'❌关闭')+')';
     detailText+=' → 净待补 = '+netRemaining.toLocaleString()+' '+unit;
     if(isPurchase)detailText+=' → 到货日'+plannedArrival+' → 总交付'+totalDelivery+'天+审批'+effectiveApproval+'天 → 下单日'+(plannedOrderDate||'N/A');
     else detailText+=' → 到货日'+plannedArrival+' → 交付周期'+totalDelivery+'天 → 投产日'+(plannedOrderDate||'N/A');
@@ -2323,6 +2324,17 @@ function executeMRP(){
   if(sel.value==='all')orderInfo='📋 所有订单（共'+appData.demands.length+'笔，合计'+demandQty.toLocaleString()+'颗，按需求日期分组）';
   else orderInfo=selectedOrder?selectedOrder.orderNo+' | '+selectedOrder.material:'自定义需求';
   document.getElementById('resultOrderInfo').textContent=orderInfo;
+  // 显示规则配置状态
+  const cfgEl=document.getElementById('mrpConfigStatus');
+  const activeCore=getActiveMrpCore();
+  const prpoCount=appData.prpo.length;
+  const ftPrCount=appData.prpo.filter(p=>p.materialCode==='IC-1000-FT'&&p.orderType==='PR').reduce((s,p)=>s+(p.quantity||0),0);
+  const ftPoCount=appData.prpo.filter(p=>p.materialCode==='IC-1000-FT'&&p.orderType==='PO').reduce((s,p)=>s+(p.quantity||0),0);
+  cfgEl.innerHTML='⚙️ 规则配置：WIP模式='+activeCore.wipMode
+    +' | 扣PR='+(activeCore.deductPR?'✅是':'❌否')
+    +' | 扣PO='+(activeCore.deductPO?'✅是':'❌否')
+    +' | PR/PO总数='+prpoCount+'条'
+    +' | IC-1000-FT的PR='+ftPrCount.toLocaleString()+' PO='+ftPoCount.toLocaleString();
   // 按制程分组统计汇总（不按单位，按制程FT/AB/CP/BP/Wafer）
   const procGroups={};
   results.forEach(r=>{
