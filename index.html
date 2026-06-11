@@ -2232,10 +2232,17 @@ function executeMRP(){
     const core=getActiveMrpCore();
     // 毛需求 = 净需求 × (1 + 损耗率%)
     const grossReq=core.calcGrossReq(netReqQty,scrapRate);
-    // 库存扣减
+    // 库存扣减（按规则四配置决定WIP计入方式）
     const inv=getInventoryByProcess(process);
     let stock=inv?inv.stock:0,wipAvailable=0;
-    if(inv&&inv.transit>0&&inv.transitArrival&&inv.transitArrival<=plannedArrival)wipAvailable=inv.transit;
+    if(inv&&inv.transit>0){
+      if(core.wipMode==='all'){
+        wipAvailable=inv.transit;
+      } else {
+        // filtered：仅当WIP到货日≤需求日才计入
+        if(inv.transitArrival&&inv.transitArrival<=plannedArrival)wipAvailable=inv.transit;
+      }
+    }
     const totalSupply=stock+wipAvailable;
     const netRemaining=core.calcNetRemaining(grossReq,stock,wipAvailable);
     // 时间倒推（审批天数仅对采购物料有效）
@@ -2387,7 +2394,7 @@ function getDefaultRuleList(){
      desc:'下一层级的净需求由上一层级的毛需求按BOM用量折算得到。'},
     {id:'rule-3', title:'规则三：毛需求计算规则', type:'system',
      desc:'毛需求 = 净需求 × ( 1 + 损耗率 / 100 )\n\n其中损耗率来自参数配置中BOM结构配置的"损耗率%"字段，不同制程可设置不同损耗率。\n例如FT损耗率5%，净需求120,000，则毛需求 = 120,000 × (1 + 5/100) = 126,000颗'},
-    {id:'rule-4', title:'规则四：库存扣减规则', type:'system',
+    {id:'rule-4', title:'规则四：库存扣减规则', type:'system', config:'wipMode',
      desc:'净待补 = 毛需求 − 可用库存 − 可用在制（WIP）\n\n计算结果不低于0，净待补为0表示库存充足无需采购/委外。\n在制(WIP)仅在计划到货日 ≤ 需求日期时才计入可用供给。'},
     {id:'rule-5', title:'规则五：子制程展开条件', type:'system', config:'expand',
      desc:'当前制程的净待补满足以下条件时，继续展开下级制程进行计算：'}
@@ -2404,6 +2411,7 @@ function saveRulesToStorage(){
   try{
     const data={
       childFormula: appData.naturalRules?.childFormula||'divide',
+      wipMode: appData.naturalRules?.wipMode||'filtered',
       expandOp: appData.naturalRules?.expandOp||'gt',
       expandThreshold: appData.naturalRules?.expandThreshold||0,
       ruleList: appData.naturalRules?.ruleList||[]
@@ -2421,6 +2429,7 @@ function loadRulesFromStorage(){
     if(!data.ruleList||!data.ruleList.length) return false;
     if(!appData.naturalRules) appData.naturalRules={};
     appData.naturalRules.childFormula=data.childFormula||'divide';
+    appData.naturalRules.wipMode=data.wipMode||'filtered';
     appData.naturalRules.expandOp=data.expandOp||'gt';
     appData.naturalRules.expandThreshold=data.expandThreshold||0;
     appData.naturalRules.ruleList=data.ruleList;
@@ -2614,6 +2623,17 @@ function renderRuleList(){
       html+='</select> BOM单位用量';
       html+='<span style="color:var(--gray-400);font-size:12px;margin-left:6px">（AB→CP用量120表示：120颗AB对应1片CP，净需求=父毛需求÷120）</span>';
       html+='</div></div>';
+    } else if(rule.config==='wipMode'){
+      // 规则四：可编辑描述 + 在制(WIP)计入方式配置
+      html+='<textarea class="rule-desc-textarea" id="desc_'+idAttr+'_config" placeholder="输入规则描述..." style="min-height:50px;margin-bottom:10px"></textarea>';
+      html+='<div class="rule-config-box">';
+      html+='<span style="font-size:13px">在制（WIP）计入方式：</span> ';
+      html+='<select id="ruleWipMode" onchange="onConfigChange()" style="width:auto;display:inline-block;padding:3px 6px;border:1px solid var(--gray-300);border-radius:4px;font-size:13px;margin:0 4px;background:#fff">';
+      html+='<option value="filtered">按到货日筛选（WIP到货日≤需求日才计入）</option>';
+      html+='<option value="all">全部计入（所有WIP都算可用供给）</option>';
+      html+='</select>';
+      html+='<span style="color:var(--gray-400);font-size:12px;margin-left:6px">选择"全部计入"时，WIP在制数量不计到货日全部计入可用供给</span>';
+      html+='</div>';
     } else if(rule.config==='expand'){
       // 规则五：可编辑描述 + 展开条件配置控件
       html+='<textarea class="rule-desc-textarea" id="desc_'+idAttr+'_config" placeholder="输入规则描述..." style="min-height:50px;margin-bottom:10px"></textarea>';
@@ -2650,6 +2670,8 @@ function renderRuleList(){
   if(appData.naturalRules){
     const childSelect=document.getElementById('ruleChildFormula');
     if(childSelect) childSelect.value=appData.naturalRules.childFormula||'divide';
+    const wipSelect=document.getElementById('ruleWipMode');
+    if(wipSelect) wipSelect.value=appData.naturalRules.wipMode||'filtered';
     const opSelect=document.getElementById('ruleExpandOp');
     if(opSelect) opSelect.value=appData.naturalRules.expandOp||'gt';
     const thresh=document.getElementById('ruleExpandThreshold');
@@ -2686,11 +2708,13 @@ function saveSingleRule(ruleId){
   // 读取所有规则，更新指定规则的内容
   const rules=readRulesFromUI();
   const childFormula=document.getElementById('ruleChildFormula')?.value||'divide';
+  const wipMode=document.getElementById('ruleWipMode')?.value||'filtered';
   const expandOp=document.getElementById('ruleExpandOp')?.value||'gt';
   const expandThreshold=parseFloat(document.getElementById('ruleExpandThreshold')?.value)||0;
   const core=compileRulesFromUI();
   appData.naturalRules={
     childFormula: childFormula,
+    wipMode: wipMode,
     expandOp: expandOp,
     expandThreshold: expandThreshold,
     ruleList: rules,
@@ -2718,10 +2742,12 @@ function addRule(){
   });
   // 保存当前配置
   const childFormula=document.getElementById('ruleChildFormula')?.value||'divide';
+  const wipMode=document.getElementById('ruleWipMode')?.value||'filtered';
   const expandOp=document.getElementById('ruleExpandOp')?.value||'gt';
   const expandThreshold=parseFloat(document.getElementById('ruleExpandThreshold')?.value)||0;
   appData.naturalRules=appData.naturalRules||{};
   appData.naturalRules.childFormula=childFormula;
+  appData.naturalRules.wipMode=wipMode;
   appData.naturalRules.expandOp=expandOp;
   appData.naturalRules.expandThreshold=expandThreshold;
   appData.naturalRules.ruleList=rules;
@@ -2745,10 +2771,12 @@ function deleteRule(ruleId){
   rules.splice(idx,1);
   // 更新保存
   const childFormula=document.getElementById('ruleChildFormula')?.value||'divide';
+  const wipMode=document.getElementById('ruleWipMode')?.value||'filtered';
   const expandOp=document.getElementById('ruleExpandOp')?.value||'gt';
   const expandThreshold=parseFloat(document.getElementById('ruleExpandThreshold')?.value)||0;
   appData.naturalRules=appData.naturalRules||{};
   appData.naturalRules.childFormula=childFormula;
+  appData.naturalRules.wipMode=wipMode;
   appData.naturalRules.expandOp=expandOp;
   appData.naturalRules.expandThreshold=expandThreshold;
   appData.naturalRules.ruleList=rules;
@@ -2771,6 +2799,7 @@ function onConfigChange(){
 // 从自然语言规则UI编译运算核心
 function compileRulesFromUI(){
   const formula=document.getElementById('ruleChildFormula')?.value||'divide';
+  const wipMode=document.getElementById('ruleWipMode')?.value||'filtered';
   const op=document.getElementById('ruleExpandOp')?.value||'gt';
   const threshold=parseFloat(document.getElementById('ruleExpandThreshold')?.value)||0;
   return {
@@ -2781,7 +2810,8 @@ function compileRulesFromUI(){
     calcNetRemaining: function(grossReq,stock,wip){return Math.max(0,grossReq-stock-wip);},
     shouldExpandChildren: op==='gt'
       ? function(netRemaining){return netRemaining>threshold;}
-      : function(netRemaining){return netRemaining>=threshold;}
+      : function(netRemaining){return netRemaining>=threshold;},
+    wipMode: wipMode
   };
 }
 
@@ -2789,11 +2819,13 @@ function compileRulesFromUI(){
 function saveNaturalRules(){
   const rules=readRulesFromUI();
   const childFormula=document.getElementById('ruleChildFormula')?.value||'divide';
+  const wipMode=document.getElementById('ruleWipMode')?.value||'filtered';
   const expandOp=document.getElementById('ruleExpandOp')?.value||'gt';
   const expandThreshold=parseFloat(document.getElementById('ruleExpandThreshold')?.value)||0;
   const core=compileRulesFromUI();
   appData.naturalRules={
     childFormula: childFormula,
+    wipMode: wipMode,
     expandOp: expandOp,
     expandThreshold: expandThreshold,
     ruleList: rules,
