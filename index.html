@@ -2216,6 +2216,23 @@ function executeMRP(){
   function getMaterialByProcess(process){const code=materialCodeMap[process]||'IC-1000-'+process;return appData.materials.find(m=>m.code===code);}
   function getInventoryByProcess(process){const matCode=materialCodeMap[process]||'IC-1000-'+process;return appData.inventory.find(i=>i.materialCode===matCode);}
   function addDays(dateStr,days){const d=new Date(dateStr);d.setDate(d.getDate()+days);return d.toISOString().split('T')[0];}
+  // FIFO供给池（多需求共享，按FIFO顺序消耗）
+  let fifoSupplyQueues = null;
+  function consumeFromPool(matCode, grossReq){
+    const queue = fifoSupplyQueues[matCode];
+    if (!queue) return {stock:0,wip:0,pr:0,po:0};
+    let remaining = grossReq;
+    const result = {stock:0,wip:0,pr:0,po:0};
+    for (let i = 0; i < queue.length && remaining > 0; i++) {
+      const item = queue[i];
+      if (item.qty <= 0) continue;
+      const take = Math.min(item.qty, remaining);
+      item.qty -= take;
+      remaining -= take;
+      result[item.type] += take;
+    }
+    return result;
+  }
   const results=[],details=[];
   function calcMRP(process,netReqQty,plannedArrival,level,demandDate){
     // netReqQty = 净需求 = 该层级需要产出的数量（不含损耗）
@@ -2236,23 +2253,32 @@ function executeMRP(){
     // 库存扣减（按规则四配置决定WIP计入方式）
     const inv=getInventoryByProcess(process);
     let stock=inv?inv.stock:0,wipAvailable=0;
-    if(inv&&inv.transit>0){
-      if(core.wipMode==='all'){
-        wipAvailable=inv.transit;
-      } else {
-        // filtered：仅当WIP到货日≤需求日才计入
-        if(inv.transitArrival&&inv.transitArrival<=plannedArrival)wipAvailable=inv.transit;
-      }
-    }
-    // PR/PO扣减（按规则四配置）
     let prAvailable=0,poAvailable=0;
-    if(core.deductPR){
-      const prItems=appData.prpo.filter(p=>p.materialCode===matCode&&p.orderType==='PR'&&p.demandDate<=plannedArrival);
-      prAvailable=prItems.reduce((s,p)=>s+(p.quantity||0),0);
-    }
-    if(core.deductPO){
-      const poItems=appData.prpo.filter(p=>p.materialCode===matCode&&p.orderType==='PO'&&p.demandDate<=plannedArrival);
-      poAvailable=poItems.reduce((s,p)=>s+(p.quantity||0),0);
+    // FIFO模式：从供给池中按序消耗
+    if (core.supplyStrategy === 'fifo' && fifoSupplyQueues) {
+      const alloc = consumeFromPool(matCode, grossReq);
+      stock = alloc.stock;
+      wipAvailable = alloc.wip;
+      prAvailable = alloc.pr;
+      poAvailable = alloc.po;
+    } else {
+      // 标准模式：各自独立扣减
+      if(inv&&inv.transit>0){
+        if(core.wipMode==='all'){
+          wipAvailable=inv.transit;
+        } else {
+          // filtered：仅当WIP到货日≤需求日才计入
+          if(inv.transitArrival&&inv.transitArrival<=plannedArrival)wipAvailable=inv.transit;
+        }
+      }
+      if(core.deductPR){
+        const prItems=appData.prpo.filter(p=>p.materialCode===matCode&&p.orderType==='PR'&&p.demandDate<=plannedArrival);
+        prAvailable=prItems.reduce((s,p)=>s+(p.quantity||0),0);
+      }
+      if(core.deductPO){
+        const poItems=appData.prpo.filter(p=>p.materialCode===matCode&&p.orderType==='PO'&&p.demandDate<=plannedArrival);
+        poAvailable=poItems.reduce((s,p)=>s+(p.quantity||0),0);
+      }
     }
     const totalSupply=stock+wipAvailable+prAvailable+poAvailable;
     const netRemaining=Math.max(0,grossReq-stock-wipAvailable-prAvailable-poAvailable);
@@ -2293,19 +2319,43 @@ function executeMRP(){
     const dateMap={};
     appData.demands.forEach(d=>{if(!dateMap[d.demandDate])dateMap[d.demandDate]=0;dateMap[d.demandDate]+=d.quantity;});
     const sortedDates=Object.keys(dateMap).sort();
+    // FIFO模式：初始化全局供给池（库存/WIP/PR/PO按FIFO排序，被多需求依次消耗）
+    if (core.supplyStrategy === 'fifo') {
+      fifoSupplyQueues = {};
+      appData.materials.forEach(mat => {
+        const code = mat.code;
+        const inv = appData.inventory.find(i => i.materialCode === code);
+        const queue = [];
+        if (inv && inv.stock > 0) queue.push({type:'stock', qty:inv.stock, arrival:''});
+        if (inv && inv.transit > 0) queue.push({type:'wip', qty:inv.transit, arrival:inv.transitArrival||''});
+        appData.prpo.filter(p => p.materialCode===code && p.orderType==='PR').forEach(p => {queue.push({type:'pr', qty:p.quantity||0, arrival:p.demandDate||''});});
+        appData.prpo.filter(p => p.materialCode===code && p.orderType==='PO').forEach(p => {queue.push({type:'po', qty:p.quantity||0, arrival:p.demandDate||''});});
+        // 排序：stock永远第一，其他按到货日升序，同到货日 wip→po→pr
+        const order = {stock:0, wip:1, po:2, pr:3};
+        queue.sort((a,b) => {
+          if (a.type==='stock') return -1;
+          if (b.type==='stock') return 1;
+          if (a.arrival !== b.arrival) return a.arrival < b.arrival ? -1 : 1;
+          return (order[a.type]||99) - (order[b.type]||99);
+        });
+        fifoSupplyQueues[code] = queue;
+      });
+    }
     const origInventory=JSON.parse(JSON.stringify(appData.inventory));
     let combResults=[],combDetails=[];
     sortedDates.forEach(date=>{
       const groupQty=dateMap[date];
       results.length=0;details.length=0;
       calcMRP('FT',groupQty,date,0,date);
-      // FIFO库存+WIP扣减：各层级消耗了多少就从共享池扣除，先到先得
-      results.forEach(r=>{
-        const consumedStock=r.stock>0?Math.min(r.stock,Math.max(0,r.grossReq-r.wipAvailable-r.netRemaining)):0;
-        if(consumedStock>0){const inv=appData.inventory.find(i=>i.materialCode===r.matCode);if(inv)inv.stock=Math.max(0,inv.stock-consumedStock);}
-        const consumedWip=r.wipAvailable>0?Math.min(r.wipAvailable,Math.max(0,r.grossReq-r.stock-r.netRemaining)):0;
-        if(consumedWip>0){const inv=appData.inventory.find(i=>i.materialCode===r.matCode);if(inv)inv.transit=Math.max(0,inv.transit-consumedWip);}
-      });
+      // 标准模式下手动扣除已消耗的库存/WIP（FIFO模式下由consumeFromPool自动处理）
+      if (core.supplyStrategy !== 'fifo') {
+        results.forEach(r=>{
+          const consumedStock=r.stock>0?Math.min(r.stock,Math.max(0,r.grossReq-r.wipAvailable-r.netRemaining)):0;
+          if(consumedStock>0){const inv=appData.inventory.find(i=>i.materialCode===r.matCode);if(inv)inv.stock=Math.max(0,inv.stock-consumedStock);}
+          const consumedWip=r.wipAvailable>0?Math.min(r.wipAvailable,Math.max(0,r.grossReq-r.stock-r.netRemaining)):0;
+          if(consumedWip>0){const inv=appData.inventory.find(i=>i.materialCode===r.matCode);if(inv)inv.transit=Math.max(0,inv.transit-consumedWip);}
+        });
+      }
       combResults=combResults.concat(results);
       combDetails=combDetails.concat(details);
     });
@@ -2333,6 +2383,7 @@ function executeMRP(){
   cfgEl.innerHTML='⚙️ 规则配置：WIP模式='+activeCore.wipMode
     +' | 扣PR='+(activeCore.deductPR?'✅是':'❌否')
     +' | 扣PO='+(activeCore.deductPO?'✅是':'❌否')
+    +' | 供给策略='+(activeCore.supplyStrategy==='fifo'?'FIFO顺序':'独立扣减')
     +' | PR/PO总数='+prpoCount+'条'
     +' | IC-1000-FT的PR='+ftPrCount.toLocaleString()+' PO='+ftPoCount.toLocaleString();
   // 按制程分组统计汇总（不按单位，按制程FT/AB/CP/BP/Wafer）
@@ -2407,7 +2458,7 @@ let defaultMrpCore={
   calcGrossReq: function(netReq,scrapRate){return Math.ceil(netReq*(1+scrapRate/100));},
   calcNetRemaining: function(grossReq,stock,wip){return Math.max(0,grossReq-stock-wip);},
   shouldExpandChildren: function(netRemaining){return netRemaining>0;},
-  wipMode: 'filtered', deductPR: true, deductPO: true
+  wipMode: 'filtered', deductPR: true, deductPO: true, supplyStrategy: 'independent'
 };
 
 // 获取系统默认规则列表（5条预设规则）
@@ -2420,7 +2471,7 @@ function getDefaultRuleList(){
     {id:'rule-3', title:'规则三：毛需求计算规则', type:'system',
      desc:'毛需求 = 净需求 × ( 1 + 损耗率 / 100 )\n\n其中损耗率来自参数配置中BOM结构配置的"损耗率%"字段，不同制程可设置不同损耗率。\n例如FT损耗率5%，净需求120,000，则毛需求 = 120,000 × (1 + 5/100) = 126,000颗'},
     {id:'rule-4', title:'规则四：库存扣减规则', type:'system', config:'wipMode',
-     desc:'净待补 = 毛需求 − 可用库存 − 可用在制（WIP） − 可用PR − 可用PO\n\n计算结果不低于0，净待补为0表示库存充足无需采购/委外。\n在制(WIP)仅在计划到货日 ≤ 需求日期时才计入可用供给。\nPR/PO仅在各自的到货日/需求日 ≤ 需求日期时才计入可用供给。'},
+     desc:'净待补 = 毛需求 − 可用库存 − 可用在制（WIP） − 可用PR − 可用PO\n\n计算结果不低于0。\n可在下方控件中配置WIP计入方式、是否扣减PR/PO、以及供给扣减策略（独立扣减/FIFO顺序）。\nFIFO模式：可用库存优先扣减，WIP/PR/PO按到货日升序排列，同到货日顺序 WIP→PO→PR。先到先得，供给被消耗后不再用于后续需求日期。'},
     {id:'rule-5', title:'规则五：子制程展开条件', type:'system', config:'expand',
      desc:'当前制程的净待补满足以下条件时，继续展开下级制程进行计算：'}
   ];
@@ -2441,6 +2492,7 @@ function saveRulesToStorage(){
       deductPO: appData.naturalRules?.deductPO!==false,
       expandOp: appData.naturalRules?.expandOp||'gt',
       expandThreshold: appData.naturalRules?.expandThreshold||0,
+      supplyStrategy: appData.naturalRules?.supplyStrategy||'independent',
       ruleList: appData.naturalRules?.ruleList||[]
     };
     localStorage.setItem(STORAGE_KEY_RULES,JSON.stringify(data));
@@ -2461,6 +2513,7 @@ function loadRulesFromStorage(){
     appData.naturalRules.deductPO=data.deductPO!==false;
     appData.naturalRules.expandOp=data.expandOp||'gt';
     appData.naturalRules.expandThreshold=data.expandThreshold||0;
+    appData.naturalRules.supplyStrategy=data.supplyStrategy||'independent';
     appData.naturalRules.ruleList=data.ruleList;
     // 兼容旧数据：从默认规则补齐系统规则的 config 字段（如 wipMode、expand 等）
     const defaults=getDefaultRuleList();
@@ -2483,7 +2536,8 @@ function loadRulesFromStorage(){
         : function(netRemaining){return netRemaining>=(cfg.expandThreshold||0);},
       wipMode: data.wipMode||'filtered',
       deductPR: data.deductPR!==false,
-      deductPO: data.deductPO!==false
+      deductPO: data.deductPO!==false,
+      supplyStrategy: data.supplyStrategy||'independent'
     };
     return true;
   }catch(e){return false;}
@@ -2691,6 +2745,15 @@ function renderRuleList(){
       html+='<input type="checkbox" id="ruleDeductPO" onchange="onConfigChange()" '+(appData.naturalRules?.deductPO!==false?'checked':'')+'>';
       html+='扣除可用PO（采购订单）—— PO需求日≤需求日时自动抵扣</label>';
       html+='</div>';
+      // 供给扣减策略
+      html+='<div class="rule-config-box" style="margin-top:6px">';
+      html+='<span style="font-size:13px;font-weight:500">供给扣减策略：</span> ';
+      html+='<select id="ruleSupplyStrategy" onchange="onConfigChange()" style="width:auto;display:inline-block;padding:3px 6px;border:1px solid var(--gray-300);border-radius:4px;font-size:13px;margin:0 4px;background:#fff">';
+      html+='<option value="independent">按需求日独立扣减（每个需求单独计算可用供给）</option>';
+      html+='<option value="fifo">FIFO顺序扣减（供给按到货日依次被需求消耗，先到先得）</option>';
+      html+='</select>';
+      html+='<div style="font-size:12px;color:var(--gray-500);margin-top:4px">FIFO模式：可用库存优先扣减，WIP/PR/PO按到货日升序排列，同到货日顺序 WIP→PO→PR。先消耗完的供给不给后续需求使用。</div>';
+      html+='</div>';
     } else if(rule.config==='expand'){
       // 规则五：可编辑描述 + 展开条件配置控件
       html+='<textarea class="rule-desc-textarea" id="desc_'+idAttr+'_config" placeholder="输入规则描述..." style="min-height:50px;margin-bottom:10px"></textarea>';
@@ -2733,6 +2796,8 @@ function renderRuleList(){
     if(opSelect) opSelect.value=appData.naturalRules.expandOp||'gt';
     const thresh=document.getElementById('ruleExpandThreshold');
     if(thresh) thresh.value=appData.naturalRules.expandThreshold||'0';
+    const strategy=document.getElementById('ruleSupplyStrategy');
+    if(strategy) strategy.value=appData.naturalRules.supplyStrategy||'independent';
     const chkPR=document.getElementById('ruleDeductPR');
     if(chkPR) chkPR.checked=appData.naturalRules.deductPR!==false;
     const chkPO=document.getElementById('ruleDeductPO');
@@ -2774,6 +2839,7 @@ function saveSingleRule(ruleId){
   const deductPO=document.getElementById('ruleDeductPO')?.checked!==false;
   const expandOp=document.getElementById('ruleExpandOp')?.value||'gt';
   const expandThreshold=parseFloat(document.getElementById('ruleExpandThreshold')?.value)||0;
+  const supplyStrategy=document.getElementById('ruleSupplyStrategy')?.value||'independent';
   const core=compileRulesFromUI();
   appData.naturalRules={
     childFormula: childFormula,
@@ -2782,6 +2848,7 @@ function saveSingleRule(ruleId){
     deductPO: deductPO,
     expandOp: expandOp,
     expandThreshold: expandThreshold,
+    supplyStrategy: supplyStrategy,
     ruleList: rules,
     core: core
   };
@@ -2819,6 +2886,7 @@ function addRule(){
   appData.naturalRules.deductPO=deductPO;
   appData.naturalRules.expandOp=expandOp;
   appData.naturalRules.expandThreshold=expandThreshold;
+  appData.naturalRules.supplyStrategy=document.getElementById('ruleSupplyStrategy')?.value||'independent';
   appData.naturalRules.ruleList=rules;
   appData.naturalRules.core=compileRulesFromUI();
   saveRulesToStorage();
@@ -2852,6 +2920,7 @@ function deleteRule(ruleId){
   appData.naturalRules.deductPO=deductPO;
   appData.naturalRules.expandOp=expandOp;
   appData.naturalRules.expandThreshold=expandThreshold;
+  appData.naturalRules.supplyStrategy=document.getElementById('ruleSupplyStrategy')?.value||'independent';
   appData.naturalRules.ruleList=rules;
   appData.naturalRules.core=compileRulesFromUI();
   saveRulesToStorage();
@@ -2888,7 +2957,8 @@ function compileRulesFromUI(){
       : function(netRemaining){return netRemaining>=threshold;},
     wipMode: wipMode,
     deductPR: deductPR,
-    deductPO: deductPO
+    deductPO: deductPO,
+    supplyStrategy: document.getElementById('ruleSupplyStrategy')?.value||'independent'
   };
 }
 
@@ -2901,6 +2971,7 @@ function saveNaturalRules(){
   const deductPO=document.getElementById('ruleDeductPO')?.checked!==false;
   const expandOp=document.getElementById('ruleExpandOp')?.value||'gt';
   const expandThreshold=parseFloat(document.getElementById('ruleExpandThreshold')?.value)||0;
+  const supplyStrategy=document.getElementById('ruleSupplyStrategy')?.value||'independent';
   const core=compileRulesFromUI();
   appData.naturalRules={
     childFormula: childFormula,
@@ -2909,6 +2980,7 @@ function saveNaturalRules(){
     deductPO: deductPO,
     expandOp: expandOp,
     expandThreshold: expandThreshold,
+    supplyStrategy: supplyStrategy,
     ruleList: rules,
     core: core
   };
