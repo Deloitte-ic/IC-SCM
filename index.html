@@ -2433,7 +2433,7 @@ function loadRulesFromStorage(){
     appData.naturalRules.expandOp=data.expandOp||'gt';
     appData.naturalRules.expandThreshold=data.expandThreshold||0;
     appData.naturalRules.ruleList=data.ruleList;
-    // 重新编译 core
+    // 重新编译 core（含 wipMode 配置）
     const cfg=data;
     appData.naturalRules.core={
       calcChildNetReq: (cfg.childFormula||'divide')==='divide'
@@ -2443,7 +2443,8 @@ function loadRulesFromStorage(){
       calcNetRemaining: function(grossReq,stock,wip){return Math.max(0,grossReq-stock-wip);},
       shouldExpandChildren: (cfg.expandOp||'gt')==='gt'
         ? function(netRemaining){return netRemaining>(cfg.expandThreshold||0);}
-        : function(netRemaining){return netRemaining>=(cfg.expandThreshold||0);}
+        : function(netRemaining){return netRemaining>=(cfg.expandThreshold||0);},
+      wipMode: data.wipMode||'filtered'
     };
     return true;
   }catch(e){return false;}
