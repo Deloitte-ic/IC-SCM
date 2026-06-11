@@ -3147,7 +3147,20 @@ function exportMRPResult(){
   if(!rows.length){showToast('没有可导出的数据','warning');return;}
   const ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'MRP运算结果');XLSX.writeFile(wb,'MRP运算结果_'+new Date().toISOString().split('T')[0]+'.xlsx');showToast('✅ 导出成功','success');
 }
-function resetMRP(){document.getElementById('mrpResultArea').style.display='none';document.getElementById('mrpEmpty').style.display='block';document.getElementById('mrpQuantity').value='120000';const d=new Date();d.setDate(d.getDate()+30);document.getElementById('mrpDueDate').value=d.toISOString().split('T')[0];}
+function resetMRP(){
+  appData.mrpResult=[];
+  appData.mrpDetails=[];
+  document.getElementById('mrpResultArea').style.display='none';
+  document.getElementById('mrpEmpty').style.display='block';
+  document.getElementById('mrpSummary').innerHTML='';
+  document.querySelector('#mrpResultTable tbody').innerHTML='';
+  document.getElementById('mrpDetails').innerHTML='';
+  document.getElementById('procurementTable').querySelector('tbody').innerHTML='';
+  document.getElementById('procurementCount').textContent='0项';
+  document.getElementById('mrpQuantity').value='120000';
+  const d=new Date();d.setDate(d.getDate()+30);
+  document.getElementById('mrpDueDate').value=d.toISOString().split('T')[0];
+}
 
 // 供给平衡
 function switchBalanceTab(tab){
