@@ -165,17 +165,6 @@ tbody tr:hover td{background:var(--primary-bg)}
 .summary-card .num{font-size:22px;font-weight:700;margin-top:4px;letter-spacing:-.5px}
 .summary-card .lbl{font-size:12px;color:var(--gray-500)}
 .summary-card .sub-text{font-size:11px;color:var(--gray-400);margin-top:2px}
-.gantt-wrapper{position:relative;overflow-x:auto;padding:10px 0;border-radius:8px;background:var(--gray-50);border:1px solid var(--gray-200)}
-.gantt-chart{position:relative;min-height:180px}
-.gantt-bar{position:absolute;height:28px;border-radius:6px;display:flex;align-items:center;padding:0 10px;font-size:11px;color:#fff;font-weight:500;transition:var(--transition);cursor:pointer;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;box-shadow:0 2px 4px rgba(0,0,0,.18);z-index:1}
-.gantt-bar:hover{transform:scaleY(1.12);z-index:5;box-shadow:0 6px 16px rgba(0,0,0,.25)}
-.gantt-label{position:absolute;font-size:12px;color:var(--gray-600);white-space:nowrap;z-index:1}
-.gantt-grid{position:absolute;top:0;bottom:0;border-left:1px dashed var(--gray-200);pointer-events:none;z-index:0}
-.gantt-header{position:absolute;top:0;left:80px;right:0;height:22px;z-index:2;display:flex}
-.gantt-header-date{font-size:9px;color:var(--gray-400);position:absolute;text-align:center;transform:translateX(-50%)}
-.gantt-legend{display:flex;gap:16px;margin-top:10px;flex-wrap:wrap}
-.gantt-legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--gray-600)}
-.gantt-legend-item .dot{width:12px;height:12px;border-radius:3px}
 .tabs{display:flex;gap:0;border-bottom:2px solid var(--gray-200);margin-bottom:18px;overflow-x:auto}
 .tab{padding:10px 18px;cursor:pointer;font-size:13px;font-weight:500;color:var(--gray-500);border-bottom:2px solid transparent;margin-bottom:-2px;transition:var(--transition);white-space:nowrap}
 .tab.active{color:var(--primary);border-bottom-color:var(--primary)}
@@ -613,12 +602,6 @@ tbody tr:hover td{background:var(--primary-bg)}
             <div class="table-wrapper"><table id="procurementTable"><thead><tr>
               <th>物料编码</th><th>物料名称</th><th>制程</th><th>净需求</th><th>单位</th><th>PlOrd到货日</th><th>PlOrd下单日</th><th>PlOrd号</th><th>供应商</th><th>类型</th><th>操作</th>
             </tr></thead><tbody></tbody></table></div>
-          </div>
-
-          <div class="card">
-            <div class="card-title">📅 时间轴甘特图</div>
-            <div class="gantt-wrapper"><div class="gantt-chart" id="ganttChart"></div></div>
-            <div class="gantt-legend" id="ganttLegend"></div>
           </div>
 
           <div class="card">
@@ -2488,7 +2471,7 @@ function executeMRP(){
   renderProcurementList(results);
   let detailHtml='';details.forEach(d=>{detailHtml+='<div class="calc-step">'+d.text+'</div>';});
   document.getElementById('mrpDetails').innerHTML=detailHtml;
-  renderGantt(results);updateBalance();updateCollaboration();
+  updateBalance();updateCollaboration();
   showToast('✅ MRP运算完成','success');
 }
 
@@ -3127,23 +3110,6 @@ function exportProcurementList(){
   showToast('✅ 采购/委外清单导出成功','success');
 }
 
-// 甘特图
-function renderGantt(results){
-  const container=document.getElementById('ganttChart');container.innerHTML='';
-  if(!results.length){container.innerHTML='<div style="padding:20px;text-align:center;color:var(--gray-400)">无有效时间数据</div>';return;}
-  let minDate='9999-12-31',maxDate='0000-01-01';
-  results.forEach(r=>{if(r.plannedOrderDate&&r.plannedOrderDate<minDate)minDate=r.plannedOrderDate;if(r.plannedArrival&&r.plannedArrival>maxDate)maxDate=r.plannedArrival;});
-  if(minDate==='9999-12-31'||maxDate==='0000-01-01'){container.innerHTML='<div style="padding:20px;text-align:center;color:var(--gray-400)">无有效时间数据</div>';return;}
-  const padDays=3,d0=new Date(minDate);d0.setDate(d0.getDate()-padDays);
-  const dEnd=new Date(maxDate);dEnd.setDate(dEnd.getDate()+padDays);
-  const totalDays=Math.ceil((dEnd-d0)/(1000*60*60*24));if(totalDays<=0)return;
-  const dayWidth=Math.max(36,Math.min(70,700/totalDays)),totalWidth=totalDays*dayWidth,barHeight=32,rowGap=6,labelWidth=70,chartHeight=results.length*(barHeight+rowGap)+30;
-  container.style.position='relative';container.style.height=chartHeight+'px';container.style.width=(labelWidth+totalWidth+20)+'px';container.style.minHeight=chartHeight+'px';
-  for(let d=new Date(d0);d<=dEnd;d.setDate(d.getDate()+1)){const x=((d-d0)/(1000*60*60*24))*dayWidth;const grid=document.createElement('div');grid.className='gantt-grid';grid.style.left=(labelWidth+x)+'px';grid.style.height=(chartHeight-8)+'px';grid.style.borderLeft='1px dashed #e2e8f0';container.appendChild(grid);if(d.getDate()===1||d===d0){const hdr=document.createElement('div');hdr.className='gantt-header-date';hdr.style.left=(labelWidth+x)+'px';hdr.style.top='0px';hdr.textContent=(d.getMonth()+1)+'/'+d.getDate();container.appendChild(hdr);}}
-  const colors=['linear-gradient(135deg,#2563eb,#3b82f6)','linear-gradient(135deg,#7c3aed,#8b5cf6)','linear-gradient(135deg,#059669,#10b981)','linear-gradient(135deg,#d97706,#f59e0b)','linear-gradient(135deg,#dc2626,#ef4444)'];
-  results.forEach((r,idx)=>{const y=24+idx*(barHeight+rowGap),color=colors[idx%colors.length];const label=document.createElement('div');label.className='gantt-label';label.style.left='2px';label.style.top=(y+6)+'px';label.style.width=(labelWidth-4)+'px';label.style.fontSize='11px';label.style.fontWeight=r.level===0?'600':'400';label.textContent=r.process+'('+r.unit+')';container.appendChild(label);if(r.plannedOrderDate&&r.plannedArrival&&r.netRemaining>0){const start=new Date(r.plannedOrderDate),end=new Date(r.plannedArrival),x1=((start-d0)/(1000*60*60*24))*dayWidth,x2=((end-d0)/(1000*60*60*24))*dayWidth,w=Math.max(dayWidth*0.4,x2-x1);const bar=document.createElement('div');bar.className='gantt-bar';bar.style.left=(labelWidth+x1)+'px';bar.style.top=y+'px';bar.style.width=w+'px';bar.style.height=barHeight+'px';bar.style.background=color;bar.textContent=r.plannedOrderDate+' → '+r.plannedArrival;container.appendChild(bar);}else if(r.netRemaining<=0){const x=((new Date(r.plannedArrival)-d0)/(1000*60*60*24))*dayWidth;const bar=document.createElement('div');bar.className='gantt-bar';bar.style.left=(labelWidth+x-16)+'px';bar.style.top=y+'px';bar.style.width='32px';bar.style.height=barHeight+'px';bar.style.background='linear-gradient(135deg,#10b981,#34d399)';bar.textContent='✓';bar.style.justifyContent='center';container.appendChild(bar);}});
-  document.getElementById('ganttLegend').innerHTML='<div class="gantt-legend-item"><div class="dot" style="background:linear-gradient(135deg,#2563eb,#3b82f6)"></div>采购+生产周期</div><div class="gantt-legend-item"><div class="dot" style="background:linear-gradient(135deg,#10b981,#34d399)"></div>库存满足</div>';
-}
 function exportMRPResult(){
   const rows=[];document.querySelectorAll('#mrpResultTable tbody tr').forEach(tr=>{const tds=tr.querySelectorAll('td');if(tds.length>=17&&tds[0].textContent.trim())rows.push({'层级':tds[0].textContent.trim().replace('└─ ',''),'制程':tds[1].textContent.trim(),'物料编码':tds[2].textContent.trim(),'需求类型':tds[3].textContent.trim(),'需求日期':tds[4].textContent.trim(),'毛需求':tds[5].textContent.trim(),'损耗率':tds[6].textContent.trim(),'净需求':tds[7].textContent.trim(),'单位':tds[8].textContent.trim(),'当前库存':tds[9].textContent.trim(),'WIP':tds[10].textContent.trim(),'WIP到货日':tds[11].textContent.trim(),'PR':tds[12].textContent.trim(),'PR到货日':tds[13].textContent.trim(),'PO':tds[14].textContent.trim(),'PO到货日':tds[15].textContent.trim(),'净待补':tds[16].textContent.trim()});});
   if(!rows.length){showToast('没有可导出的数据','warning');return;}
