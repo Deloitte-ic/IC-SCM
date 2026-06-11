@@ -2666,9 +2666,20 @@ function convertToPR(matCode,plannedArrivalDate){
   if(po.prNumber){showToast('该订单已创建PR：'+po.prNumber,'warning');return;}
   po.prNumber=generateDocNumber('PR');
   po.prDate=new Date().toLocaleString();
+  // 将PR写入Open PR/PO列表：数量=净待补(po.quantity)，到货日=PlOrd到货日
+  appData.prpo.push({
+    orderType:'PR',
+    orderNumber:po.prNumber,
+    materialCode:po.materialCode,
+    materialName:po.materialName||'',
+    quantity:po.quantity||0,
+    unit:po.unit||'',
+    demandDate:po.plannedArrivalDate||''
+  });
   savePlannedOrdersToStorage();
+  saveMasterdataToStorage();
   renderProcurementList(appData.mrpResult);
-  showToast('✅ 采购申请 '+po.prNumber+' 已创建','success');
+  showToast('✅ 采购申请 '+po.prNumber+' 已创建（数量='+(po.quantity||0).toLocaleString()+'，到货日='+(po.plannedArrivalDate||'')+'）','success');
 }
 
 // 采购申请PR转采购订单PO
