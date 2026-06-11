@@ -2320,7 +2320,7 @@ function executeMRP(){
     appData.demands.forEach(d=>{if(!dateMap[d.demandDate])dateMap[d.demandDate]=0;dateMap[d.demandDate]+=d.quantity;});
     const sortedDates=Object.keys(dateMap).sort();
     // FIFO模式：初始化全局供给池（库存/WIP/PR/PO按FIFO排序，被多需求依次消耗）
-    if (core.supplyStrategy === 'fifo') {
+    if (getActiveMrpCore().supplyStrategy === 'fifo') {
       fifoSupplyQueues = {};
       appData.materials.forEach(mat => {
         const code = mat.code;
@@ -2348,7 +2348,7 @@ function executeMRP(){
       results.length=0;details.length=0;
       calcMRP('FT',groupQty,date,0,date);
       // 标准模式下手动扣除已消耗的库存/WIP（FIFO模式下由consumeFromPool自动处理）
-      if (core.supplyStrategy !== 'fifo') {
+      if (getActiveMrpCore().supplyStrategy !== 'fifo') {
         results.forEach(r=>{
           const consumedStock=r.stock>0?Math.min(r.stock,Math.max(0,r.grossReq-r.wipAvailable-r.netRemaining)):0;
           if(consumedStock>0){const inv=appData.inventory.find(i=>i.materialCode===r.matCode);if(inv)inv.stock=Math.max(0,inv.stock-consumedStock);}
