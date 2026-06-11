@@ -595,7 +595,7 @@ tbody tr:hover td{background:var(--primary-bg)}
               </div>
             </div>
             <div class="table-wrapper"><table id="mrpResultTable"><thead><tr>
-              <th style="min-width:80px">层级</th><th>制程</th><th>物料编码</th><th>需求类型</th><th>需求日期</th><th>毛需求</th><th>损耗率</th><th>净需求</th><th>单位</th><th>WIP</th><th>WIP到货日</th><th>PR</th><th>PR到货日</th><th>PO</th><th>PO到货日</th><th>净待补</th>
+              <th style="min-width:80px">层级</th><th>制程</th><th>物料编码</th><th>需求类型</th><th>需求日期</th><th>毛需求</th><th>损耗率</th><th>净需求</th><th>单位</th><th>当前库存</th><th>WIP</th><th>WIP到货日</th><th>PR</th><th>PR到货日</th><th>PO</th><th>PO到货日</th><th>净待补</th>
             </tr></thead><tbody></tbody></table></div>
           </div>
 
@@ -2390,7 +2390,7 @@ function executeMRP(){
     const poItems=appData.prpo.filter(p=>p.materialCode===r.matCode&&p.orderType==='PO');
     const poQty=poItems.reduce((s,p)=>s+(p.quantity||0),0).toLocaleString();
     const poDates=poItems.map(p=>p.demandDate||'').join(', ');
-    tableHtml+='<tr style="background:'+bg+'"><td style="'+levelStyle+'">'+levelLabel+'</td><td><span class="tag-status '+(r.process==='FT'?'tag-green':'tag-blue')+'">'+r.process+'</span></td><td style="font-weight:500">'+r.matCode+'</td><td><span class="tag-status '+(r.demandType==='独立需求'?'tag-green':'tag-blue')+'">'+r.demandType+'</span></td><td style="font-weight:600;color:var(--primary)">'+(r.demandDate||'')+'</td><td style="font-weight:500">'+r.grossReq.toLocaleString()+'</td><td>'+r.scrapRate+'%</td><td style="font-weight:600">'+r.netReq.toLocaleString()+'</td><td>'+r.unit+'</td><td>'+r.wipAvailable.toLocaleString()+'</td><td>'+wipArrival+'</td><td style="font-size:11px">'+prQty+'</td><td style="font-size:11px">'+prDates+'</td><td style="font-size:11px">'+poQty+'</td><td style="font-size:11px">'+poDates+'</td><td style="font-weight:600;color:'+(r.netRemaining>0?'var(--danger)':'var(--success)')+'">'+r.netRemaining.toLocaleString()+'</td></tr>';
+    tableHtml+='<tr style="background:'+bg+'"><td style="'+levelStyle+'">'+levelLabel+'</td><td><span class="tag-status '+(r.process==='FT'?'tag-green':'tag-blue')+'">'+r.process+'</span></td><td style="font-weight:500">'+r.matCode+'</td><td><span class="tag-status '+(r.demandType==='独立需求'?'tag-green':'tag-blue')+'">'+r.demandType+'</span></td><td style="font-weight:600;color:var(--primary)">'+(r.demandDate||'')+'</td><td style="font-weight:500">'+r.grossReq.toLocaleString()+'</td><td>'+r.scrapRate+'%</td><td style="font-weight:600">'+r.netReq.toLocaleString()+'</td><td>'+r.unit+'</td><td style="font-weight:500">'+r.stock.toLocaleString()+'</td><td>'+r.wipAvailable.toLocaleString()+'</td><td>'+wipArrival+'</td><td style="font-size:11px">'+prQty+'</td><td style="font-size:11px">'+prDates+'</td><td style="font-size:11px">'+poQty+'</td><td style="font-size:11px">'+poDates+'</td><td style="font-weight:600;color:'+(r.netRemaining>0?'var(--danger)':'var(--success)')+'">'+r.netRemaining.toLocaleString()+'</td></tr>';
   });
   document.querySelector('#mrpResultTable tbody').innerHTML=tableHtml;
   renderProcurementList(results);
@@ -3032,7 +3032,7 @@ function renderGantt(results){
   document.getElementById('ganttLegend').innerHTML='<div class="gantt-legend-item"><div class="dot" style="background:linear-gradient(135deg,#2563eb,#3b82f6)"></div>采购+生产周期</div><div class="gantt-legend-item"><div class="dot" style="background:linear-gradient(135deg,#10b981,#34d399)"></div>库存满足</div>';
 }
 function exportMRPResult(){
-  const rows=[];document.querySelectorAll('#mrpResultTable tbody tr').forEach(tr=>{const tds=tr.querySelectorAll('td');if(tds.length>=16&&tds[0].textContent.trim())rows.push({'层级':tds[0].textContent.trim().replace('└─ ',''),'制程':tds[1].textContent.trim(),'物料编码':tds[2].textContent.trim(),'需求类型':tds[3].textContent.trim(),'需求日期':tds[4].textContent.trim(),'毛需求':tds[5].textContent.trim(),'损耗率':tds[6].textContent.trim(),'净需求':tds[7].textContent.trim(),'单位':tds[8].textContent.trim(),'WIP':tds[9].textContent.trim(),'WIP到货日':tds[10].textContent.trim(),'PR':tds[11].textContent.trim(),'PR到货日':tds[12].textContent.trim(),'PO':tds[13].textContent.trim(),'PO到货日':tds[14].textContent.trim(),'净待补':tds[15].textContent.trim()});});
+  const rows=[];document.querySelectorAll('#mrpResultTable tbody tr').forEach(tr=>{const tds=tr.querySelectorAll('td');if(tds.length>=17&&tds[0].textContent.trim())rows.push({'层级':tds[0].textContent.trim().replace('└─ ',''),'制程':tds[1].textContent.trim(),'物料编码':tds[2].textContent.trim(),'需求类型':tds[3].textContent.trim(),'需求日期':tds[4].textContent.trim(),'毛需求':tds[5].textContent.trim(),'损耗率':tds[6].textContent.trim(),'净需求':tds[7].textContent.trim(),'单位':tds[8].textContent.trim(),'当前库存':tds[9].textContent.trim(),'WIP':tds[10].textContent.trim(),'WIP到货日':tds[11].textContent.trim(),'PR':tds[12].textContent.trim(),'PR到货日':tds[13].textContent.trim(),'PO':tds[14].textContent.trim(),'PO到货日':tds[15].textContent.trim(),'净待补':tds[16].textContent.trim()});});
   if(!rows.length){showToast('没有可导出的数据','warning');return;}
   const ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'MRP运算结果');XLSX.writeFile(wb,'MRP运算结果_'+new Date().toISOString().split('T')[0]+'.xlsx');showToast('✅ 导出成功','success');
 }
