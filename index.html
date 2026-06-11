@@ -2663,9 +2663,14 @@ function generateDocNumber(prefix){
 function convertToPR(matCode,plannedArrivalDate){
   const po=appData.plannedOrders.find(o=>o.materialCode===matCode&&o.plannedArrivalDate===plannedArrivalDate);
   if(!po){showToast('⚠️ 请先创建计划订单','warning');return;}
-  if(po.prNumber){showToast('该订单已创建PR：'+po.prNumber,'warning');return;}
-  po.prNumber=generateDocNumber('PR');
-  po.prDate=new Date().toLocaleString();
+  // 如果已有PR编号但尚未写入prpo，继续走完；如果已有且已写入，提示跳过
+  const alreadyInPrpo=po.prNumber && appData.prpo.some(p=>p.orderNumber===po.prNumber);
+  if(po.prNumber && alreadyInPrpo){showToast('该订单已创建PR：'+po.prNumber+'，且已在PR/PO列表中','warning');return;}
+  // 首次创建PR编号
+  if(!po.prNumber){
+    po.prNumber=generateDocNumber('PR');
+    po.prDate=new Date().toLocaleString();
+  }
   // 将PR写入Open PR/PO列表：数量=净待补(po.quantity)，到货日=PlOrd到货日
   appData.prpo.push({
     orderType:'PR',
