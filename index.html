@@ -2433,6 +2433,14 @@ function loadRulesFromStorage(){
     appData.naturalRules.expandOp=data.expandOp||'gt';
     appData.naturalRules.expandThreshold=data.expandThreshold||0;
     appData.naturalRules.ruleList=data.ruleList;
+    // 兼容旧数据：从默认规则补齐系统规则的 config 字段（如 wipMode、expand 等）
+    const defaults=getDefaultRuleList();
+    appData.naturalRules.ruleList.forEach(r=>{
+      if(r.type==='system'){
+        const def=defaults.find(d=>d.id===r.id);
+        if(def&&def.config&&!r.config) r.config=def.config;
+      }
+    });
     // 重新编译 core（含 wipMode 配置）
     const cfg=data;
     appData.naturalRules.core={
@@ -2585,6 +2593,14 @@ function createPlannedOrder(matCode,matName,process,quantity,unit,plannedOrderDa
 // 初始化规则列表（优先级：localStorage > appData内存 > 默认）
 function initRuleList(){
   if(appData.naturalRules && appData.naturalRules.ruleList){
+    // 兼容旧数据：补齐系统规则的 config 字段
+    const defaults=getDefaultRuleList();
+    appData.naturalRules.ruleList.forEach(r=>{
+      if(r.type==='system'){
+        const def=defaults.find(d=>d.id===r.id);
+        if(def&&def.config&&!r.config) r.config=def.config;
+      }
+    });
     return JSON.parse(JSON.stringify(appData.naturalRules.ruleList));
   }
   if(loadRulesFromStorage() && appData.naturalRules.ruleList){
