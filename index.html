@@ -600,7 +600,7 @@ tbody tr:hover td{background:var(--primary-bg)}
               <span style="display:inline-flex;align-items:center;gap:4px;font-size:12px"><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#3b82f6"></span> 委外</span>
             </div>
             <div class="table-wrapper"><table id="procurementTable"><thead><tr>
-              <th>物料编码</th><th>物料名称</th><th>制程</th><th>净需求</th><th>单位</th><th>PlOrd到货日</th><th>PlOrd下单日</th><th>PlOrd号</th><th>供应商</th><th>类型</th><th>操作</th>
+              <th>物料编码</th><th>物料名称</th><th>制程</th><th>净待补</th><th>单位</th><th>PlOrd到货日</th><th>PlOrd下单日</th><th>PlOrd号</th><th>供应商</th><th>类型</th><th>操作</th>
             </tr></thead><tbody></tbody></table></div>
           </div>
 
@@ -3101,7 +3101,7 @@ function exportProcurementList(){
   const rows=[];
   document.querySelectorAll('#procurementTable tbody tr').forEach(tr=>{
     const tds=tr.querySelectorAll('td');
-    if(tds.length>=10)rows.push({'物料编码':tds[0].textContent.trim(),'物料名称':tds[1].textContent.trim(),'制程':tds[2].textContent.trim(),'净需求':tds[3].textContent.trim(),'单位':tds[4].textContent.trim(),'PlOrd到货日':tds[5].textContent.trim(),'PlOrd下单日':tds[6].textContent.trim(),'PlOrd号':tds[7].textContent.trim(),'供应商':tds[8].textContent.trim(),'类型':tds[9].textContent.trim()});
+    if(tds.length>=10)rows.push({'物料编码':tds[0].textContent.trim(),'物料名称':tds[1].textContent.trim(),'制程':tds[2].textContent.trim(),'净待补':tds[3].textContent.trim(),'单位':tds[4].textContent.trim(),'PlOrd到货日':tds[5].textContent.trim(),'PlOrd下单日':tds[6].textContent.trim(),'PlOrd号':tds[7].textContent.trim(),'供应商':tds[8].textContent.trim(),'类型':tds[9].textContent.trim()});
   });
   if(!rows.length){showToast('没有可导出的数据','warning');return;}
   const ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();
