@@ -2218,7 +2218,7 @@ function executeMRP(){
   function addDays(dateStr,days){const d=new Date(dateStr);d.setDate(d.getDate()+days);return d.toISOString().split('T')[0];}
   // FIFO供给池（多需求共享，按FIFO顺序消耗）
   let fifoSupplyQueues = null;
-  function consumeFromPool(matCode, grossReq){
+  function consumeFromPool(matCode, grossReq, cutoffDate){
     const queue = fifoSupplyQueues[matCode];
     if (!queue) return {stock:0,wip:0,pr:0,po:0};
     let remaining = grossReq;
@@ -2226,6 +2226,8 @@ function executeMRP(){
     for (let i = 0; i < queue.length && remaining > 0; i++) {
       const item = queue[i];
       if (item.qty <= 0) continue;
+      // 按到货日过滤：supply到货日 > 当前需求截止日则跳过（库存永远可用）
+      if (item.type !== 'stock' && item.arrival && cutoffDate && item.arrival > cutoffDate) continue;
       const take = Math.min(item.qty, remaining);
       item.qty -= take;
       remaining -= take;
@@ -2256,7 +2258,7 @@ function executeMRP(){
     let prAvailable=0,poAvailable=0;
     // FIFO模式：从供给池中按序消耗
     if (core.supplyStrategy === 'fifo' && fifoSupplyQueues) {
-      const alloc = consumeFromPool(matCode, grossReq);
+      const alloc = consumeFromPool(matCode, grossReq, plannedArrival);
       stock = alloc.stock;
       wipAvailable = alloc.wip;
       prAvailable = alloc.pr;
@@ -2342,6 +2344,7 @@ function executeMRP(){
       });
     }
     const origInventory=JSON.parse(JSON.stringify(appData.inventory));
+    const origPrpo=JSON.parse(JSON.stringify(appData.prpo));
     let combResults=[],combDetails=[];
     sortedDates.forEach(date=>{
       const groupQty=dateMap[date];
@@ -2354,12 +2357,32 @@ function executeMRP(){
           if(consumedStock>0){const inv=appData.inventory.find(i=>i.materialCode===r.matCode);if(inv)inv.stock=Math.max(0,inv.stock-consumedStock);}
           const consumedWip=r.wipAvailable>0?Math.min(r.wipAvailable,Math.max(0,r.grossReq-r.stock-r.netRemaining)):0;
           if(consumedWip>0){const inv=appData.inventory.find(i=>i.materialCode===r.matCode);if(inv)inv.transit=Math.max(0,inv.transit-consumedWip);}
+          // 扣除已消耗的PR/PO（按需求日期截止分别扣除）
+          if(r.prAvailable>0){
+            let prRemain=r.prAvailable;
+            appData.prpo.forEach(p=>{
+              if(p.materialCode===r.matCode && p.orderType==='PR' && p.quantity>0 && prRemain>0){
+                const take=Math.min(p.quantity,prRemain);
+                p.quantity-=take;prRemain-=take;
+              }
+            });
+          }
+          if(r.poAvailable>0){
+            let poRemain=r.poAvailable;
+            appData.prpo.forEach(p=>{
+              if(p.materialCode===r.matCode && p.orderType==='PO' && p.quantity>0 && poRemain>0){
+                const take=Math.min(p.quantity,poRemain);
+                p.quantity-=take;poRemain-=take;
+              }
+            });
+          }
         });
       }
       combResults=combResults.concat(results);
       combDetails=combDetails.concat(details);
     });
     appData.inventory=origInventory;
+    appData.prpo=origPrpo;
     // 把合并结果写回results/details（const数组不能重新赋值，清空后逐个push）
     results.length=0;combResults.forEach(r=>results.push(r));
     details.length=0;combDetails.forEach(d=>details.push(d));
