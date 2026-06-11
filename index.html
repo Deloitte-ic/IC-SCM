@@ -447,7 +447,7 @@ tbody tr:hover td{background:var(--primary-bg)}
               <button class="btn btn-sm btn-primary" onclick="openAddPrpoModal()">➕ 新增</button>
             </div>
           </div>
-          <div class="table-wrapper"><table id="prpoTable"><thead><tr><th>订单类型</th><th>订单编号</th><th>物料编码</th><th>物料描述</th><th>数量</th><th>单位</th><th>到货日</th></tr></thead><tbody></tbody></table></div>
+          <div class="table-wrapper"><table id="prpoTable"><thead><tr><th>订单类型</th><th>订单编号</th><th>物料编码</th><th>物料描述</th><th>数量</th><th>单位</th><th>到货日</th><th>操作</th></tr></thead><tbody></tbody></table></div>
         </div>
       </div>
     </div>
@@ -1746,9 +1746,9 @@ function renderAllMasterdata() {
   // PR/PO渲染
   let phtml = '';
   appData.prpo.forEach((p,i)=>{
-    phtml += '<tr><td><span class="tag-status '+(p.orderType==='PR'?'tag-blue':'tag-green')+'">'+escapeHtml(p.orderType||'')+'</span></td><td>'+escapeHtml(p.orderNumber||'')+'</td><td>'+escapeHtml(p.materialCode||'')+'</td><td>'+escapeHtml(p.materialName||'')+'</td><td class="font-bold">'+(p.quantity||0).toLocaleString()+'</td><td>'+escapeHtml(p.unit||'')+'</td><td>'+(p.demandDate||'')+'</td></tr>';
+    phtml += '<tr><td><span class="tag-status '+(p.orderType==='PR'?'tag-blue':'tag-green')+'">'+escapeHtml(p.orderType||'')+'</span></td><td>'+escapeHtml(p.orderNumber||'')+'</td><td>'+escapeHtml(p.materialCode||'')+'</td><td>'+escapeHtml(p.materialName||'')+'</td><td class="font-bold">'+(p.quantity||0).toLocaleString()+'</td><td>'+escapeHtml(p.unit||'')+'</td><td>'+(p.demandDate||'')+'</td><td><button class="btn btn-sm btn-outline" onclick="editPrpo('+i+')">✏️</button><button class="btn btn-sm btn-outline" onclick="deletePrpo('+i+')">🗑️</button></td></tr>';
   });
-  document.querySelector('#prpoTable tbody').innerHTML = phtml || '<tr><td colspan="7" style="text-align:center;color:var(--gray-400)">暂无数据，请导入Open PR/Open PO数据</td></tr>';
+  document.querySelector('#prpoTable tbody').innerHTML = phtml || '<tr><td colspan="8" style="text-align:center;color:var(--gray-400)">暂无数据，请导入Open PR/Open PO数据</td></tr>';
   document.getElementById('prpoCount').textContent = appData.prpo.length+'条';
   // 每次渲染主数据时同步保存到 localStorage（确保编辑/删除/新增后持久化）
   saveMasterdataToStorage();
@@ -1760,6 +1760,7 @@ function deleteRouting(idx) { appData.routings.splice(idx,1); renderAllMasterdat
 function deleteSupplier(idx) { appData.suppliers.splice(idx,1); renderAllMasterdata(); }
 function deleteInventory(idx) { appData.inventory.splice(idx,1); renderAllMasterdata(); }
 function deleteDemand(idx) { appData.demands.splice(idx,1); renderDemand(); updateDashboard(); }
+function deletePrpo(idx) { appData.prpo.splice(idx,1); renderAllMasterdata(); showToast('✅ 已删除','success'); }
 
 // ======================== 主数据编辑功能 ========================
 function editMaterial(idx) {
@@ -1972,6 +1973,39 @@ function saveNewPrpo() {
   const mat=appData.materials.find(m=>m.code===matCode);
   appData.prpo.push({orderType,orderNumber,materialCode:matCode,materialName:mat?mat.name:'',quantity:qty,unit,demandDate});
   closeModal();renderAllMasterdata();showToast('✅ Open PR/Open PO新增成功','success');
+}
+function editPrpo(idx) {
+  const p=appData.prpo[idx];
+  if(!p) return;
+  const matOpts=appData.materials.map(m=>'<option value="'+m.code+'"'+(m.code===p.materialCode?' selected':'')+'>'+m.code+' - '+m.name+'（'+m.unit+'）</option>').join('');
+  openModal('<div class="modal-title">编辑 Open PR/Open PO <button class="modal-close" onclick="closeModal()">×</button></div>'+
+    '<div class="form-group"><label>订单类型</label><select id="formPrpoTypeEdit"><option value="PR"'+(p.orderType==='PR'?' selected':'')+'>PR - 采购申请</option><option value="PO"'+(p.orderType==='PO'?' selected':'')+'>PO - 采购订单</option></select></div>'+
+    '<div class="grid-2"><div class="form-group"><label>订单编号</label><input id="formPrpoNoEdit" value="'+escapeHtml(p.orderNumber||'')+'"></div>'+
+    '<div class="form-group"><label>物料</label><select id="formPrpoMatEdit">'+matOpts+'</select></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>数量</label><input type="number" id="formPrpoQtyEdit" value="'+(p.quantity||0)+'"></div>'+
+    '<div class="form-group"><label>单位</label><input id="formPrpoUnitEdit" value="'+escapeHtml(p.unit||'')+'"></div></div>'+
+    '<div class="form-group"><label>到货日</label><input type="date" id="formPrpoDateEdit" value="'+(p.demandDate||'')+'"></div>'+
+    '<input type="hidden" id="editPrpoIdx" value="'+idx+'">'+
+    '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveEditPrpo()">保存</button></div>');
+  document.getElementById('formPrpoMatEdit').onchange=function(){
+    const mat=appData.materials.find(m=>m.code===this.value);
+    if(mat) document.getElementById('formPrpoUnitEdit').value=mat.unit||'';
+  };
+}
+function saveEditPrpo() {
+  const idx=parseInt(document.getElementById('editPrpoIdx').value);
+  if(isNaN(idx)||!appData.prpo[idx]){showToast('数据异常','error');return;}
+  const orderType=document.getElementById('formPrpoTypeEdit').value;
+  const orderNumber=document.getElementById('formPrpoNoEdit').value.trim();
+  const matCode=document.getElementById('formPrpoMatEdit').value;
+  const qty=parseFloat(document.getElementById('formPrpoQtyEdit').value)||0;
+  const unit=document.getElementById('formPrpoUnitEdit').value.trim();
+  const demandDate=document.getElementById('formPrpoDateEdit').value;
+  if(!matCode){showToast('请选择物料','error');return;}
+  if(!orderNumber){showToast('请输入订单编号','error');return;}
+  const mat=appData.materials.find(m=>m.code===matCode);
+  appData.prpo[idx]={orderType,orderNumber,materialCode:matCode,materialName:mat?mat.name:'',quantity:qty,unit,demandDate};
+  closeModal();renderAllMasterdata();showToast('✅ 已更新','success');
 }
 function editWip(idx){
   const inv=appData.inventory[idx];
