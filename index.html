@@ -2243,19 +2243,31 @@ function executeMRP(){
         if(inv.transitArrival&&inv.transitArrival<=plannedArrival)wipAvailable=inv.transit;
       }
     }
-    const totalSupply=stock+wipAvailable;
-    const netRemaining=core.calcNetRemaining(grossReq,stock,wipAvailable);
+    // PR/PO扣减（按规则四配置）
+    let prAvailable=0,poAvailable=0;
+    if(core.deductPR){
+      const prItems=appData.prpo.filter(p=>p.materialCode===matCode&&p.orderType==='PR'&&p.demandDate<=plannedArrival);
+      prAvailable=prItems.reduce((s,p)=>s+(p.quantity||0),0);
+    }
+    if(core.deductPO){
+      const poItems=appData.prpo.filter(p=>p.materialCode===matCode&&p.orderType==='PO'&&p.demandDate<=plannedArrival);
+      poAvailable=poItems.reduce((s,p)=>s+(p.quantity||0),0);
+    }
+    const totalSupply=stock+wipAvailable+prAvailable+poAvailable;
+    const netRemaining=Math.max(0,grossReq-stock-wipAvailable-prAvailable-poAvailable);
     // 时间倒推（审批天数仅对采购物料有效）
     let plannedOrderDate='';
     const isPurchase=mat&&mat.type==='采购';
     const effectiveApproval=isPurchase?approvalDays:0;
     if(netRemaining>0)plannedOrderDate=addDays(plannedArrival,-(totalDelivery+effectiveApproval));
-    results.push({level,process,matCode,matName,action,supplier,demandType,unit,netReq:netReqQty,scrapRate,grossReq,stock,wipAvailable,totalSupply,netRemaining,plannedArrival,plannedOrderDate,totalDelivery,approvalDays:effectiveApproval,demandDate});
+    results.push({level,process,matCode,matName,action,supplier,demandType,unit,netReq:netReqQty,scrapRate,grossReq,stock,wipAvailable,prAvailable,poAvailable,totalSupply,netRemaining,plannedArrival,plannedOrderDate,totalDelivery,approvalDays:effectiveApproval,demandDate});
     let detailText='';
     if(level===0)detailText='【'+process+'】顶层净需求 = '+netReqQty.toLocaleString()+' '+unit;
     else detailText='【'+process+'】净需求(父毛需求÷BOM用量) = '+netReqQty.toLocaleString()+' '+unit;
     detailText+=' → 毛需求(含'+scrapRate+'%损耗) = '+grossReq.toLocaleString()+' '+unit;
-    detailText+=' → 可用供给(库存'+stock.toLocaleString()+'+WIP'+wipAvailable.toLocaleString()+') = '+totalSupply.toLocaleString()+' '+unit;
+    detailText+=' → 可用库存='+stock.toLocaleString()+' WIP='+wipAvailable.toLocaleString();
+    if(core.deductPR)detailText+=' PR='+prAvailable.toLocaleString();
+    if(core.deductPO)detailText+=' PO='+poAvailable.toLocaleString();
     detailText+=' → 净待补 = '+netRemaining.toLocaleString()+' '+unit;
     if(isPurchase)detailText+=' → 到货日'+plannedArrival+' → 总交付'+totalDelivery+'天+审批'+effectiveApproval+'天 → 下单日'+(plannedOrderDate||'N/A');
     else detailText+=' → 到货日'+plannedArrival+' → 交付周期'+totalDelivery+'天 → 投产日'+(plannedOrderDate||'N/A');
@@ -2382,7 +2394,8 @@ let defaultMrpCore={
   calcChildNetReq: function(grossReq,usage,process){return Math.ceil(grossReq/usage);},
   calcGrossReq: function(netReq,scrapRate){return Math.ceil(netReq*(1+scrapRate/100));},
   calcNetRemaining: function(grossReq,stock,wip){return Math.max(0,grossReq-stock-wip);},
-  shouldExpandChildren: function(netRemaining){return netRemaining>0;}
+  shouldExpandChildren: function(netRemaining){return netRemaining>0;},
+  wipMode: 'filtered', deductPR: true, deductPO: true
 };
 
 // 获取系统默认规则列表（5条预设规则）
@@ -2395,7 +2408,7 @@ function getDefaultRuleList(){
     {id:'rule-3', title:'规则三：毛需求计算规则', type:'system',
      desc:'毛需求 = 净需求 × ( 1 + 损耗率 / 100 )\n\n其中损耗率来自参数配置中BOM结构配置的"损耗率%"字段，不同制程可设置不同损耗率。\n例如FT损耗率5%，净需求120,000，则毛需求 = 120,000 × (1 + 5/100) = 126,000颗'},
     {id:'rule-4', title:'规则四：库存扣减规则', type:'system', config:'wipMode',
-     desc:'净待补 = 毛需求 − 可用库存 − 可用在制（WIP）\n\n计算结果不低于0，净待补为0表示库存充足无需采购/委外。\n在制(WIP)仅在计划到货日 ≤ 需求日期时才计入可用供给。'},
+     desc:'净待补 = 毛需求 − 可用库存 − 可用在制（WIP） − 可用PR − 可用PO\n\n计算结果不低于0，净待补为0表示库存充足无需采购/委外。\n在制(WIP)仅在计划到货日 ≤ 需求日期时才计入可用供给。\nPR/PO仅在各自的到货日/需求日 ≤ 需求日期时才计入可用供给。'},
     {id:'rule-5', title:'规则五：子制程展开条件', type:'system', config:'expand',
      desc:'当前制程的净待补满足以下条件时，继续展开下级制程进行计算：'}
   ];
@@ -2412,6 +2425,8 @@ function saveRulesToStorage(){
     const data={
       childFormula: appData.naturalRules?.childFormula||'divide',
       wipMode: appData.naturalRules?.wipMode||'filtered',
+      deductPR: appData.naturalRules?.deductPR!==false,
+      deductPO: appData.naturalRules?.deductPO!==false,
       expandOp: appData.naturalRules?.expandOp||'gt',
       expandThreshold: appData.naturalRules?.expandThreshold||0,
       ruleList: appData.naturalRules?.ruleList||[]
@@ -2430,6 +2445,8 @@ function loadRulesFromStorage(){
     if(!appData.naturalRules) appData.naturalRules={};
     appData.naturalRules.childFormula=data.childFormula||'divide';
     appData.naturalRules.wipMode=data.wipMode||'filtered';
+    appData.naturalRules.deductPR=data.deductPR!==false;
+    appData.naturalRules.deductPO=data.deductPO!==false;
     appData.naturalRules.expandOp=data.expandOp||'gt';
     appData.naturalRules.expandThreshold=data.expandThreshold||0;
     appData.naturalRules.ruleList=data.ruleList;
@@ -2452,7 +2469,9 @@ function loadRulesFromStorage(){
       shouldExpandChildren: (cfg.expandOp||'gt')==='gt'
         ? function(netRemaining){return netRemaining>(cfg.expandThreshold||0);}
         : function(netRemaining){return netRemaining>=(cfg.expandThreshold||0);},
-      wipMode: data.wipMode||'filtered'
+      wipMode: data.wipMode||'filtered',
+      deductPR: data.deductPR!==false,
+      deductPO: data.deductPO!==false
     };
     return true;
   }catch(e){return false;}
@@ -2651,6 +2670,15 @@ function renderRuleList(){
       html+='</select>';
       html+='<span style="color:var(--gray-400);font-size:12px;margin-left:6px">选择"全部计入"时，WIP在制数量不计到货日全部计入可用供给</span>';
       html+='</div>';
+      // PR/PO扣减配置
+      html+='<div class="rule-config-box" style="margin-top:6px">';
+      html+='<label style="font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px">';
+      html+='<input type="checkbox" id="ruleDeductPR" onchange="onConfigChange()" '+(appData.naturalRules?.deductPR!==false?'checked':'')+'>';
+      html+='扣除可用PR（采购申请）—— PR需求日≤需求日时自动抵扣</label>';
+      html+='<label style="font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px;margin-top:4px">';
+      html+='<input type="checkbox" id="ruleDeductPO" onchange="onConfigChange()" '+(appData.naturalRules?.deductPO!==false?'checked':'')+'>';
+      html+='扣除可用PO（采购订单）—— PO需求日≤需求日时自动抵扣</label>';
+      html+='</div>';
     } else if(rule.config==='expand'){
       // 规则五：可编辑描述 + 展开条件配置控件
       html+='<textarea class="rule-desc-textarea" id="desc_'+idAttr+'_config" placeholder="输入规则描述..." style="min-height:50px;margin-bottom:10px"></textarea>';
@@ -2693,6 +2721,10 @@ function renderRuleList(){
     if(opSelect) opSelect.value=appData.naturalRules.expandOp||'gt';
     const thresh=document.getElementById('ruleExpandThreshold');
     if(thresh) thresh.value=appData.naturalRules.expandThreshold||'0';
+    const chkPR=document.getElementById('ruleDeductPR');
+    if(chkPR) chkPR.checked=appData.naturalRules.deductPR!==false;
+    const chkPO=document.getElementById('ruleDeductPO');
+    if(chkPO) chkPO.checked=appData.naturalRules.deductPO!==false;
   }
 }
 
@@ -2726,12 +2758,16 @@ function saveSingleRule(ruleId){
   const rules=readRulesFromUI();
   const childFormula=document.getElementById('ruleChildFormula')?.value||'divide';
   const wipMode=document.getElementById('ruleWipMode')?.value||'filtered';
+  const deductPR=document.getElementById('ruleDeductPR')?.checked!==false;
+  const deductPO=document.getElementById('ruleDeductPO')?.checked!==false;
   const expandOp=document.getElementById('ruleExpandOp')?.value||'gt';
   const expandThreshold=parseFloat(document.getElementById('ruleExpandThreshold')?.value)||0;
   const core=compileRulesFromUI();
   appData.naturalRules={
     childFormula: childFormula,
     wipMode: wipMode,
+    deductPR: deductPR,
+    deductPO: deductPO,
     expandOp: expandOp,
     expandThreshold: expandThreshold,
     ruleList: rules,
@@ -2760,11 +2796,15 @@ function addRule(){
   // 保存当前配置
   const childFormula=document.getElementById('ruleChildFormula')?.value||'divide';
   const wipMode=document.getElementById('ruleWipMode')?.value||'filtered';
+  const deductPR=document.getElementById('ruleDeductPR')?.checked!==false;
+  const deductPO=document.getElementById('ruleDeductPO')?.checked!==false;
   const expandOp=document.getElementById('ruleExpandOp')?.value||'gt';
   const expandThreshold=parseFloat(document.getElementById('ruleExpandThreshold')?.value)||0;
   appData.naturalRules=appData.naturalRules||{};
   appData.naturalRules.childFormula=childFormula;
   appData.naturalRules.wipMode=wipMode;
+  appData.naturalRules.deductPR=deductPR;
+  appData.naturalRules.deductPO=deductPO;
   appData.naturalRules.expandOp=expandOp;
   appData.naturalRules.expandThreshold=expandThreshold;
   appData.naturalRules.ruleList=rules;
@@ -2789,11 +2829,15 @@ function deleteRule(ruleId){
   // 更新保存
   const childFormula=document.getElementById('ruleChildFormula')?.value||'divide';
   const wipMode=document.getElementById('ruleWipMode')?.value||'filtered';
+  const deductPR=document.getElementById('ruleDeductPR')?.checked!==false;
+  const deductPO=document.getElementById('ruleDeductPO')?.checked!==false;
   const expandOp=document.getElementById('ruleExpandOp')?.value||'gt';
   const expandThreshold=parseFloat(document.getElementById('ruleExpandThreshold')?.value)||0;
   appData.naturalRules=appData.naturalRules||{};
   appData.naturalRules.childFormula=childFormula;
   appData.naturalRules.wipMode=wipMode;
+  appData.naturalRules.deductPR=deductPR;
+  appData.naturalRules.deductPO=deductPO;
   appData.naturalRules.expandOp=expandOp;
   appData.naturalRules.expandThreshold=expandThreshold;
   appData.naturalRules.ruleList=rules;
@@ -2819,6 +2863,8 @@ function compileRulesFromUI(){
   const wipMode=document.getElementById('ruleWipMode')?.value||'filtered';
   const op=document.getElementById('ruleExpandOp')?.value||'gt';
   const threshold=parseFloat(document.getElementById('ruleExpandThreshold')?.value)||0;
+  const deductPR=document.getElementById('ruleDeductPR')?.checked!==false;
+  const deductPO=document.getElementById('ruleDeductPO')?.checked!==false;
   return {
     calcChildNetReq: formula==='divide'
       ? function(grossReq,usage,process){return Math.ceil(grossReq/usage);}
@@ -2828,7 +2874,9 @@ function compileRulesFromUI(){
     shouldExpandChildren: op==='gt'
       ? function(netRemaining){return netRemaining>threshold;}
       : function(netRemaining){return netRemaining>=threshold;},
-    wipMode: wipMode
+    wipMode: wipMode,
+    deductPR: deductPR,
+    deductPO: deductPO
   };
 }
 
@@ -2837,12 +2885,16 @@ function saveNaturalRules(){
   const rules=readRulesFromUI();
   const childFormula=document.getElementById('ruleChildFormula')?.value||'divide';
   const wipMode=document.getElementById('ruleWipMode')?.value||'filtered';
+  const deductPR=document.getElementById('ruleDeductPR')?.checked!==false;
+  const deductPO=document.getElementById('ruleDeductPO')?.checked!==false;
   const expandOp=document.getElementById('ruleExpandOp')?.value||'gt';
   const expandThreshold=parseFloat(document.getElementById('ruleExpandThreshold')?.value)||0;
   const core=compileRulesFromUI();
   appData.naturalRules={
     childFormula: childFormula,
     wipMode: wipMode,
+    deductPR: deductPR,
+    deductPO: deductPO,
     expandOp: expandOp,
     expandThreshold: expandThreshold,
     ruleList: rules,
