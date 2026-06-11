@@ -2357,22 +2357,25 @@ function executeMRP(){
           if(consumedStock>0){const inv=appData.inventory.find(i=>i.materialCode===r.matCode);if(inv)inv.stock=Math.max(0,inv.stock-consumedStock);}
           const consumedWip=r.wipAvailable>0?Math.min(r.wipAvailable,Math.max(0,r.grossReq-r.stock-r.netRemaining)):0;
           if(consumedWip>0){const inv=appData.inventory.find(i=>i.materialCode===r.matCode);if(inv)inv.transit=Math.max(0,inv.transit-consumedWip);}
-          // 扣除已消耗的PR/PO（按需求日期截止分别扣除）
-          if(r.prAvailable>0){
-            let prRemain=r.prAvailable;
+          // 计算实际消耗的PR/PO量：扣除stock/wip后剩余需求量中依次扣减PR→PO
+          const required=Math.max(0,r.grossReq-r.stock-r.wipAvailable);
+          const prConsumed=r.prAvailable>0?Math.min(r.prAvailable,required):0;
+          const poConsumed=(r.poAvailable>0&&prConsumed<required)?Math.min(r.poAvailable,required-prConsumed):0;
+          if(prConsumed>0){
+            let remain=prConsumed;
             appData.prpo.forEach(p=>{
-              if(p.materialCode===r.matCode && p.orderType==='PR' && p.quantity>0 && prRemain>0){
-                const take=Math.min(p.quantity,prRemain);
-                p.quantity-=take;prRemain-=take;
+              if(p.materialCode===r.matCode && p.orderType==='PR' && p.quantity>0 && remain>0){
+                const take=Math.min(p.quantity,remain);
+                p.quantity-=take;remain-=take;
               }
             });
           }
-          if(r.poAvailable>0){
-            let poRemain=r.poAvailable;
+          if(poConsumed>0){
+            let remain=poConsumed;
             appData.prpo.forEach(p=>{
-              if(p.materialCode===r.matCode && p.orderType==='PO' && p.quantity>0 && poRemain>0){
-                const take=Math.min(p.quantity,poRemain);
-                p.quantity-=take;poRemain-=take;
+              if(p.materialCode===r.matCode && p.orderType==='PO' && p.quantity>0 && remain>0){
+                const take=Math.min(p.quantity,remain);
+                p.quantity-=take;remain-=take;
               }
             });
           }
@@ -2458,13 +2461,7 @@ function executeMRP(){
     // 查找业务数据
     const wipInv=appData.inventory.find(i=>i.materialCode===r.matCode&&i.transit>0);
     const wipArrival=wipInv?(wipInv.transitArrival||''):'';
-    const prItems=appData.prpo.filter(p=>p.materialCode===r.matCode&&p.orderType==='PR');
-    const prQty=prItems.reduce((s,p)=>s+(p.quantity||0),0).toLocaleString();
-    const prDates=prItems.map(p=>p.demandDate||'').join(', ');
-    const poItems=appData.prpo.filter(p=>p.materialCode===r.matCode&&p.orderType==='PO');
-    const poQty=poItems.reduce((s,p)=>s+(p.quantity||0),0).toLocaleString();
-    const poDates=poItems.map(p=>p.demandDate||'').join(', ');
-    tableHtml+='<tr style="background:'+bg+'"><td style="'+levelStyle+'">'+levelLabel+'</td><td><span class="tag-status '+(r.process==='FT'?'tag-green':'tag-blue')+'">'+r.process+'</span></td><td style="font-weight:500">'+r.matCode+'</td><td><span class="tag-status '+(r.demandType==='独立需求'?'tag-green':'tag-blue')+'">'+r.demandType+'</span></td><td style="font-weight:600;color:var(--primary)">'+(r.demandDate||'')+'</td><td style="font-weight:500">'+r.grossReq.toLocaleString()+'</td><td>'+r.scrapRate+'%</td><td style="font-weight:600">'+r.netReq.toLocaleString()+'</td><td>'+r.unit+'</td><td style="font-weight:500">'+r.stock.toLocaleString()+'</td><td>'+r.wipAvailable.toLocaleString()+'</td><td>'+wipArrival+'</td><td style="font-size:11px">'+prQty+'</td><td style="font-size:11px">'+prDates+'</td><td style="font-size:11px">'+poQty+'</td><td style="font-size:11px">'+poDates+'</td><td style="font-weight:600;color:'+(r.netRemaining>0?'var(--danger)':'var(--success)')+'">'+r.netRemaining.toLocaleString()+'</td></tr>';
+    tableHtml+='<tr style="background:'+bg+'"><td style="'+levelStyle+'">'+levelLabel+'</td><td><span class="tag-status '+(r.process==='FT'?'tag-green':'tag-blue')+'">'+r.process+'</span></td><td style="font-weight:500">'+r.matCode+'</td><td><span class="tag-status '+(r.demandType==='独立需求'?'tag-green':'tag-blue')+'">'+r.demandType+'</span></td><td style="font-weight:600;color:var(--primary)">'+(r.demandDate||'')+'</td><td style="font-weight:500">'+r.grossReq.toLocaleString()+'</td><td>'+r.scrapRate+'%</td><td style="font-weight:600">'+r.netReq.toLocaleString()+'</td><td>'+r.unit+'</td><td style="font-weight:500">'+r.stock.toLocaleString()+'</td><td>'+r.wipAvailable.toLocaleString()+'</td><td>'+wipArrival+'</td><td style="font-weight:500;font-size:13px">'+(r.prAvailable||0).toLocaleString()+'</td><td style="font-size:11px;color:var(--gray-500)">'+(r.prAvailable?'已分配':'')+'</td><td style="font-weight:500;font-size:13px">'+(r.poAvailable||0).toLocaleString()+'</td><td style="font-size:11px;color:var(--gray-500)">'+(r.poAvailable?'已分配':'')+'</td><td style="font-weight:600;color:'+(r.netRemaining>0?'var(--danger)':'var(--success)')+'">'+r.netRemaining.toLocaleString()+'</td></tr>';
   });
   document.querySelector('#mrpResultTable tbody').innerHTML=tableHtml;
   renderProcurementList(results);
