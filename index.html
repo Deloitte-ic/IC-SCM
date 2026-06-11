@@ -2348,7 +2348,7 @@ function executeMRP(){
       ? 'text-align:left;font-weight:700;color:var(--gray-800);padding-left:'+indentPx+'px'
       : 'text-align:left;color:var(--gray-500);padding-left:'+indentPx+'px';
     const levelLabel=isRoot
-      ? '<span style="display:inline-block;background:var(--primary);color:#fff;border-radius:4px;padding:1px 8px;font-size:11px">'+(r.demandDate||'')+'</span>'
+      ? '<span style="display:inline-block;background:var(--primary);color:#fff;border-radius:4px;padding:1px 8px;font-size:11px">0</span>'
       : '└─ '+r.level;
     // 查找业务数据
     const wipInv=appData.inventory.find(i=>i.materialCode===r.matCode&&i.transit>0);
@@ -2359,7 +2359,7 @@ function executeMRP(){
     const poItems=appData.prpo.filter(p=>p.materialCode===r.matCode&&p.orderType==='PO');
     const poQty=poItems.reduce((s,p)=>s+(p.quantity||0),0).toLocaleString();
     const poDates=poItems.map(p=>p.demandDate||'').join(', ');
-    tableHtml+='<tr style="background:'+bg+'"><td style="'+levelStyle+'">'+levelLabel+'</td><td><span class="tag-status '+(r.process==='FT'?'tag-green':'tag-blue')+'">'+r.process+'</span></td><td style="font-weight:500">'+r.matCode+'</td><td><span class="tag-status '+(r.demandType==='独立需求'?'tag-green':'tag-blue')+'">'+r.demandType+'</span></td><td style="font-weight:600;color:var(--primary)">'+(r.level===0?'':r.demandDate||'')+'</td><td style="font-weight:500">'+r.grossReq.toLocaleString()+'</td><td>'+r.scrapRate+'%</td><td style="font-weight:600">'+r.netReq.toLocaleString()+'</td><td>'+r.unit+'</td><td>'+r.wipAvailable.toLocaleString()+'</td><td>'+wipArrival+'</td><td style="font-size:11px">'+prQty+'</td><td style="font-size:11px">'+prDates+'</td><td style="font-size:11px">'+poQty+'</td><td style="font-size:11px">'+poDates+'</td><td style="font-weight:600;color:'+(r.netRemaining>0?'var(--danger)':'var(--success)')+'">'+r.netRemaining.toLocaleString()+'</td></tr>';
+    tableHtml+='<tr style="background:'+bg+'"><td style="'+levelStyle+'">'+levelLabel+'</td><td><span class="tag-status '+(r.process==='FT'?'tag-green':'tag-blue')+'">'+r.process+'</span></td><td style="font-weight:500">'+r.matCode+'</td><td><span class="tag-status '+(r.demandType==='独立需求'?'tag-green':'tag-blue')+'">'+r.demandType+'</span></td><td style="font-weight:600;color:var(--primary)">'+(r.demandDate||'')+'</td><td style="font-weight:500">'+r.grossReq.toLocaleString()+'</td><td>'+r.scrapRate+'%</td><td style="font-weight:600">'+r.netReq.toLocaleString()+'</td><td>'+r.unit+'</td><td>'+r.wipAvailable.toLocaleString()+'</td><td>'+wipArrival+'</td><td style="font-size:11px">'+prQty+'</td><td style="font-size:11px">'+prDates+'</td><td style="font-size:11px">'+poQty+'</td><td style="font-size:11px">'+poDates+'</td><td style="font-weight:600;color:'+(r.netRemaining>0?'var(--danger)':'var(--success)')+'">'+r.netRemaining.toLocaleString()+'</td></tr>';
   });
   document.querySelector('#mrpResultTable tbody').innerHTML=tableHtml;
   renderProcurementList(results);
