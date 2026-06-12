@@ -3150,6 +3150,12 @@ function exportMRPResult(){
 function resetMRP(){
   appData.mrpResult=[];
   appData.mrpDetails=[];
+  // 清空MRP生成的计划订单（PIOrd）
+  appData.plannedOrders=[];
+  savePlannedOrdersToStorage();
+  // 清空MRP生成的采购申请（PR/PO列表）
+  appData.prpo=[];
+  saveMasterdataToStorage();
   document.getElementById('mrpResultArea').style.display='none';
   document.getElementById('mrpEmpty').style.display='block';
   document.getElementById('mrpSummary').innerHTML='';
@@ -3157,6 +3163,8 @@ function resetMRP(){
   document.getElementById('mrpDetails').innerHTML='';
   document.getElementById('procurementTable').querySelector('tbody').innerHTML='';
   document.getElementById('procurementCount').textContent='0项';
+  // 刷新业务数据下的PR/PO列表
+  renderAllMasterdata();
   document.getElementById('mrpQuantity').value='120000';
   const d=new Date();d.setDate(d.getDate()+30);
   document.getElementById('mrpDueDate').value=d.toISOString().split('T')[0];
