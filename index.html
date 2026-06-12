@@ -447,6 +447,7 @@ tbody tr:hover td{background:var(--primary-bg)}
         <div class="tab active" data-tab="demand-entry" onclick="switchDemandTab('demand-entry')">📝 需求录入</div>
         <div class="tab" data-tab="demand-summary" onclick="switchDemandTab('demand-summary')">📊 需求汇总</div>
         <div class="tab" data-tab="demand-trend" onclick="switchDemandTab('demand-trend')">📈 趋势分析</div>
+        <div class="tab" data-tab="demand-forecast" onclick="switchDemandTab('demand-forecast')">🔮 需求预测</div>
       </div>
 
       <div class="tab-content active" id="tab-demand-entry">
@@ -482,6 +483,45 @@ tbody tr:hover td{background:var(--primary-bg)}
         <div class="card">
           <div class="card-title">📜 需求变更历史</div>
           <div class="table-wrapper"><table id="demandHistoryTable"><thead><tr><th>时间</th><th>订单号</th><th>变更类型</th><th>变更内容</th></tr></thead><tbody></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- ==================== 需求预测 ==================== -->
+      <div class="tab-content" id="tab-demand-forecast">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">🔮 需求预测参数 <span class="tag">Holt-Winters 三次指数平滑</span></div>
+          </div>
+          <div class="grid-4">
+            <div class="form-group"><label>α (水平因子, 0~1)</label><input type="number" id="forecastAlpha" value="0.3" min="0" max="1" step="0.05"></div>
+            <div class="form-group"><label>β (趋势因子, 0~1)</label><input type="number" id="forecastBeta" value="0.1" min="0" max="1" step="0.05"></div>
+            <div class="form-group"><label>γ (季节因子, 0~1)</label><input type="number" id="forecastGamma" value="0.1" min="0" max="1" step="0.05"></div>
+            <div class="form-group"><label>季节周期</label><select id="forecastSeasonLength"><option value="3">季度(3个月)</option><option value="6" selected>半年(6个月)</option><option value="12">年度(12个月)</option></select></div>
+          </div>
+          <div class="grid-3" style="margin-top:8px">
+            <div class="form-group"><label>预测期数</label><input type="number" id="forecastHorizon" value="6" min="1" max="24"></div>
+            <div class="form-group"><label>粒度</label><select id="forecastGranularity"><option value="month">月度</option><option value="week">周度</option></select></div>
+            <div style="display:flex;align-items:flex-end"><button class="btn btn-primary btn-lg" onclick="runDemandForecast()">🚀 执行预测</button></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📊 预测结果</div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-sm btn-outline" onclick="saveForecastAsDemands()" id="saveForecastBtn" style="display:none">📥 转需求单</button>
+            </div>
+          </div>
+          <div class="chart-container" style="height:320px"><canvas id="forecastChart"></canvas></div>
+          <div class="table-wrapper" id="forecastResultTable" style="margin-top:14px"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">📋 预测说明</div>
+          <div style="font-size:13px;color:var(--gray-600);line-height:1.8">
+            <p>• <strong>Holt-Winters</strong> 三次指数平滑：分为水平(level)、趋势(trend)、季节(seasonal)三个分量</p>
+            <p>• α 控制对近期数据的敏感度（越大越关注近期变化）；β 控制趋势变化速度；γ 控制季节性模式更新</p>
+            <p>• 柱状图蓝色为历史实际需求，橙色为预测值，虚线为趋势线</p>
+            <p>• 预测结果可一键转为需求订单，进入MRP运算</p>
+          </div>
         </div>
       </div>
     </div>
@@ -2028,6 +2068,7 @@ function switchDemandTab(tab){
   document.getElementById('tab-'+tab).classList.add('active');
   if(tab==='demand-summary')renderDemandSummary();
   if(tab==='demand-trend')renderDemandTrend();
+  if(tab==='demand-forecast')renderDemandForecast();
 }
 function renderDemand(){
   let html='';
@@ -2064,6 +2105,317 @@ function renderDemandTrend(){
   if(!labels.length){document.querySelector('#demandTrendChart').parentElement.innerHTML='<div style="text-align:center;padding:60px;color:var(--gray-400)">暂无需求数据</div>';return;}
   const ctx=document.getElementById('demandTrendChart').getContext('2d');
   demandChartInstance=new Chart(ctx,{type:'line',data:{labels,datasets:[{label:'需求量',data,borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.1)',fill:true,tension:.4,pointBackgroundColor:'#2563eb',pointRadius:5,pointHoverRadius:8}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{callback:v=>v.toLocaleString()}}}}});
+}
+
+// ======================== 需求预测 (Holt-Winters) ========================
+let forecastChartInstance = null;
+let lastForecastResult = null; // 缓存最新预测结果
+
+function renderDemandForecast(){
+  // 如果有缓存的预测结果，直接展示
+  if(lastForecastResult){
+    displayForecastResult(lastForecastResult);
+  } else {
+    // 未执行过预测，显示空状态
+    document.getElementById('forecastChart').parentElement.innerHTML='<div style="text-align:center;padding:60px;color:var(--gray-400)">点击「执行预测」生成需求预测</div>';
+    document.getElementById('forecastResultTable').innerHTML='';
+    document.getElementById('saveForecastBtn').style.display='none';
+  }
+}
+
+/**
+ * Holt-Winters 三次指数平滑（加法季节模型）
+ * 适用于有明显季节性的时间序列预测
+ */
+function holtWintersForecast(data, alpha, beta, gamma, seasonLength, forecastHorizon) {
+  const n = data.length;
+  if(n < 2) return { forecast:[], level:[], trend:[], season:[] };
+
+  // 初始化水平、趋势、季节
+  const level = new Array(n);
+  const trend = new Array(n);
+  const season = new Array(n);
+
+  // 如果数据量不足以初始化季节，使用简化版
+  if(n < seasonLength) {
+    // 退化为 Holt 线性趋势模型（无季节）
+    level[0] = data[0];
+    trend[0] = data[1] ? data[1] - data[0] : 0;
+    for(let t=1; t<n; t++){
+      const prevLevel = level[t-1];
+      const prevTrend = trend[t-1];
+      const fitted = prevLevel + prevTrend;
+      level[t] = alpha * data[t] + (1-alpha) * fitted;
+      trend[t] = beta * (level[t]-prevLevel) + (1-beta) * prevTrend;
+    }
+    // 预测
+    const forecast = [];
+    for(let h=1; h<=forecastHorizon; h++){
+      forecast.push(level[n-1] + h * trend[n-1]);
+    }
+    return { forecast, level, trend, season:[], method:'holt-linear' };
+  }
+
+  // 标准 Holt-Winters 初始化
+  // 季节初始值：取前 seasonLength 期的平均值作为基线，计算季节因子
+  let baseSum = 0;
+  for(let i=0; i<seasonLength; i++) baseSum += data[i] / seasonLength;
+  const baseAvg = baseSum;
+
+  for(let i=0; i<seasonLength; i++){
+    season[i] = data[i] - baseAvg;  // 加法季节因子
+  }
+
+  level[seasonLength-1] = baseAvg;
+  trend[seasonLength-1] = 0;
+  // 初始化趋势：用第一个季节的数据估算
+  let trendSum = 0;
+  for(let i=0; i<seasonLength; i++){
+    if(i+1 < seasonLength) trendSum += (data[i+1] - data[i]) / seasonLength;
+  }
+  trend[seasonLength-1] = trendSum;
+
+  // 迭代更新
+  for(let t=seasonLength; t<n; t++){
+    const prevLevel = level[t-1];
+    const prevTrend = trend[t-1];
+    const seasonIdx = t - seasonLength;
+    const seasonVal = season[seasonIdx];
+
+    const fitted = prevLevel + prevTrend + seasonVal;
+    level[t] = alpha * (data[t] - seasonVal) + (1-alpha) * (prevLevel + prevTrend);
+    trend[t] = beta * (level[t] - prevLevel) + (1-beta) * prevTrend;
+    season[t] = gamma * (data[t] - level[t]) + (1-gamma) * seasonVal;
+  }
+
+  // 生成预测
+  const forecast = [];
+  for(let h=1; h<=forecastHorizon; h++){
+    const seasonIdx = n - seasonLength + ((h - 1) % seasonLength);
+    const s = season[seasonIdx] || 0;
+    forecast.push(level[n-1] + h * trend[n-1] + s);
+  }
+
+  return { forecast, level, trend, season, method:'holt-winters' };
+}
+
+function runDemandForecast(){
+  // 1. 获取参数
+  const alpha = parseFloat(document.getElementById('forecastAlpha').value) || 0.3;
+  const beta = parseFloat(document.getElementById('forecastBeta').value) || 0.1;
+  const gamma = parseFloat(document.getElementById('forecastGamma').value) || 0.1;
+  const seasonLength = parseInt(document.getElementById('forecastSeasonLength').value) || 6;
+  const forecastHorizon = parseInt(document.getElementById('forecastHorizon').value) || 6;
+  const granularity = document.getElementById('forecastGranularity').value;
+
+  // 2. 准备历史数据：按月度汇总
+  const byDate = {};
+  appData.demands.forEach(d => {
+    let period;
+    if(granularity === 'month'){
+      period = d.demandDate.substring(0,7); // YYYY-MM
+    } else {
+      // 周度: 计算ISO周
+      const date = new Date(d.demandDate);
+      const dayNum = date.getDay() || 7;
+      date.setDate(date.getDate() - dayNum + 1);
+      const weekStr = date.toISOString().substring(0,10);
+      period = weekStr;
+    }
+    byDate[period] = (byDate[period] || 0) + d.quantity;
+  });
+
+  const sortedPeriods = Object.keys(byDate).sort();
+  const rawData = sortedPeriods.map(p => byDate[p]);
+
+  if(rawData.length < 2){
+    showToast('历史数据不足，至少需要2期数据','error');
+    return;
+  }
+
+  // 3. 执行 Holt-Winters 预测
+  const result = holtWintersForecast(rawData, alpha, beta, gamma, seasonLength, forecastHorizon);
+  result.historyData = rawData;
+  result.historyPeriods = sortedPeriods;
+  result.granularity = granularity;
+  result.alpha = alpha;
+  result.beta = beta;
+  result.gamma = gamma;
+  result.seasonLength = seasonLength;
+  result.forecastHorizon = forecastHorizon;
+
+  // 4. 生成预测时间段
+  const lastPeriod = sortedPeriods[sortedPeriods.length - 1];
+  const forecastPeriods = [];
+  for(let h=1; h<=forecastHorizon; h++){
+    if(granularity === 'month'){
+      const [year, month] = lastPeriod.split('-').map(Number);
+      const totalMonths = year * 12 + month + h;
+      const fy = Math.floor((totalMonths - 1) / 12);
+      const fm = ((totalMonths - 1) % 12) + 1;
+      forecastPeriods.push(String(fy) + '-' + String(fm).padStart(2,'0'));
+    } else {
+      const lastDate = new Date(lastPeriod);
+      lastDate.setDate(lastDate.getDate() + 7 * h);
+      forecastPeriods.push(lastDate.toISOString().substring(0,10));
+    }
+  }
+  result.forecastPeriods = forecastPeriods;
+
+  // 5. 缓存结果并展示
+  lastForecastResult = result;
+  displayForecastResult(result);
+  showToast('✅ 需求预测完成','success');
+}
+
+function displayForecastResult(result){
+  const { historyData, historyPeriods, forecast, forecastPeriods, alpha, beta, gamma, seasonLength, forecastHorizon, granularity, method } = result;
+
+  // 显示保存按钮
+  document.getElementById('saveForecastBtn').style.display = 'inline-flex';
+
+  // 绘制图表
+  const allLabels = [...historyPeriods, ...forecastPeriods];
+  const allData = [...historyData, ...forecast.map(v => Math.round(Math.max(0, v)))];
+
+  // 标记历史/预测分界
+  const historyEndIdx = historyData.length - 1;
+
+  if(forecastChartInstance){
+    forecastChartInstance.destroy();
+    forecastChartInstance = null;
+  }
+
+  const ctx = document.getElementById('forecastChart').getContext('2d');
+  forecastChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: allLabels,
+      datasets: [
+        {
+          label: '历史实际需求',
+          data: allData.map((v, i) => i <= historyEndIdx ? v : null),
+          backgroundColor: 'rgba(37,99,235,.7)',
+          borderColor: '#2563eb',
+          borderWidth: 1,
+          barPercentage: 0.6,
+          order: 2
+        },
+        {
+          label: '预测需求',
+          data: allData.map((v, i) => i > historyEndIdx ? v : null),
+          backgroundColor: 'rgba(245,158,11,.7)',
+          borderColor: '#f59e0b',
+          borderWidth: 1,
+          barPercentage: 0.6,
+          order: 2
+        },
+        {
+          label: '趋势线',
+          data: allData.map((v, i) => {
+            if(i <= historyEndIdx) return historyData[i];
+            return Math.round(Math.max(0, forecast[i - historyEndIdx - 1]));
+          }),
+          type: 'line',
+          borderColor: '#ef4444',
+          backgroundColor: 'transparent',
+          borderWidth: 2,
+          borderDash: [6, 3],
+          pointRadius: 0,
+          fill: false,
+          tension: 0.3,
+          order: 1
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', labels: { boxWidth: 14, padding: 12, font: { size: 12 } } },
+        tooltip: {
+          callbacks: {
+            label: ctx => ctx.parsed.y !== null ? ctx.dataset.label + ': ' + ctx.parsed.y.toLocaleString() : ''
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { maxRotation: 45, font: { size: 11 } }
+        },
+        y: {
+          beginAtZero: true,
+          ticks: { callback: v => v.toLocaleString() }
+        }
+      }
+    }
+  });
+
+  // 预测结果表格
+  let tableHtml = '<table><thead><tr><th>预测期</th><th>预测需求量</th><th>置信下限(P10)</th><th>置信上限(P90)</th></tr></thead><tbody>';
+  forecastPeriods.forEach((period, i) => {
+    const fv = Math.round(Math.max(0, forecast[i]));
+    // 简单置信区间估算：±20%
+    const lower = Math.round(fv * 0.8);
+    const upper = Math.round(fv * 1.2);
+    tableHtml += '<tr><td>' + period + '</td><td class="font-bold" style="color:var(--warning)">' + fv.toLocaleString() + '</td><td>' + lower.toLocaleString() + '</td><td>' + upper.toLocaleString() + '</td></tr>';
+  });
+  tableHtml += '</tbody></table>';
+
+  // 模型参数摘要
+  const totalForecastQty = forecast.reduce((s, v) => s + Math.round(Math.max(0, v)), 0);
+  tableHtml += '<div style="margin-top:10px;padding:10px 14px;background:var(--gray-50);border-radius:6px;font-size:12px;color:var(--gray-600)">';
+  tableHtml += '<div style="display:flex;gap:20px;flex-wrap:wrap">';
+  tableHtml += '<span>📐 模型：' + (method === 'holt-winters' ? 'Holt-Winters' : 'Holt线性趋势') + '</span>';
+  tableHtml += '<span>α=' + alpha + '</span><span>β=' + beta + '</span><span>γ=' + gamma + '</span>';
+  tableHtml += '<span>季节周期=' + seasonLength + '</span>';
+  tableHtml += '<span>📦 预测总量：<strong>' + totalForecastQty.toLocaleString() + '</strong></span>';
+  tableHtml += '</div></div>';
+
+  document.getElementById('forecastResultTable').innerHTML = tableHtml;
+}
+
+function saveForecastAsDemands(){
+  if(!lastForecastResult) return;
+  const { forecastPeriods, forecast, historyPeriods } = lastForecastResult;
+
+  // 找到主要物料（按需求数量排序取第一个）
+  const matCount = {};
+  appData.demands.forEach(d => { matCount[d.material] = (matCount[d.material] || 0) + d.quantity; });
+  let mainMat = Object.keys(matCount).sort((a,b) => matCount[b] - matCount[a])[0];
+  if(!mainMat && appData.materials.length) mainMat = appData.materials[0].code;
+
+  const lastOrderNo = appData.demands.reduce((max, d) => {
+    const num = parseInt(d.orderNo.replace(/\D/g, '')) || 0;
+    return num > max ? num : max;
+  }, 0);
+
+  forecastPeriods.forEach((period, i) => {
+    const qty = Math.round(Math.max(1, forecast[i]));
+    const orderNo = 'ORD' + String(lastOrderNo + i + 1).padStart(3, '0');
+    appData.demands.push({
+      orderType: '预测需求',
+      orderNo,
+      material: mainMat,
+      quantity: qty,
+      unit: '颗',
+      demandDate: period + (lastForecastResult.granularity === 'month' ? '-28' : ''),
+      priority: '中',
+      customer: '预测生成'
+    });
+    appData.demandHistory.push({
+      time: new Date().toISOString().substring(0, 16).replace('T', ' '),
+      orderNo,
+      type: '新建',
+      content: '预测转需求: 物料' + mainMat + ', 数量' + qty + ', 需求日' + period
+    });
+  });
+
+  renderDemand();
+  updateDashboard();
+  refreshOrderSelect();
+  showToast('✅ 已生成 ' + forecastPeriods.length + ' 条预测需求订单', 'success');
 }
 function openAddDemandModal(orderType,orderNo,material,quantity,unit,demandDate,priority,customer,idx){
   const isEdit=idx!==undefined;
