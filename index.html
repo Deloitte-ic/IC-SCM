@@ -3150,11 +3150,18 @@ function exportMRPResult(){
 function resetMRP(){
   appData.mrpResult=[];
   appData.mrpDetails=[];
+  // 先收集MRP创建的PR编号（计划订单的prNumber字段），再去清prpo
+  const mrpPrNumbers=appData.plannedOrders.map(o=>o.prNumber).filter(Boolean);
   // 清空MRP生成的计划订单（PIOrd）
   appData.plannedOrders=[];
   savePlannedOrdersToStorage();
-  // 清空MRP生成的采购申请（PR/PO列表）
-  appData.prpo=[];
+  // 只删除有prNumber匹配的PR记录（MRP创建的），手工录入的PR/PO保留
+  appData.prpo=appData.prpo.filter(p=>{
+    // PO和非PR记录保留
+    if(p.orderType!=='PR') return true;
+    // PR编号匹配MRP创建记录的删除，不匹配的保留（手工录入）
+    return !mrpPrNumbers.includes(p.orderNumber);
+  });
   saveMasterdataToStorage();
   document.getElementById('mrpResultArea').style.display='none';
   document.getElementById('mrpEmpty').style.display='block';
