@@ -345,7 +345,7 @@ tbody tr:hover td{background:var(--primary-bg)}
               <button class="btn btn-sm btn-outline" onclick="renderBomTree()">🌳 BOM树形图</button>
             </div>
           </div>
-          <div class="table-wrapper"><table id="bomTable"><thead><tr><th>父项物料</th><th>子项物料</th><th>单位用量</th><th>损耗率(%)</th><th>制程代码</th><th>委外供应链环节</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+          <div class="table-wrapper"><table id="bomTable"><thead><tr><th>父项物料</th><th>子项物料</th><th>单位用量</th><th>损耗率(%)</th><th>制程代码</th><th>操作</th></tr></thead><tbody></tbody></table></div>
           <div id="bomTreeView" style="display:none;margin-top:12px"></div>
         </div>
       </div>
@@ -2595,7 +2595,7 @@ function renderAllMasterdata() {
   appData.boms.forEach((b,i)=>{
     bhtml += '<tr><td>'+b.parent+'</td><td>'+b.child+'</td><td>'+b.usage+'</td><td>'+b.scrap+'%</td><td><span class="tag-status tag-cyan">'+(b.processCode||'-')+'</span></td><td>'+(b.supplyChain||'-')+'</td><td><button class="btn btn-sm btn-outline" onclick="editBom('+i+')">✏️</button><button class="btn btn-sm btn-outline" onclick="deleteBom('+i+')">🗑️</button></td></tr>';
   });
-  document.querySelector('#bomTable tbody').innerHTML = bhtml || '<tr><td colspan="7" style="text-align:center;color:var(--gray-400)">暂无数据</td></tr>';
+  document.querySelector('#bomTable tbody').innerHTML = bhtml || '<tr><td colspan="6" style="text-align:center;color:var(--gray-400)">暂无数据</td></tr>';
   document.getElementById('bomCount').textContent = appData.boms.length+'条';
   let rhtml = '';
   appData.routings.forEach((r,i)=>{
@@ -2692,7 +2692,6 @@ function editBom(idx) {
     '<div class="grid-2"><div class="form-group"><label>单位用量</label><input type="number" id="formBomUsage" value="'+b.usage+'" min="0.01" step="0.01"></div>'+
     '<div class="form-group"><label>损耗率(%)</label><input type="number" id="formBomScrap" value="'+b.scrap+'" min="0" max="100"></div></div>'+
     '<div class="grid-2"><div class="form-group"><label>制程代码</label><select id="formBomProcess"><option value="FT→AB" '+(b.processCode==='FT→AB'?'selected':'')+'>FT→AB（测试→封装）</option><option value="AB→CP" '+(b.processCode==='AB→CP'?'selected':'')+'>AB→CP（封装→测试）</option><option value="CP→BP" '+(b.processCode==='CP→BP'?'selected':'')+'>CP→BP（测试→凸块）</option><option value="BP→Wafer" '+(b.processCode==='BP→Wafer'?'selected':'')+'>BP→Wafer（凸块→晶圆）</option></select></div>'+
-    '<div class="form-group"><label>委外供应链环节</label><input id="formBomSupplyChain" value="'+escapeHtml(b.supplyChain||'')+'" placeholder="如 FT测试→封装委外"></div></div>'+
     '<input type="hidden" id="editBomIdx" value="'+idx+'">'+
     '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveEditBom()">保存</button></div>');
 }
@@ -2701,7 +2700,7 @@ function saveEditBom() {
   if(isNaN(idx)||!appData.boms[idx]){showToast('数据异常','error');return;}
   const parent=document.getElementById('formBomParent').value,child=document.getElementById('formBomChild').value;
   if(parent===child){showToast('父项和子项不能相同','error');return;}
-  appData.boms[idx]={parent,child,usage:parseFloat(document.getElementById('formBomUsage').value)||1,scrap:parseFloat(document.getElementById('formBomScrap').value)||0,processCode:document.getElementById('formBomProcess').value,supplyChain:document.getElementById('formBomSupplyChain').value.trim()};
+  appData.boms[idx]={parent,child,usage:parseFloat(document.getElementById('formBomUsage').value)||1,scrap:parseFloat(document.getElementById('formBomScrap').value)||0,processCode:document.getElementById('formBomProcess').value};
   appData.bom=appData.boms;
   closeModal();renderAllMasterdata();showToast('✅ BOM已更新','success');
 }
@@ -2793,13 +2792,12 @@ function openAddBomModal() {
     '<div class="grid-2"><div class="form-group"><label>单位用量</label><input type="number" id="formBomUsage" value="1" min="0.01" step="0.01"></div>'+
     '<div class="form-group"><label>损耗率(%)</label><input type="number" id="formBomScrap" value="0" min="0" max="100"></div></div>'+
     '<div class="grid-2"><div class="form-group"><label>制程代码</label><select id="formBomProcess"><option value="FT→AB">FT→AB（测试→封装）</option><option value="AB→CP">AB→CP（封装→测试）</option><option value="CP→BP">CP→BP（测试→凸块）</option><option value="BP→Wafer">BP→Wafer（凸块→晶圆）</option></select></div>'+
-    '<div class="form-group"><label>委外供应链环节</label><input id="formBomSupplyChain" placeholder="如 FT测试→封装委外"></div></div>'+
     '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveNewBom()">保存</button></div>');
 }
 function saveNewBom() {
   const parent=document.getElementById('formBomParent').value,child=document.getElementById('formBomChild').value;
   if(parent===child){showToast('父项和子项不能相同','error');return;}
-  appData.boms.push({parent,child,usage:parseFloat(document.getElementById('formBomUsage').value)||1,scrap:parseFloat(document.getElementById('formBomScrap').value)||0,processCode:document.getElementById('formBomProcess').value,supplyChain:document.getElementById('formBomSupplyChain').value.trim()});
+  appData.boms.push({parent,child,usage:parseFloat(document.getElementById('formBomUsage').value)||1,scrap:parseFloat(document.getElementById('formBomScrap').value)||0,processCode:document.getElementById('formBomProcess').value});
   appData.bom=appData.boms;closeModal();renderAllMasterdata();showToast('✅ BOM添加成功','success');
 }
 function openAddRoutingModal() {
@@ -5888,7 +5886,7 @@ function switchBusinessTab(tab){
 }
 
 function renderBomTree(){
-  const container=document.getElementById('bomTreeView'),btn=document.querySelector('.card-actions .btn-outline');
+  const container=document.getElementById('bomTreeView'),btn=document.querySelector('button[onclick="renderBomTree()"]');
   if(container.style.display==='block'){container.style.display='none';btn.textContent='🌳 BOM树形图';return;}
   container.style.display='block';btn.textContent='📋 表格视图';
   let html='<div style="padding:16px;background:var(--gray-50);border-radius:8px;font-size:13px;line-height:2">';
