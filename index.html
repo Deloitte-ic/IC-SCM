@@ -1944,12 +1944,13 @@ function parseBomSheetDirect(data,sheetName){
   const cIdx=h.findIndex(c=>/(子项|子|child)/i.test(c));
   const uIdx=h.findIndex(c=>/(用量|数量|usage|qty)/i.test(c));
   const sIdx=h.findIndex(c=>/(损耗|scrap|rate)/i.test(c));
+  const pcIdx=h.findIndex(c=>/(制程|process)/i.test(c));
   if(pIdx<0||cIdx<0){showToast('ℹ️ Sheet「'+sheetName+'」未识别到父项/子项列','info');return;}
   for(let i=1;i<data.length;i++){
     const r=data[i];
     if(!r||!r[pIdx]||!r[cIdx]) continue;
     const parent=String(r[pIdx]).trim(),child=String(r[cIdx]).trim();
-    const bomEntry={parent,child,usage:uIdx>=0?parseFloat(r[uIdx])||1:1,scrap:sIdx>=0?parseFloat(r[sIdx])||0:0};
+    const bomEntry={parent,child,usage:uIdx>=0?parseFloat(r[uIdx])||1:1,scrap:sIdx>=0?parseFloat(r[sIdx])||0:0,processCode:pcIdx>=0&&r[pcIdx]?String(r[pcIdx]).trim():''};
     const bIdx=appData.boms.findIndex(b=>b.parent===parent&&b.child===child);
     if(bIdx>=0) appData.boms[bIdx]=bomEntry;
     else appData.boms.push(bomEntry);
@@ -1967,6 +1968,7 @@ function parseBomParamSheet(data, sheetName) {
     const cIdx = h.findIndex(c=>/(子项|子|child)/i.test(c));
     const uIdx = h.findIndex(c=>/(用量|数量|usage|qty)/i.test(c));
     const sIdx = h.findIndex(c=>/(损耗|scrap|rate)/i.test(c));
+    const pcIdx = h.findIndex(c=>/(制程|process)/i.test(c));
     if(pIdx>=0 && cIdx>=0) {
       for(let i=1; i<data.length; i++) {
         const r = data[i];
@@ -1975,7 +1977,8 @@ function parseBomParamSheet(data, sheetName) {
         const bomEntry = {
           parent, child,
           usage: uIdx>=0 ? parseFloat(r[uIdx])||1 : 1,
-          scrap: sIdx>=0 ? parseFloat(r[sIdx])||0 : 0
+          scrap: sIdx>=0 ? parseFloat(r[sIdx])||0 : 0,
+          processCode: pcIdx>=0&&r[pcIdx]?String(r[pcIdx]).trim():''
         };
         const bIdx=appData.boms.findIndex(b=>b.parent===parent && b.child===child);
         if(bIdx>=0) appData.boms[bIdx]=bomEntry;
@@ -2421,6 +2424,8 @@ function parseSupplierSheet(data, sheetName) {
   const mIdx = h.findIndex(c=>/(物料|材料|material)/i.test(c));
   const pIdx = h.findIndex(c=>/(制程|工艺|process)/i.test(c));
   const lIdx = h.findIndex(c=>/(交期|lead|天数)/i.test(c));
+  const moqIdx = h.findIndex(c=>/(MOQ|起订|最小|moq)/i.test(c));
+  const qIdx = h.findIndex(c=>/(品质|等级|quality)/i.test(c));
   if(cIdx<0 && nIdx<0) return;
 
   for(let i=1; i<data.length; i++) {
@@ -2436,7 +2441,9 @@ function parseSupplierSheet(data, sheetName) {
       code, name,
       material: mIdx>=0 && r[mIdx] ? String(r[mIdx]).trim() : '',
       processCode: pIdx>=0 && r[pIdx] ? String(r[pIdx]).trim() : '',
-      leadTime: lIdx>=0 ? parseInt(r[lIdx])||0 : 0
+      leadTime: lIdx>=0 ? parseInt(r[lIdx])||0 : 0,
+      moq: moqIdx>=0 ? parseInt(r[moqIdx])||0 : 0,
+      qualityLevel: qIdx>=0 && r[qIdx] ? String(r[qIdx]).trim() : 'A'
     };
     const idx=appData.suppliers.findIndex(s=>s.code===code);
     if(idx>=0) appData.suppliers[idx]=entry;
@@ -2455,6 +2462,8 @@ function parseRoutingSheet(data, sheetName) {
   const uIdx = h.findIndex(c=>/(计量|单位|unit)/i.test(c));
   const hIdx = h.findIndex(c=>/(工时|有效|hours|hour)/i.test(c));
   const capIdx = h.findIndex(c=>/(产能|capacity)/i.test(c));
+  const supIdx = h.findIndex(c=>/(供应商|委外|supplier|vendor)/i.test(c));
+  const yIdx = h.findIndex(c=>/(良率|yield|合格率)/i.test(c));
   if(cIdx<0 && nIdx<0) return;
 
   for(let i=1; i<data.length; i++) {
@@ -2469,7 +2478,9 @@ function parseRoutingSheet(data, sheetName) {
       operation: oIdx>=0 && r[oIdx] ? String(r[oIdx]).trim() : '',
       unit: uIdx>=0 && r[uIdx] ? String(r[uIdx]).trim() : '',
       effectiveHours: hIdx>=0 ? parseFloat(r[hIdx])||0 : 8,
-      capacity: capIdx>=0 ? parseInt(r[capIdx])||0 : 0
+      capacity: capIdx>=0 ? parseInt(r[capIdx])||0 : 0,
+      supplier: supIdx>=0 && r[supIdx] ? String(r[supIdx]).trim() : '',
+      yieldRate: yIdx>=0 && r[yIdx] ? parseFloat(r[yIdx])||100 : 100
     };
     const idx=appData.routings.findIndex(rt=>rt.code===code);
     if(idx>=0) appData.routings[idx]=entry;
