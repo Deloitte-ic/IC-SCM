@@ -6258,34 +6258,73 @@ function renderSpNetwork(){
   if(!supplyPlanData.networkAllocations.length){
     supplyPlanData.networkAllocations=[];
     supplyPlanData.constraints=[];
+    // 尝试从appData.suppliers获取实际供应商数据
+    const hasRealSuppliers = appData.suppliers.length > 0;
     // 初始化委外供应商产能
     SP_PROCS.forEach(proc=>{
-      const suppliers=SEMI_SUPPLIERS[proc]||[];
+      // 优先使用appData.suppliers中匹配制程的供应商
+      let suppliers;
+      if(hasRealSuppliers){
+        const matched = appData.suppliers.filter(s => s.processCode === proc);
+        if(matched.length > 0){
+          suppliers = matched.map(s => ({
+            code: s.code, name: s.name, weeklyCap: s.weeklyCap || 800,
+            leadTime: s.leadTime || 14, unitPrice: s.unitPrice || 0
+          }));
+        } else {
+          suppliers = SEMI_SUPPLIERS[proc] || [];
+        }
+      } else {
+        suppliers = SEMI_SUPPLIERS[proc] || [];
+      }
       suppliers.forEach((sup,si)=>{
         const cap=sup.weeklyCap;
-        const alloc=Math.round(cap*(0.6+Math.random()*0.3));
+        const alloc = hasRealSuppliers ? Math.round(cap * 0.78) : Math.round(cap*(0.6+Math.random()*0.3));
+        // 从PR/PO获取实际已分配量
+        const prpoAlloc = appData.prpo.filter(p => p.supplier === sup.name && p.orderType === 'PO' && p.status !== '已取消');
+        const allocatedFromPo = prpoAlloc.reduce((s,p) => s + (p.quantity||0), 0);
+        const finalAlloc = hasRealSuppliers ? Math.max(alloc, Math.round(allocatedFromPo/Math.max(suppliers.length,1))) : alloc;
         supplyPlanData.networkAllocations.push({
           process:proc, supplier:sup.name, supplierCode:sup.code,
-          weeklyCap:cap, allocated:alloc, remain:cap-alloc,
-          ratio:Math.round(alloc/cap*100), leadTime:sup.leadTime
+          weeklyCap:cap, allocated:finalAlloc, remain:cap-finalAlloc,
+          ratio:Math.round(finalAlloc/cap*100), leadTime:sup.leadTime
         });
       });
     });
-    // 随机产能约束
-    supplyPlanData.networkAllocations.forEach(n=>{
-      if(Math.random()>0.4){
-        const load=Math.round(n.weeklyCap*(0.88+Math.random()*0.2));
-        if(load>n.weeklyCap){
+    // 从实际PR/PO数据识别产能约束
+    if(hasRealSuppliers){
+      const pendingPR = appData.prpo.filter(p => p.orderType === 'PR' && p.status === '待审批');
+      pendingPR.forEach(pr => {
+        const supplier = appData.suppliers.find(s => s.name === pr.supplier || s.code === pr.supplier);
+        const proc = supplier?.processCode || 'Wafer';
+        const alloc = supplyPlanData.networkAllocations.find(n => n.supplier === pr.supplier && n.process === proc);
+        if(alloc && pr.quantity > alloc.remain * 2){
           supplyPlanData.constraints.push({
-            process:n.process, supplier:n.supplier,
-            type:'产能紧张', load, cap:n.weeklyCap,
-            overRate:Math.round((load-n.weeklyCap)/n.weeklyCap*100),
-            impact:'交期延长'+(Math.random()>0.5?'3-5天':'1-2周'),
-            suggestion:n.process==='Wafer'?'寻找替代晶圆厂':n.process==='BP'?'协调供应商加线':'分配至备选供应商'
+            process:proc, supplier:pr.supplier,
+            type:'PR积压', load:pr.quantity, cap:alloc.weeklyCap,
+            overRate:Math.round((pr.quantity-alloc.weeklyCap)/alloc.weeklyCap*100),
+            impact:'采购审批积压，影响交期',
+            suggestion:proc==='Wafer'?'紧急联系TSMC/SMIC增加分配':proc==='BP'?'协调京元/硅品加线':'加快内部审批流程'
           });
         }
-      }
-    });
+      });
+    } else {
+      // 无实际数据时随机生成示例约束
+      supplyPlanData.networkAllocations.forEach(n=>{
+        if(Math.random()>0.4){
+          const load=Math.round(n.weeklyCap*(0.88+Math.random()*0.2));
+          if(load>n.weeklyCap){
+            supplyPlanData.constraints.push({
+              process:n.process, supplier:n.supplier,
+              type:'产能紧张', load, cap:n.weeklyCap,
+              overRate:Math.round((load-n.weeklyCap)/n.weeklyCap*100),
+              impact:'交期延长'+(Math.random()>0.5?'3-5天':'1-2周'),
+              suggestion:n.process==='Wafer'?'寻找替代晶圆厂':n.process==='BP'?'协调供应商加线':'分配至备选供应商'
+            });
+          }
+        }
+      });
+    }
   }
 
   const totalWaferCap=supplyPlanData.networkAllocations.filter(n=>n.process==='Wafer').reduce((s,n)=>s+n.weeklyCap,0);
@@ -6369,21 +6408,42 @@ function runSpNetworkOptimization(){
 function renderSpProduction(){
   if(!supplyPlanData.ratePlans.length){
     supplyPlanData.ratePlans=[];supplyPlanData.supplierPerf=[];
+    const hasRealWip = appData.wip.length > 0;
+    const hasRealSuppliers = appData.suppliers.length > 0;
+    
     SP_PROCS.forEach(proc=>{
-      const suppliers=SEMI_SUPPLIERS[proc]||[];
+      let suppliers;
+      if(hasRealSuppliers){
+        const matched = appData.suppliers.filter(s => s.processCode === proc);
+        suppliers = matched.length > 0 ? matched.map(s => ({code:s.code, name:s.name, weeklyCap:s.weeklyCap||800, leadTime:s.leadTime||14})) : (SEMI_SUPPLIERS[proc]||[]);
+      } else {
+        suppliers = SEMI_SUPPLIERS[proc]||[];
+      }
       suppliers.forEach((sup,si)=>{
-        const weeklyPlan=Math.round(sup.weeklyCap*(0.6+Math.random()*0.35));
+        // 从实际WIP获取产出数据
+        let actualFromWip = 0;
+        if(hasRealWip){
+          const wipForSupplier = appData.wip.filter(w => 
+            w.supplier === sup.name && w.processCode === proc);
+          actualFromWip = wipForSupplier.reduce((s,w) => s + (w.outputQty||0), 0);
+        }
+        const weeklyPlan = hasRealWip && actualFromWip > 0 ? 
+          Math.round(actualFromWip * 1.2) : Math.round(sup.weeklyCap*(0.6+Math.random()*0.35));
         const monthlyPlan=weeklyPlan*4;
-        const actual=Math.round(weeklyPlan*(0.75+Math.random()*0.25));
-        const cum=Math.round(actual*(1+Math.random()*0.5));
+        const actual = hasRealWip && actualFromWip > 0 ? actualFromWip : Math.round(weeklyPlan*(0.75+Math.random()*0.25));
+        const cum = hasRealWip ? 
+          actual + appData.wip.filter(w => w.supplier === sup.name && w.processCode === proc).reduce((s,w) => s + (w.inputQty||0), 0) :
+          Math.round(actual*(1+Math.random()*0.5));
         supplyPlanData.ratePlans.push({
           process:proc, supplier:sup.name, supplierCode:sup.code,
           weeklyPlan, monthlyPlan, actual, cum, unit:spProcUnit(proc)
         });
+        // 从实际材料良率或默认
+        const matYield = appData.materials.find(m => m.processCode === proc)?.yieldRate || spYield(proc);
         supplyPlanData.supplierPerf.push({
           supplier:sup.name, process:proc,
           otd:Math.round(85+Math.random()*15),
-          yieldRate:Math.round((spYield(proc)*100-Math.random()*2)*100)/100,
+          yieldRate:Math.round(matYield*100*0.98*100)/100,
           devDays:Math.round(Math.random()*4)-1,
           rating:Math.random()>0.7?'B':'A'
         });
@@ -6451,37 +6511,43 @@ function renderSpDeployment(){
   if(!supplyPlanData.deployments.length){
     supplyPlanData.deployments=[];
     supplyPlanData.wipTracking=[];
-    // 模拟投料批次：Wafer→BP→CP→AB→FT全链路
-    const weeks=[1,2,3,4];
-    weeks.forEach(w=>{
-      const waferQty=Math.round(200+Math.random()*300);
-      const batchNo='REL-'+String(w).padStart(3,'0');
-      supplyPlanData.deployments.push({
-        batch:batchNo, fromProc:'Wafer', toProc:'BP', supplier:SEMI_SUPPLIERS.BP[0].name,
-        material:'IC-1000-Wafer', qty:waferQty, date:'2026-0'+(5+Math.floor(w/2))+'-'+(w*7),
-        estComplete:'2026-0'+(5+Math.floor(w/2))+'-'+(w*7+12), status:Math.random()>0.3?'已完成':'运行中'
+    const hasRealWip = appData.wip.length > 0;
+    
+    if(hasRealWip){
+      // 从实际appData.wip构建投料和WIP数据
+      appData.wip.forEach((w, idx)=>{
+        const batchNo = w.orderNo || 'WIP-'+String(idx+1).padStart(3,'0');
+        const procIdx = SP_PROCS.indexOf(w.processCode);
+        const upProc = procIdx>0 ? SP_PROCS[procIdx-1] : '—';
+        const nextProc = (procIdx>=0 && procIdx<SP_PROCS.length-1) ? SP_PROCS[procIdx+1] : '—';
+        supplyPlanData.deployments.push({
+          batch:batchNo, fromProc:upProc, toProc:w.processCode,
+          supplier:w.supplier||'—', material:w.materialCode||w.material||'—',
+          qty:w.inputQty||0, date:w.estimatedFinish?.substring(0,10)||'2026-06-14',
+          estComplete:w.estimatedFinish||'2026-06-28',
+          status:w.status==='已完成'?'已完成':w.status==='在制'?'运行中':'待投料'
+        });
+        supplyPlanData.wipTracking.push({
+          batch:batchNo, material:w.materialCode||w.material||'—',
+          currentProc:w.processCode, supplier:w.supplier||'—',
+          inputQty:w.inputQty||0, outputQty:w.outputQty||0,
+          yieldRate:w.yieldRate?Math.round(w.yieldRate*100):Math.round(spYield(w.processCode)*100),
+          nextProc, status:w.status==='已完成'?'已完成':'在制'
+        });
       });
-      // 模拟WIP批次
-      const yieldFactor=spYield('BP');
-      const bpOut=Math.round(waferQty*yieldFactor);
-      supplyPlanData.wipTracking.push({
-        batch:batchNo, material:'IC-1000-Wafer', currentProc:'BP', supplier:SEMI_SUPPLIERS.BP[0].name,
-        inputQty:waferQty, outputQty:bpOut, yieldRate:Math.round(yieldFactor*100),
-        nextProc:'CP', status:Math.random()>0.3?'在制':'已完成'
+    } else {
+      // 无实际数据时使用示例
+      [1,2,3,4].forEach(w=>{
+        const wq=Math.round(200+Math.random()*300);
+        const bn='REL-'+String(w).padStart(3,'0');
+        supplyPlanData.deployments.push({batch:bn,fromProc:'Wafer',toProc:'BP',supplier:SEMI_SUPPLIERS.BP[0].name,material:'IC-1000-Wafer',qty:wq,date:'2026-0'+(5+Math.floor(w/2))+'-'+(w*7),estComplete:'2026-0'+(5+Math.floor(w/2))+'-'+(w*7+12),status:Math.random()>0.3?'已完成':'运行中'});
+        const yf=spYield('BP');const bo=Math.round(wq*yf);
+        supplyPlanData.wipTracking.push({batch:bn,material:'IC-1000-Wafer',currentProc:'BP',supplier:SEMI_SUPPLIERS.BP[0].name,inputQty:wq,outputQty:bo,yieldRate:Math.round(yf*100),nextProc:'CP',status:Math.random()>0.3?'在制':'已完成'});
       });
-    });
-    // 再模拟一批CP→AB→FT
-    const cpBatchQty=Math.round(400+Math.random()*300);
-    supplyPlanData.deployments.push({
-      batch:'REL-005', fromProc:'CP', toProc:'AB', supplier:SEMI_SUPPLIERS.AB[0].name,
-      material:'IC-1000-CP', qty:cpBatchQty, date:'2026-06-10',
-      estComplete:'2026-06-22', status:'待投料'
-    });
-    supplyPlanData.wipTracking.push({
-      batch:'WIP-001', material:'IC-1000-CP', currentProc:'AB', supplier:SEMI_SUPPLIERS.AB[0].name,
-      inputQty:cpBatchQty, outputQty:Math.round(cpBatchQty*spYield('AB')), yieldRate:Math.round(spYield('AB')*100),
-      nextProc:'FT', status:'在制'
-    });
+      const cq=Math.round(400+Math.random()*300);
+      supplyPlanData.deployments.push({batch:'REL-005',fromProc:'CP',toProc:'AB',supplier:SEMI_SUPPLIERS.AB[0].name,material:'IC-1000-CP',qty:cq,date:'2026-06-10',estComplete:'2026-06-22',status:'待投料'});
+      supplyPlanData.wipTracking.push({batch:'WIP-001',material:'IC-1000-CP',currentProc:'AB',supplier:SEMI_SUPPLIERS.AB[0].name,inputQty:cq,outputQty:Math.round(cq*spYield('AB')),yieldRate:Math.round(spYield('AB')*100),nextProc:'FT',status:'在制'});
+    }
   }
 
   const totalDeploy=supplyPlanData.deployments.reduce((s,d)=>s+d.qty,0);
@@ -6536,33 +6602,108 @@ function renderSpMatching(){
   if(!supplyPlanData.exceptions.length){
     supplyPlanData.exceptions=[];
     supplyPlanData.matchDetails=[];
-    // 异常消息：按制程
-    SP_PROCS.slice(0,4).forEach((proc,i)=>{
-      const qty=Math.round(500+Math.random()*4000);
-      const types=['晶圆供应不足','委外产能紧张','良率波动影响','交期延迟'];
-      const suggs=['增加晶圆采购量','协调供应商加线','调整良率预期值','启动紧急投料'];
-      supplyPlanData.exceptions.push({
-        id:'EXC-'+String(i+1).padStart(3,'0'),process:proc,
-        type:types[i],desc:types[i]+'：'+spProcLabel(proc)+'预计短缺'+qty.toLocaleString()+spProcUnit(proc),
-        affected:qty,date:'2026-06-'+(15+i*3),severity:i<2?'高':'中',
-        suggestion:suggs[i],status:'待处理'
+    const hasRealDemands = appData.demands.length > 0;
+    const hasRealInv = appData.inventory.length > 0;
+    const hasRealWip = appData.wip.length > 0;
+    const hasRealPrpo = appData.prpo.length > 0;
+    
+    // 从实际PR/PO和库存识别异常
+    if(hasRealPrpo || hasRealInv){
+      // 检查PR积压
+      const pendingPRs = appData.prpo.filter(p => p.orderType === 'PR' && p.status === '待审批');
+      pendingPRs.slice(0,5).forEach((pr,i)=>{
+        const mat = appData.materials.find(m => m.code === pr.materialCode);
+        const proc = mat?.processCode || 'Wafer';
+        supplyPlanData.exceptions.push({
+          id:'EXC-'+String(i+1).padStart(3,'0'), process:proc,
+          type:'PR待审批', desc:pr.materialCode+' 采购申请待审批，数量'+pr.quantity.toLocaleString()+spProcUnit(proc),
+          affected:pr.quantity||0, date:pr.orderDate||'2026-06-15',
+          severity:i<2?'高':'中',
+          suggestion:'加快采购审批流程，联系供应商确认交期', status:'待处理'
+        });
       });
-    });
-    // 成品级匹配明细
-    const ftDemands=[{order:'SO-2026-001',material:'IC-1000-FT',qty:18500,date:'2026-06-20'},
-      {order:'SO-2026-002',material:'IC-1000-FT',qty:12000,date:'2026-06-25'},
-      {order:'SO-2026-003',material:'IC-1000-FT',qty:8000,date:'2026-07-05'}];
-    ftDemands.forEach(d=>{
-      const waferNeed=calcFtToWafer(d.qty);
-      const availWafer=Math.round(waferNeed*(0.6+Math.random()*0.4));
-      const matchQty=Math.round(calcWaferToFt(availWafer));
-      supplyPlanData.matchDetails.push({
-        orderNo:d.order,material:d.material,reqDate:d.date,
-        ftQty:d.qty,waferNeed,availWafer,matchQty,
-        gap:Math.max(0,d.qty-matchQty),
-        status:matchQty>=d.qty?'已匹配':matchQty>=d.qty*0.7?'部分匹配':'待匹配'
+      // 检查库存不足
+      if(hasRealInv){
+        const lowStock = appData.inventory.filter(inv => inv.stock < (inv.safetyStock || 0));
+        lowStock.slice(0,3).forEach((inv,i)=>{
+          const mat = appData.materials.find(m => m.code === inv.materialCode);
+          const proc = mat?.processCode || inv.processCode || 'Wafer';
+          supplyPlanData.exceptions.push({
+            id:'EXC-L'+String(i+1).padStart(2,'0'), process:proc,
+            type:'库存短缺', desc:inv.materialCode+' 库存'+inv.stock+'<安全库存'+(inv.safetyStock||0),
+            affected:(inv.safetyStock||0)-inv.stock, date:'2026-06-15',
+            severity:'高', suggestion:'紧急采购，调整供应计划', status:'待处理'
+          });
+        });
+      }
+    } else {
+      // 无实际数据时使用示例异常
+      SP_PROCS.slice(0,4).forEach((proc,i)=>{
+        const qty=Math.round(500+Math.random()*4000);
+        const types=['晶圆供应不足','委外产能紧张','良率波动影响','交期延迟'];
+        const suggs=['增加晶圆采购量','协调供应商加线','调整良率预期值','启动紧急投料'];
+        supplyPlanData.exceptions.push({
+          id:'EXC-'+String(i+1).padStart(3,'0'),process:proc,
+          type:types[i],desc:types[i]+'：'+spProcLabel(proc)+'预计短缺'+qty.toLocaleString()+spProcUnit(proc),
+          affected:qty,date:'2026-06-'+(15+i*3),severity:i<2?'高':'中',
+          suggestion:suggs[i],status:'待处理'
+        });
       });
-    });
+    }
+    
+    // 从实际需求构建匹配明细
+    if(hasRealDemands){
+      // 按物料分组需求
+      const demandByMat = {};
+      appData.demands.forEach(d => {
+        const key = d.material;
+        if(!demandByMat[key]) demandByMat[key] = {material:d.material, orders:[], totalQty:0};
+        demandByMat[key].orders.push({orderNo:d.orderNo||d.orderType+'-'+Math.random().toString(36).substr(2,5), qty:d.quantity||0, date:d.demandDate});
+        demandByMat[key].totalQty += (d.quantity||0);
+      });
+      Object.keys(demandByMat).forEach(key => {
+        const dm = demandByMat[key];
+        const mat = appData.materials.find(m => m.code === key);
+        const isFT = !mat || mat.processCode === 'FT' || !mat.processCode;
+        if(isFT){
+          dm.orders.forEach(ord => {
+            const waferNeed = calcFtToWafer(ord.qty);
+            // 从实际库存和WIP计算可用供应
+            const invQty = appData.inventory.filter(inv => inv.materialCode === key).reduce((s,inv) => s+(inv.stock||0), 0);
+            const wipQty = appData.wip.filter(w => w.materialCode === key && w.processCode === 'FT').reduce((s,w) => s+(w.outputQty||0), 0);
+            const poQty = appData.prpo.filter(p => p.materialCode === key && p.orderType === 'PO').reduce((s,p) => s+(p.quantity||0), 0);
+            const totalSupply = invQty + wipQty + poQty;
+            // wafer供应从inventory和prpo中Wafer相关计算
+            const waferInv = appData.inventory.filter(inv => inv.processCode === 'Wafer' || appData.materials.find(m=>m.code===inv.materialCode)?.processCode==='Wafer').reduce((s,inv) => s+(inv.stock||0), 0);
+            const availWafer = Math.round(waferNeed * Math.min(1, (waferInv + totalSupply) / Math.max(ord.qty, 1)));
+            const matchQty = Math.round(calcWaferToFt(availWafer));
+            supplyPlanData.matchDetails.push({
+              orderNo:ord.orderNo, material:key, reqDate:ord.date,
+              ftQty:ord.qty, waferNeed, availWafer:Math.round(availWafer), matchQty,
+              gap:Math.max(0, ord.qty-matchQty),
+              status:matchQty>=ord.qty?'已匹配':matchQty>=ord.qty*0.7?'部分匹配':'待匹配'
+            });
+          });
+        }
+      });
+    }
+    if(!supplyPlanData.matchDetails.length){
+      // 无实际需求时使用示例
+      const ftDemands=[{order:'SO-2026-001',material:'IC-1000-FT',qty:18500,date:'2026-06-20'},
+        {order:'SO-2026-002',material:'IC-1000-FT',qty:12000,date:'2026-06-25'},
+        {order:'SO-2026-003',material:'IC-1000-FT',qty:8000,date:'2026-07-05'}];
+      ftDemands.forEach(d=>{
+        const waferNeed=calcFtToWafer(d.qty);
+        const availWafer=Math.round(waferNeed*(0.6+Math.random()*0.4));
+        const matchQty=Math.round(calcWaferToFt(availWafer));
+        supplyPlanData.matchDetails.push({
+          orderNo:d.order,material:d.material,reqDate:d.date,
+          ftQty:d.qty,waferNeed,availWafer,matchQty,
+          gap:Math.max(0,d.qty-matchQty),
+          status:matchQty>=d.qty?'已匹配':matchQty>=d.qty*0.7?'部分匹配':'待匹配'
+        });
+      });
+    }
   }
 
   const totalFt=supplyPlanData.matchDetails.reduce((s,m)=>s+m.ftQty,0);
@@ -6898,7 +7039,10 @@ function dpAutoSelectModel(data,seasonLen,horizon){
 // ==================== Tab 1: Statistical Forecasting（IC设计委外全链路预测） ====================
 function renderDpStatistical(){
   if(!demandPlanData.forecasts.length){
-    const mats=appData.materials.length?appData.materials:[
+    // 从实际appData.demands构建需求历史
+    const hasRealDemands = appData.demands.length > 0;
+    const realMats = appData.materials.length ? appData.materials : [];
+    const mats=realMats.length ? realMats : [
       {code:'IC-1000-FT',name:'FT成品',processCode:'FT',unit:'颗'},
       {code:'IC-1000-AB',name:'AB封装',processCode:'AB',unit:'颗'},
       {code:'IC-1000-CP',name:'CP测试',processCode:'CP',unit:'片'},
@@ -6911,44 +7055,84 @@ function renderDpStatistical(){
     const horizon=parseInt(document.getElementById('dpForecastHorizon')?.value||18);
     const seasonLen=parseInt(document.getElementById('dpSeasonLength')?.value||52);
     const yieldFactor=document.getElementById('dpYieldAuto')?.checked!==false;
-    const baseDemands={FT:8000,AB:8000,CP:70,BP:70,Wafer:70};
-    const volatilities={FT:0.2,AB:0.18,CP:0.12,BP:0.12,Wafer:0.1};
+    
+    // 从实际需求按月聚合构建历史数据
+    const demandByMonth = {};
+    if(hasRealDemands){
+      appData.demands.forEach(d => {
+        const month = d.demandDate ? d.demandDate.substring(0,7) : '2026-06';
+        const mat = appData.materials.find(m => m.code === d.material);
+        const proc = mat ? (mat.processCode || 'FT') : 'FT';
+        const key = d.material + '|' + proc;
+        if(!demandByMonth[key]) demandByMonth[key] = {material:d.material, process:proc, months:{}};
+        demandByMonth[key].months[month] = (demandByMonth[key].months[month]||0) + (d.quantity||0);
+      });
+    }
+    
     filtered.slice(0,8).forEach((m,i)=>{
       const proc=m.processCode||'FT';
-      const base=baseDemands[proc]||5000;
-      const vol=volatilities[proc]||0.15;
-      const data=Array.from({length:52},(_,w)=>{
-        const seasonFactor=1+0.2*Math.sin((w+26)*Math.PI/26)+0.1*Math.sin((w+13)*Math.PI/13);
-        return Math.max(100,Math.round(base*seasonFactor*(1+vol*(Math.random()-0.5))));
-      });
       const outlierFilter=document.getElementById('dpOutlierFilter')?.checked!==false;
-      let cleanData=[...data];
-      if(outlierFilter){
-        const sorted=[...data].sort((a,b)=>a-b);
+      const modelSelect=document.getElementById('dpModelSelect')?.value||'auto';
+      
+      let historyData = [];
+      if(hasRealDemands && demandByMonth[m.code+'|'+proc]){
+        // 使用实际需求按月数据
+        const months = demandByMonth[m.code+'|'+proc].months;
+        const sortedMonths = Object.keys(months).sort();
+        const allMonths = [];
+        if(sortedMonths.length >= 2){
+          const start = new Date(sortedMonths[0]+'-01');
+          const end = new Date(sortedMonths[sortedMonths.length-1]+'-01');
+          for(let d = new Date(start); d <= end; d.setMonth(d.getMonth()+1)){
+            const ym = d.toISOString().substring(0,7);
+            allMonths.push(months[ym] || 0);
+          }
+        } else {
+          // 单月数据不足，按周拆解
+          const qty = months[sortedMonths[0]] || 0;
+          for(let w=0; w<12; w++) allMonths.push(Math.round(qty*0.08*(0.8+Math.random()*0.4)));
+        }
+        historyData = allMonths.length >= 4 ? allMonths : 
+          Array.from({length:12}, (_,w)=>Math.round((months[sortedMonths[0]]||8000)/4*(0.8+Math.random()*0.4)));
+      } else {
+        // 无实际数据时使用示例数据
+        const base = {FT:8000,AB:8000,CP:70,BP:70,Wafer:70}[proc]||5000;
+        const vol = {FT:0.2,AB:0.18,CP:0.12,BP:0.12,Wafer:0.1}[proc]||0.15;
+        historyData = Array.from({length:52}, (_,w)=>{
+          const f = 1+0.2*Math.sin((w+26)*Math.PI/26)+0.1*Math.sin((w+13)*Math.PI/13);
+          return Math.max(100, Math.round(base*f*(1+vol*(Math.random()-0.5))));
+        });
+      }
+      
+      let cleanData=[...historyData];
+      if(outlierFilter && historyData.length > 8){
+        const sorted=[...historyData].sort((a,b)=>a-b);
         const q1=sorted[Math.floor(sorted.length*0.25)],q3=sorted[Math.floor(sorted.length*0.75)];
         const iqr=q3-q1;const median=sorted[Math.floor(sorted.length/2)];
-        cleanData=data.map(v=>v>q3+1.5*iqr||v<q1-1.5*iqr?median:v);
+        cleanData=historyData.map(v=>v>q3+1.5*iqr||v<q1-1.5*iqr?median:v);
       }
-      const modelSelect=document.getElementById('dpModelSelect')?.value||'auto';
+      
+      const effectiveSeasonLen = Math.min(seasonLen, Math.max(4, Math.floor(cleanData.length/2)));
       let result,modelName;
       if(modelSelect==='auto'){
-        const auto=dpAutoSelectModel(cleanData,Math.min(seasonLen,26),horizon);
+        const auto=dpAutoSelectModel(cleanData,effectiveSeasonLen,horizon);
         modelName=auto.model;result=auto.result;
       }else if(modelSelect==='holt-winters'){
         const autoOpt=document.getElementById('dpAutoOptimize')?.checked;
         let alpha=0.3,beta=0.1,gamma=0.1;
-        if(autoOpt){const p=dpAutoOptimize(cleanData,Math.min(seasonLen,26),horizon);alpha=p.alpha;beta=p.beta;gamma=p.gamma;}
-        result=dpHoltWinters(cleanData,alpha,beta,gamma,Math.min(seasonLen,26),horizon);
+        if(autoOpt){const p=dpAutoOptimize(cleanData,effectiveSeasonLen,horizon);alpha=p.alpha;beta=p.beta;gamma=p.gamma;}
+        result=dpHoltWinters(cleanData,alpha,beta,gamma,effectiveSeasonLen,horizon);
         modelName='holt-winters';
       }else if(modelSelect==='sma'){result=dpSma(cleanData,Math.min(cleanData.length,12),horizon);modelName='sma';
       }else{result=dpCroston(cleanData,horizon);modelName='croston';}
       const totalForecast=Math.round(result.forecast.reduce((s,v)=>s+v,0));
       const prop=yieldFactor?propagateDemand(totalForecast):{};
-      const waferEq=prop.Wafer||totalForecast>0?Math.round(totalForecast/120/(SEMI_YIELD[proc]||0.95)):0;
+      const waferEq=prop.Wafer||(totalForecast>0?Math.round(totalForecast/120/(SEMI_YIELD[proc]||0.95)):0);
       const yieldProd=yieldFactor?SEMI_YIELD[proc]*100||98:100;
+      const supName = realMats.length && realMats.find(mt=>mt.code===m.code)?.supplier || supplierMap[proc]||'—';
       demandPlanData.forecasts.push({
         material:m.code,materialName:m.name||m.code,process:proc,
-        supplier:supplierMap[proc]||'—',model:modelName,
+        supplier:supName,model:modelName,
         horizon,seasonLen,history:cleanData,smoothed:result.smoothed||[],
         futureMonths:Array.from({length:horizon},(_,h)=>'W'+(h+27)),
         forecast:result.forecast,mape:result.mape,mae:result.mae,
