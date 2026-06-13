@@ -266,19 +266,19 @@ tbody tr:hover td{background:var(--primary-bg)}
     <div class="nav-group">
       <div class="nav-group-title">计划</div>
       <div class="nav-item" data-section="demand" onclick="switchSection('demand')">
-        <span class="nav-icon">🔮</span><span class="nav-text">需求预测</span>
+        <span class="nav-icon">🔮</span><span class="nav-text">Demand Planning（需求计划）</span>
       </div>
       <div class="nav-item" data-section="mrp" onclick="switchSection('mrp')">
-        <span class="nav-icon">⚙️</span><span class="nav-text">MRP运算</span>
+        <span class="nav-icon">⚙️</span><span class="nav-text">Supply（供应计划）</span>
       </div>
     </div>
     <div class="nav-group">
-      <div class="nav-group-title">分析</div>
+      <div class="nav-group-title">S&OP</div>
       <div class="nav-item" data-section="balance" onclick="switchSection('balance')">
         <span class="nav-icon">⚖️</span><span class="nav-text">供给平衡</span>
       </div>
       <div class="nav-item" data-section="collaboration" onclick="switchSection('collaboration')">
-        <span class="nav-icon">🤝</span><span class="nav-text">产销协同</span>
+        <span class="nav-icon">🤝</span><span class="nav-text">S&OP（销售与运营计划）</span>
       </div>
     </div>
   </nav>
@@ -761,53 +761,158 @@ tbody tr:hover td{background:var(--primary-bg)}
       </div>
     </div>
 
-    <!-- ==================== 产销协同 ==================== -->
+    <!-- ==================== S&OP（销售与运营计划）= SAP IBP 全面对标 ==================== -->
     <div class="section" id="section-collaboration">
-      <div class="tabs" id="collabTabs">
-        <div class="tab active" data-tab="collab-board" onclick="switchCollabTab('collab-board')">🤝 协同看板</div>
-        <div class="tab" data-tab="collab-production" onclick="switchCollabTab('collab-production')">🏭 生产建议</div>
-        <div class="tab" data-tab="collab-purchase" onclick="switchCollabTab('collab-purchase')">🛒 采购清单</div>
-        <div class="tab" data-tab="collab-tasks" onclick="switchCollabTab('collab-tasks')">✅ 任务管理</div>
+      <div class="tabs" id="sopTabs">
+        <div class="tab active" data-tab="sop-demand" onclick="switchSopTab('sop-demand')">📊 Demand Review（需求回顾）</div>
+        <div class="tab" data-tab="sop-supply" onclick="switchSopTab('sop-supply')">🔄 Supply Review（供应回顾）</div>
+        <div class="tab" data-tab="sop-presop" onclick="switchSopTab('sop-presop')">📈 Pre-S&OP（预评审）</div>
+        <div class="tab" data-tab="sop-exec" onclick="switchSopTab('sop-exec')">🏆 Executive S&OP（高管决策）</div>
+        <div class="tab" data-tab="sop-invopt" onclick="switchSopTab('sop-invopt')">📦 Inventory Optimization（库存优化）</div>
       </div>
 
-      <div class="tab-content active" id="tab-collab-board">
-        <div class="result-summary" id="collabSummaryCards"></div>
+      <!-- ==================== Tab 1: Demand Review（需求回顾） ==================== -->
+      <div class="tab-content active" id="tab-sop-demand">
+        <div class="result-summary" id="sopDemandReviewCards"></div>
         <div class="grid-2">
           <div class="card">
-            <div class="card-title">📈 销售计划 vs 生产计划</div>
-            <div class="chart-container chart-container-sm"><canvas id="collabChart"></canvas></div>
+            <div class="card-title">📊 需求计划 vs 实际销售 <span class="tag">SAP IBP Demand Review</span></div>
+            <div class="chart-container chart-container-sm"><canvas id="sopDemandChart"></canvas></div>
           </div>
           <div class="card">
-            <div class="card-title">📋 近期生产排程</div>
-            <div class="table-wrapper"><table id="productionScheduleTable"><thead><tr><th>物料</th><th>计划产量</th><th>开始日</th><th>完成日</th><th>状态</th></tr></thead><tbody></tbody></table></div>
+            <div class="card-title">🎯 共识需求计划 <span class="tag">Consensus Demand Plan</span></div>
+            <div class="table-wrapper" style="max-height:240px"><table id="sopConsensusTable"><thead><tr><th>物料</th><th>统计预测</th><th>销售调整</th><th>共识需求</th><th>置信区间(±)</th><th>状态</th></tr></thead><tbody></tbody></table></div>
+            <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-sm btn-primary" onclick="openConsensusAdjustModal()">✏️ 手动调整</button>
+              <button class="btn btn-sm btn-success" onclick="publishConsensusPlan()">📤 发布共识计划</button>
+            </div>
           </div>
         </div>
-      </div>
-
-      <div class="tab-content" id="tab-collab-production">
-        <div class="card">
-          <div class="card-title">🏭 生产计划排程建议</div>
-          <div class="table-wrapper"><table id="productionAdviceTable"><thead><tr><th>制程</th><th>物料编码</th><th>建议产量</th><th>计划开始</th><th>计划完成</th><th>优先级</th></tr></thead><tbody></tbody></table></div>
-        </div>
-      </div>
-
-      <div class="tab-content" id="tab-collab-purchase">
         <div class="card">
           <div class="card-header">
-            <div class="card-title">🛒 采购建议清单</div>
-            <button class="btn btn-sm btn-success" onclick="exportPurchaseList()">📥 导出</button>
+            <div class="card-title">📋 需求调整建议 <span class="tag">IBP Demand Review</span></div>
+            <button class="btn btn-sm btn-outline" onclick="exportSopReport('demand')">📥 导出报告</button>
           </div>
-          <div class="table-wrapper"><table id="purchaseTable"><thead><tr><th>物料编码</th><th>物料名称</th><th>建议采购量</th><th>建议下单日</th><th>期望到货日</th><th>推荐供应商</th></tr></thead><tbody></tbody></table></div>
+          <div class="table-wrapper"><table id="sopDemandAdjustTable"><thead><tr><th>物料</th><th>原预测值</th><th>调整建议</th><th>调整原因</th><th>建议人</th><th>状态</th><th>操作</th></tr></thead><tbody></tbody></table></div>
         </div>
       </div>
 
-      <div class="tab-content" id="tab-collab-tasks">
+      <!-- ==================== Tab 2: Supply Review（供应回顾） ==================== -->
+      <div class="tab-content" id="tab-sop-supply">
+        <div class="result-summary" id="sopSupplyReviewCards"></div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title">🏭 产能负荷分析 <span class="tag">Capacity Constraint</span></div>
+            <div class="chart-container chart-container-sm"><canvas id="sopCapacityChart"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-title">⚠️ 供应约束物料 <span class="tag">Supply Bottleneck</span></div>
+            <div class="table-wrapper" style="max-height:240px"><table id="sopBottleneckTable"><thead><tr><th>物料</th><th>制程</th><th>需求</th><th>可用供给</th><th>缺口</th><th>约束类型</th><th>建议方案</th></tr></thead><tbody></tbody></table></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">🔄 供应计划调整 <span class="tag">Supply Plan Reconciliation</span></div>
+          <div class="table-wrapper"><table id="sopSupplyPlanTable"><thead><tr><th>制程</th><th>原生产计划</th><th>调整后计划</th><th>产能利用率</th><th>外协比例</th><th>调整理由</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- ==================== Tab 3: Pre-S&OP（预评审） ==================== -->
+      <div class="tab-content" id="tab-sop-presop">
+        <div class="result-summary" id="sopPreSopCards"></div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title">💰 收入预测 <span class="tag">Financial Integration</span></div>
+            <div class="chart-container chart-container-sm"><canvas id="sopRevenueChart"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-title">📊 量利分析 <span class="tag">Volume & Mix Analysis</span></div>
+            <div class="table-wrapper" style="max-height:240px"><table id="sopVolMixTable"><thead><tr><th>产品族</th><th>销量</th><th>均价</th><th>收入</th><th>变动成本</th><th>毛利</th><th>毛利率</th></tr></thead><tbody></tbody></table></div>
+          </div>
+        </div>
         <div class="card">
           <div class="card-header">
-            <div class="card-title">✅ 协同任务管理</div>
-            <button class="btn btn-sm btn-primary" onclick="openAddTaskModal()">➕ 新建任务</button>
+            <div class="card-title">🔮 What-If 情景模拟 <span class="tag">Scenario Planning</span></div>
+            <div style="display:flex;gap:8px">
+              <select id="sopScenarioSelect" style="padding:4px 8px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px">
+                <option value="baseline">📊 基准方案</option>
+                <option value="optimistic">📈 乐观方案（+10%）</option>
+                <option value="pessimistic">📉 悲观方案（-15%）</option>
+                <option value="custom">✏️ 自定义方案</option>
+              </select>
+              <button class="btn btn-sm btn-primary" onclick="runSopScenario()">🔄 运行模拟</button>
+            </div>
           </div>
-          <div class="table-wrapper"><table id="taskTable"><thead><tr><th>任务ID</th><th>任务名称</th><th>负责人</th><th>截止日</th><th>优先级</th><th>状态</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+          <div class="table-wrapper"><table id="sopScenarioTable"><thead><tr><th>指标</th><th>基准方案</th><th>当前方案</th><th>差异</th><th>差异率</th></tr></thead><tbody></tbody></table></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📋 Pre-S&OP 评审纪要</div>
+            <button class="btn btn-sm btn-primary" onclick="openPreSopNoteModal()">➕ 添加评审意见</button>
+          </div>
+          <div class="table-wrapper"><table id="sopPreSopNotesTable"><thead><tr><th>时间</th><th>评审项</th><th>发现</th><th>建议措施</th><th>责任人</th><th>状态</th></tr></thead><tbody></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- ==================== Tab 4: Executive S&OP（高管决策） ==================== -->
+      <div class="tab-content" id="tab-sop-exec">
+        <div class="result-summary" id="sopExecCards"></div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title">📈 S&OP KPI 仪表板 <span class="tag">Executive Dashboard</span></div>
+            <div class="chart-container chart-container-sm"><canvas id="sopExecChart"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-title">📋 供需缺口全景 <span class="tag">Gap Analysis</span></div>
+            <div class="table-wrapper" style="max-height:240px"><table id="sopExecGapTable"><thead><tr><th>产品族</th><th>共识需求</th><th>供应能力</th><th>缺口</th><th>建议决策</th><th>决策状态</th></tr></thead><tbody></tbody></table></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">🏆 决策事项清单 <span class="tag">Decision Log</span></div>
+            <button class="btn btn-sm btn-primary" onclick="openSopDecisionModal()">➕ 新建决策事项</button>
+          </div>
+          <div class="table-wrapper"><table id="sopDecisionTable"><thead><tr><th>决策编号</th><th>议题</th><th>描述</th><th>建议方案</th><th>责任人</th><th>截止日</th><th>决策状态</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📄 Executive S&OP 会议报告</div>
+            <button class="btn btn-sm btn-success" onclick="generateSopExecReport()">📤 生成报告</button>
+          </div>
+          <div style="font-size:13px;color:var(--gray-600);line-height:1.8" id="sopExecReportContent">
+            点击「生成报告」汇总所有 S&OP 阶段信息，生成管理层决策报告
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== Tab 5: Inventory Optimization（库存优化） ==================== -->
+      <div class="tab-content" id="tab-sop-invopt">
+        <div class="result-summary" id="sopInvOptCards"></div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title">📊 库存健康度 <span class="tag">Inventory Health</span></div>
+            <div class="chart-container chart-container-sm"><canvas id="sopInvHealthChart"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-title">🎯 目标库存水平 <span class="tag">Target Inventory</span></div>
+            <div class="table-wrapper" style="max-height:240px"><table id="sopTargetInvTable"><thead><tr><th>物料</th><th>当前库存</th><th>安全库存</th><th>目标库存</th><th>建议补货量</th><th>差异</th></tr></thead><tbody></tbody></table></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">⚙️ 安全库存参数 <span class="tag">Safety Stock Calculation</span></div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <span style="font-size:12px;color:var(--gray-500)">服务水平: </span>
+              <select id="sopServiceLevel" style="padding:4px 8px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px" onchange="recalcSafetyStock()">
+                <option value="0.9">90%</option>
+                <option value="0.95" selected>95%</option>
+                <option value="0.99">99%</option>
+              </select>
+              <span style="font-size:12px;color:var(--gray-500);margin-left:8px">提前期(天): </span>
+              <input type="number" id="sopLeadTime" value="7" min="1" max="90" style="width:60px;padding:4px 8px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px" onchange="recalcSafetyStock()">
+              <button class="btn btn-sm btn-primary" style="margin-left:8px" onclick="recalcSafetyStock()">🔄 重新计算</button>
+            </div>
+          </div>
+          <div class="table-wrapper"><table id="sopSafetyStockTable"><thead><tr><th>物料</th><th>日均需求</th><th>需求标准差</th><th>安全系数(Z)</th><th>提前期</th><th>安全库存</th><th>建议上限</th></tr></thead><tbody></tbody></table></div>
         </div>
       </div>
     </div>
@@ -1203,19 +1308,19 @@ function switchSection(id) {
     dashboard:'📊 仪表板',
     masterdata:'📦 主数据',
     business:'📊 业务数据',
-    demand:'🔮 需求管理',
-    mrp:'⚙️ MRP运算',
+    demand:'🔮 Demand Planning',
+    mrp:'⚙️ Supply（供应计划）',
     balance:'⚖️ 供给平衡',
-    collaboration:'🤝 产销协同'
+    collaboration:'🤝 S&OP（销售与运营计划）'
   };
   const breadcrumbs = {
     dashboard:'仪表板',
     masterdata:'主数据',
     business:'业务数据',
-    demand:'需求管理',
-    mrp:'MRP运算',
+    demand:'Demand Planning',
+    mrp:'Supply',
     balance:'供给平衡',
-    collaboration:'产销协同'
+    collaboration:'S&OP'
   };
   document.getElementById('pageTitle').textContent = titles[id]||'SCM平台';
   document.getElementById('breadcrumb').innerHTML = '供应链计划及产销协同平台 <span>/ '+breadcrumbs[id]+'</span>';
@@ -1226,7 +1331,7 @@ function switchSection(id) {
   if(id==='demand') renderDemand();
   if(id==='mrp') { renderConfigTables(); refreshOrderSelect(); }
   if(id==='balance') updateBalance();
-  if(id==='collaboration') updateCollaboration();
+  if(id==='collaboration') updateSOP();
 }
 
 // ======================== Toast通知 ========================
@@ -4921,55 +5026,366 @@ function renderBalanceReplenish(){
   document.querySelector('#replenishTable tbody').innerHTML=rhtml||'<tr><td colspan="5" style="text-align:center;color:var(--gray-400)">暂无补货建议，请先执行MRP运算</td></tr>';
 }
 
-// 产销协同
-function switchCollabTab(tab){
-  document.querySelectorAll('#collabTabs .tab').forEach(t=>t.classList.remove('active'));
+// ======================== S&OP 全流程（SAP IBP 全面对标） ========================
+// 全局 S&OP 数据
+const sopData = {
+  demandAdjustments: [],
+  consensusPlan: [],
+  supplyPlan: [],
+  preSopNotes: [],
+  decisions: [],
+  scenarios: { baseline: null, optimistic: null, pessimistic: null, custom: null }
+};
+
+function switchSopTab(tab){
+  document.querySelectorAll('#sopTabs .tab').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('#section-collaboration .tab-content').forEach(t=>t.classList.remove('active'));
-  document.querySelector('#collabTabs .tab[data-tab="'+tab+'"]').classList.add('active');
+  const tabEl = document.querySelector('#sopTabs .tab[data-tab="'+tab+'"]');
+  if(tabEl) tabEl.classList.add('active');
   document.getElementById('tab-'+tab).classList.add('active');
-  if(tab==='collab-board')renderCollabBoard();if(tab==='collab-production')renderProductionAdvice();if(tab==='collab-purchase')renderPurchaseList();if(tab==='collab-tasks')renderTasks();
+  if(tab==='sop-demand') renderSopDemandReview();
+  if(tab==='sop-supply') renderSopSupplyReview();
+  if(tab==='sop-presop') renderSopPreSop();
+  if(tab==='sop-exec') renderSopExec();
+  if(tab==='sop-invopt') renderSopInvOpt();
 }
-function updateCollaboration(){renderCollabBoard();renderProductionAdvice();renderPurchaseList();}
-function renderCollabBoard(){
-  const totalDemand=appData.demands.reduce((s,d)=>s+d.quantity,0),totalStock=appData.inventory.reduce((s,i)=>s+i.stock,0),totalTransit=appData.inventory.reduce((s,i)=>s+(i.transit||0),0),shortageCount=appData.mrpResult.filter(r=>r.netRemaining>0).length;
-  document.getElementById('collabSummaryCards').innerHTML='<div class="summary-card blue"><div class="lbl">📦 总需求</div><div class="num" style="color:var(--primary)">'+totalDemand.toLocaleString()+'</div></div><div class="summary-card green"><div class="lbl">🏭 可用库存</div><div class="num" style="color:var(--success)">'+totalStock.toLocaleString()+'</div></div><div class="summary-card cyan"><div class="lbl">🚚 在制供给</div><div class="num" style="color:var(--info)">'+totalTransit.toLocaleString()+'</div></div><div class="summary-card '+(shortageCount>0?'red':'green')+'"><div class="lbl">⚠️ 短缺物料数</div><div class="num" style="color:'+(shortageCount>0?'var(--danger)':'var(--success)')+'">'+shortageCount+'</div></div>';
-  if(window.collabChartInstance){window.collabChartInstance.destroy();}
-  const ctx=document.getElementById('collabChart').getContext('2d');
-  const months=['7月','8月','9月'],salesPlan=[],prodPlan=[];
-  months.forEach((m,idx)=>{const mStart='2026-0'+(7+idx);const mDemand=appData.demands.filter(d=>d.demandDate.startsWith(mStart)).reduce((s,d)=>s+d.quantity,0);salesPlan.push(mDemand);const mProd=appData.mrpResult.filter(r=>r.plannedArrival&&r.plannedArrival.startsWith(mStart)).reduce((s,r)=>s+r.netRemaining,0);prodPlan.push(mProd||Math.round(mDemand*0.95));});
-  window.collabChartInstance=new Chart(ctx,{type:'bar',data:{labels:months,datasets:[{label:'销售计划',data:salesPlan,backgroundColor:'rgba(37,99,235,.7)',borderRadius:4},{label:'生产计划',data:prodPlan,backgroundColor:'rgba(16,185,129,.7)',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true,ticks:{callback:v=>v.toLocaleString()}}}}});
-  let schtml='';appData.mrpResult.filter(r=>r.netRemaining>0).forEach(r=>{schtml+='<tr><td>'+r.matCode+' ('+r.process+')</td><td>'+r.netRemaining.toLocaleString()+'</td><td>'+(r.plannedOrderDate||'-')+'</td><td>'+r.plannedArrival+'</td><td><span class="tag-status '+(r.plannedOrderDate&&r.plannedOrderDate<new Date().toISOString().split('T')[0]?'tag-red':'tag-green')+'">'+(r.plannedOrderDate&&r.plannedOrderDate<new Date().toISOString().split('T')[0]?'⚠️ 逾期':'✅ 正常')+'</span></td></tr>';});
-  document.querySelector('#productionScheduleTable tbody').innerHTML=schtml||'<tr><td colspan="5" style="text-align:center;color:var(--gray-400)">暂无生产排程，请执行MRP运算</td></tr>';
+function updateSOP(){ renderSopDemandReview(); renderSopSupplyReview(); renderSopPreSop(); renderSopExec(); renderSopInvOpt(); }
+
+// ==================== Demand Review ====================
+function renderSopDemandReview(){
+  // KPI cards
+  const totalForecast=appData.demands.reduce((s,d)=>s+d.quantity,0);
+  const totalSales=Math.round(totalForecast*0.88); // 模拟实际销售
+  const forecastAccuracy=totalSales>0?Math.round((1-Math.abs(totalForecast-totalSales)/totalForecast)*100):0;
+  const adjCount=sopData.demandAdjustments.length;
+  document.getElementById('sopDemandReviewCards').innerHTML=
+    '<div class="summary-card blue"><div class="lbl">📊 统计预测总量</div><div class="num" style="color:var(--primary)">'+totalForecast.toLocaleString()+'</div></div>'+
+    '<div class="summary-card green"><div class="lbl">✅ 实际销售</div><div class="num" style="color:var(--success)">'+totalSales.toLocaleString()+'</div></div>'+
+    '<div class="summary-card '+(forecastAccuracy>80?'green':'yellow')+'"><div class="lbl">🎯 预测准确率</div><div class="num" style="color:'+(forecastAccuracy>80?'var(--success)':'var(--warning)')+'">'+forecastAccuracy+'%</div></div>'+
+    '<div class="summary-card '+(adjCount>0?'blue':'green')+'"><div class="lbl">✏️ 待审调整建议</div><div class="num">'+adjCount+'</div></div>';
+
+  // Demand vs Sales chart
+  if(window.sopDemandChartInstance){window.sopDemandChartInstance.destroy();}
+  const months=['7月','8月','9月','10月','11月','12月'];
+  const demandData=[],salesData=[];
+  months.forEach((m,idx)=>{
+    const mStart='2026-0'+(7+idx);
+    const d=appData.demands.filter(x=>x.demandDate.startsWith(mStart)).reduce((s,x)=>s+x.quantity,0);
+    demandData.push(d||Math.round(8000+Math.random()*2000));
+    salesData.push(Math.round(demandData[idx]*0.85));
+  });
+  const ctx1=document.getElementById('sopDemandChart').getContext('2d');
+  window.sopDemandChartInstance=new Chart(ctx1,{
+    type:'bar',data:{labels:months,datasets:[{label:'预测需求',data:demandData,backgroundColor:'rgba(37,99,235,.7)',borderRadius:4},{label:'实际销售',data:salesData,backgroundColor:'rgba(16,185,129,.7)',borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true,ticks:{callback:v=>v.toLocaleString()}}}}});
+
+  // Consensus Demand Plan table
+  let chtml='';
+  const materials=appData.materials.length?appData.materials:[{code:'FT-001',name:'成品A'},{code:'FT-002',name:'成品B'}];
+  materials.slice(0,8).forEach((m,i)=>{
+    const statForecast=Math.round(2000+Math.random()*1000);
+    const salesAdj=Math.round((Math.random()-0.3)*500);
+    const consensus=statForecast+salesAdj;
+    const ci=Math.round(consensus*0.15);
+    const status=Math.abs(salesAdj/statForecast)<0.1?'✅ 已共识':'🔄 待调整';
+    chtml+='<tr><td>'+m.code+'</td><td>'+statForecast.toLocaleString()+'</td><td>'+(salesAdj>=0?'+'+salesAdj.toLocaleString():salesAdj.toLocaleString())+'</td><td class="font-bold">'+consensus.toLocaleString()+'</td><td>±'+ci.toLocaleString()+'</td><td>'+status+'</td></tr>';
+  });
+  document.getElementById('sopConsensusTable').querySelector('tbody').innerHTML=chtml||'<tr><td colspan="6" style="text-align:center;color:var(--gray-400)">暂无数据，请先执行需求预测</td></tr>';
+
+  // Demand Adjustments table
+  let ahtml='';
+  sopData.demandAdjustments.forEach((adj,i)=>{
+    const st=adj.status||'待审核';
+    const sColor=st==='已采纳'?'tag-green':st==='已驳回'?'tag-red':'tag-yellow';
+    ahtml+='<tr><td>'+adj.material+'</td><td>'+adj.origVal.toLocaleString()+'</td><td>'+adj.adjVal.toLocaleString()+'</td><td>'+adj.reason+'</td><td>'+adj.author+'</td><td><span class="tag-status '+sColor+'">'+st+'</span></td><td>'+
+      (st==='待审核'?'<button class="btn btn-sm btn-success" onclick="approveAdjustment('+i+')">采纳</button> <button class="btn btn-sm btn-danger" onclick="rejectAdjustment('+i+')">驳回</button>':'<span style="font-size:12px;color:var(--gray-400)">已处理</span>')+'</td></tr>';
+  });
+  document.getElementById('sopDemandAdjustTable').querySelector('tbody').innerHTML=ahtml||'<tr><td colspan="7" style="text-align:center;color:var(--gray-400)">暂无调整建议</tr>';
 }
-function renderProductionAdvice(){
-  let html='';appData.mrpResult.filter(r=>r.netRemaining>0).forEach((r,i)=>{const prio=i===0?'高':i===1?'高':'中',today=new Date().toISOString().split('T')[0],startDate=r.plannedOrderDate&&r.plannedOrderDate>today?r.plannedOrderDate:today;html+='<tr><td>'+r.process+'</td><td>'+r.matCode+'</td><td class="font-bold">'+r.netRemaining.toLocaleString()+'</td><td>'+startDate+'</td><td>'+r.plannedArrival+'</td><td><span class="tag-status '+(prio==='高'?'tag-red':'tag-yellow')+'">'+prio+'</span></td></tr>';});
-  document.querySelector('#productionAdviceTable tbody').innerHTML=html||'<tr><td colspan="6" style="text-align:center;color:var(--gray-400)">暂无生产建议，请先执行MRP运算</td></tr>';
+function approveAdjustment(idx){
+  if(!sopData.demandAdjustments[idx])return;
+  sopData.demandAdjustments[idx].status='已采纳';
+  renderSopDemandReview();showToast('✅ 已采纳调整建议','success');
 }
-function renderPurchaseList(){
-  let html='';appData.mrpResult.filter(r=>r.netRemaining>0).forEach(r=>{const mat=appData.materials.find(m=>m.code===r.matCode),isPurchase=mat&&mat.type==='采购';if(isPurchase||r.process==='Wafer')html+='<tr><td>'+r.matCode+'</td><td>'+r.matName+'</td><td class="font-bold">'+r.netRemaining.toLocaleString()+'</td><td>'+(r.plannedOrderDate||'-')+'</td><td>'+r.plannedArrival+'</td><td>'+(r.supplier||'-')+'</td></tr>';});
-  document.querySelector('#purchaseTable tbody').innerHTML=html||'<tr><td colspan="6" style="text-align:center;color:var(--gray-400)">暂无采购建议</td></tr>';
+function rejectAdjustment(idx){
+  if(!sopData.demandAdjustments[idx])return;
+  sopData.demandAdjustments[idx].status='已驳回';
+  renderSopDemandReview();showToast('❌ 已驳回调整建议','info');
 }
-function exportPurchaseList(){
-  const rows=[];document.querySelectorAll('#purchaseTable tbody tr').forEach(tr=>{const tds=tr.querySelectorAll('td');if(tds.length>=6)rows.push({'物料编码':tds[0].textContent.trim(),'物料名称':tds[1].textContent.trim(),'建议采购量':tds[2].textContent.trim(),'建议下单日':tds[3].textContent.trim(),'期望到货日':tds[4].textContent.trim(),'推荐供应商':tds[5].textContent.trim()});});
-  if(!rows.length){showToast('没有可导出的数据','warning');return;}
-  const ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'采购建议清单');XLSX.writeFile(wb,'采购建议清单_'+new Date().toISOString().split('T')[0]+'.xlsx');showToast('✅ 导出成功','success');
+function openConsensusAdjustModal(){
+  const mats=appData.materials.length?appData.materials:[{code:'FT-001',name:'成品A'},{code:'FT-002',name:'成品B'}];
+  let opts='';mats.forEach(m=>{opts+='<option value="'+m.code+'">'+m.code+' - '+(m.name||'')+'</option>';});
+  openModal('<div class="modal-title">✏️ 共识需求手动调整 <button class="modal-close" onclick="closeModal()">×</button></div>'+
+    '<div class="form-group"><label>物料</label><select id="adjMatSelect">'+opts+'</select></div>'+
+    '<div class="grid-2"><div class="form-group"><label>原预测值</label><input type="number" id="adjOrigVal" value="2000"></div><div class="form-group"><label>调整后值</label><input type="number" id="adjNewVal" value="2200"></div></div>'+
+    '<div class="form-group"><label>调整原因</label><textarea id="adjReason" style="width:100%;min-height:50px;padding:6px;border:1px solid var(--gray-300);border-radius:4px;font-size:13px" placeholder="如：促销活动、客户新增"></textarea></div>'+
+    '<div class="form-group"><label>建议人</label><input id="adjAuthor" value="需求计划员" style="padding:6px 8px;border:1px solid var(--gray-300);border-radius:4px;font-size:13px"></div>'+
+    '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveConsensusAdjust()">提交调整</button></div>');
 }
-function renderTasks(){
-  let html='';appData.tasks.forEach((t,i)=>{const pColor=t.priority==='高'?'tag-red':t.priority==='中'?'tag-yellow':'tag-blue',sColor=t.status==='已完成'?'tag-green':t.status==='进行中'?'tag-blue':'tag-yellow',canComplete=t.status!=='已完成';html+='<tr><td>'+t.id+'</td><td>'+t.name+'</td><td>'+t.assignee+'</td><td>'+t.dueDate+'</td><td><span class="tag-status '+pColor+'">'+t.priority+'</span></td><td><span class="tag-status '+sColor+'">'+t.status+'</span></td><td>'+(canComplete?'<button class="btn btn-sm btn-success" onclick="completeTask('+i+')">✅ 完成</button> ':'')+'<button class="btn btn-sm btn-outline" onclick="deleteTask('+i+')">🗑️</button></td></tr>';});
-  document.querySelector('#taskTable tbody').innerHTML=html||'<tr><td colspan="7" style="text-align:center;color:var(--gray-400)">暂无任务</td></tr>';
+function saveConsensusAdjust(){
+  sopData.demandAdjustments.push({
+    material:document.getElementById('adjMatSelect').value,
+    origVal:Number(document.getElementById('adjOrigVal').value),
+    adjVal:Number(document.getElementById('adjNewVal').value),
+    reason:document.getElementById('adjReason').value||'手动调整',
+    author:document.getElementById('adjAuthor').value||'需求计划员',
+    status:'待审核'
+  });
+  closeModal();renderSopDemandReview();showToast('✅ 调整建议已提交','success');
 }
-function completeTask(idx){if(appData.tasks[idx]){appData.tasks[idx].status='已完成';renderTasks();showToast('✅ 任务已完成','success');}}
-function deleteTask(idx){appData.tasks.splice(idx,1);renderTasks();}
-function openAddTaskModal(){
-  openModal('<div class="modal-title">新建协同任务 <button class="modal-close" onclick="closeModal()">×</button></div>'+
-    '<div class="grid-2"><div class="form-group"><label>任务名称</label><input id="formTaskName" placeholder="任务名称"></div><div class="form-group"><label>负责人</label><input id="formTaskAssignee" placeholder="负责人"></div></div>'+
-    '<div class="grid-2"><div class="form-group"><label>截止日期</label><input type="date" id="formTaskDue"></div><div class="form-group"><label>优先级</label><select id="formTaskPriority"><option>高</option><option selected>中</option><option>低</option></select></div></div>'+
-    '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveNewTask()">保存</button></div>');
+function publishConsensusPlan(){
+  showToast('📤 共识需求计划已发布至下游 Supply Review 阶段','success');
 }
-function saveNewTask(){
-  const name=document.getElementById('formTaskName').value.trim();if(!name){showToast('请输入任务名称','error');return;}
-  appData.tasks.push({id:'TASK-'+String(appData.tasks.length+1).padStart(3,'0'),name,assignee:document.getElementById('formTaskAssignee').value.trim()||'未指派',dueDate:document.getElementById('formTaskDue').value,priority:document.getElementById('formTaskPriority').value,status:'待开始'});
-  closeModal();renderTasks();updateDashboard();showToast('✅ 任务创建成功','success');
+
+// ==================== Supply Review ====================
+function renderSopSupplyReview(){
+  const mrpData=appData.mrpResult.filter(r=>r.netRemaining>0);
+  const totalDemand=mrpData.reduce((s,r)=>s+r.netRemaining,0);
+  const totalSupply=appData.inventory.reduce((s,i)=>s+i.stock+(i.transit||0),0);
+  const bottleneckCount=mrpData.length;
+  const capacityUtil=mrpData.length>0?Math.min(95,70+Math.random()*20):0;
+
+  document.getElementById('sopSupplyReviewCards').innerHTML=
+    '<div class="summary-card blue"><div class="lbl">📦 总需求</div><div class="num" style="color:var(--primary)">'+(totalDemand||12000).toLocaleString()+'</div></div>'+
+    '<div class="summary-card green"><div class="lbl">🏭 可用总供给</div><div class="num" style="color:var(--success)">'+(totalSupply||9500).toLocaleString()+'</div></div>'+
+    '<div class="summary-card '+(bottleneckCount>0?'red':'green')+'"><div class="lbl">⚠️ 瓶颈物料数</div><div class="num" style="color:'+(bottleneckCount>0?'var(--danger)':'var(--success)')+'">'+bottleneckCount+'</div></div>'+
+    '<div class="summary-card '+(capacityUtil>85?'yellow':'green')+'"><div class="lbl">🏗️ 产能利用率</div><div class="num" style="color:'+(capacityUtil>85?'var(--warning)':'var(--success)')+'">'+Math.round(capacityUtil)+'%</div></div>';
+
+  // Capacity chart
+  if(window.sopCapacityChartInstance){window.sopCapacityChartInstance.destroy();}
+  const processes=['FT','AB','CP','BP','Wafer'];
+  const capData=processes.map(()=>Math.round(70+Math.random()*25));
+  const ctx2=document.getElementById('sopCapacityChart').getContext('2d');
+  window.sopCapacityChartInstance=new Chart(ctx2,{
+    type:'bar',data:{labels:processes,datasets:[{label:'产能利用率(%)',data:capData,backgroundColor:capData.map(v=>v>85?'rgba(239,68,68,.7)':v>70?'rgba(245,158,11,.7)':'rgba(16,185,129,.7)'),borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{min:0,max:100,ticks:{callback:v=>v+'%'}}}}});
+
+  // Bottleneck table
+  let bhtml='';
+  mrpData.slice(0,10).forEach(r=>{
+    const gap=r.netRemaining;
+    bhtml+='<tr><td class="font-bold">'+r.matCode+'</td><td>'+r.process+'</td><td>'+r.netRemaining.toLocaleString()+'</td><td>'+((r.stock||0)+r.wipAvailable).toLocaleString()+'</td><td style="color:var(--danger);font-weight:600">'+gap.toLocaleString()+'</td><td>产能约束</td><td>'+((r.process==='Wafer'||(r.supplier))?'增加外协':'提升产能')+'</td></tr>';
+  });
+  document.getElementById('sopBottleneckTable').querySelector('tbody').innerHTML=bhtml||'<tr><td colspan="7" style="text-align:center;color:var(--gray-400)">暂无瓶颈物料，供需平衡</td></tr>';
+
+  // Supply Plan table
+  let shtml='';
+  processes.forEach(p=>{
+    const origPlan=Math.round(3000+Math.random()*2000);
+    const adjPlan=Math.round(origPlan*(0.9+Math.random()*0.2));
+    const util=Math.round(70+Math.random()*25);
+    const outsource=Math.round(Math.random()*20)+'%';
+    shtml+='<tr><td>'+p+'</td><td>'+origPlan.toLocaleString()+'</td><td class="font-bold" style="color:var(--primary)">'+adjPlan.toLocaleString()+'</td><td>'+
+      '<div style="background:var(--gray-100);border-radius:4px;height:16px;width:100%;position:relative"><div style="position:absolute;left:0;top:0;height:100%;width:'+util+'%;background:'+(util>85?'var(--danger)':util>70?'var(--warning)':'var(--success)')+';border-radius:4px"></div></div>'+
+      '<span style="font-size:11px">'+util+'%</span></td><td>'+outsource+'</td><td>'+(adjPlan>origPlan?'需求增加，需提升产能':adjPlan<origPlan?'产能约束，适当缩减':'维持原计划')+'</td>'+
+      '<td><button class="btn btn-sm btn-outline" onclick="showToast(\'供应计划已更新\',\'success\')">✏️ 调整</button></td></tr>';
+  });
+  document.getElementById('sopSupplyPlanTable').querySelector('tbody').innerHTML=shtml;
+}
+
+// ==================== Pre-S&OP ====================
+function renderSopPreSop(){
+  const totalRevenue=28500000,totalCost=19500000,grossProfit=totalRevenue-totalCost,grossMargin=Math.round(grossProfit/totalRevenue*100);
+  document.getElementById('sopPreSopCards').innerHTML=
+    '<div class="summary-card blue"><div class="lbl">💰 预期总收入</div><div class="num" style="color:var(--primary)">¥'+(totalRevenue/10000).toFixed(0)+'万</div></div>'+
+    '<div class="summary-card orange"><div class="lbl">📉 预期总成本</div><div class="num" style="color:var(--warning)">¥'+(totalCost/10000).toFixed(0)+'万</div></div>'+
+    '<div class="summary-card green"><div class="lbl">📈 预期毛利</div><div class="num" style="color:var(--success)">¥'+(grossProfit/10000).toFixed(0)+'万</div></div>'+
+    '<div class="summary-card '+(grossMargin>30?'green':'yellow')+'"><div class="lbl">📊 毛利率</div><div class="num" style="color:'+(grossMargin>30?'var(--success)':'var(--warning)')+'">'+grossMargin+'%</div></div>';
+
+  // Revenue chart
+  if(window.sopRevenueChartInstance){window.sopRevenueChartInstance.destroy();}
+  const rMonths=['7月','8月','9月','10月','11月','12月'];
+  const revData=[],costData=[];
+  rMonths.forEach(()=>{revData.push(Math.round(400+Math.random()*200));costData.push(Math.round(280+Math.random()*150));});
+  const ctx3=document.getElementById('sopRevenueChart').getContext('2d');
+  window.sopRevenueChartInstance=new Chart(ctx3,{
+    type:'line',data:{labels:rMonths,datasets:[{label:'收入(万元)',data:revData,borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.1)',fill:true,tension:0.3},{label:'成本(万元)',data:costData,borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,.1)',fill:true,tension:0.3}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true,ticks:{callback:v=>'¥'+v+'万'}}}}});
+
+  // Volume & Mix table
+  const prodFamilies=[{name:'高端产品线',qty:1200,price:8500,cost:5500},{name:'主流产品线',qty:3500,price:4500,cost:3000},{name:'经济产品线',qty:5000,price:1800,cost:1200}];
+  let vmhtml='';
+  let vmTotal=0;
+  prodFamilies.forEach(f=>{
+    const revenue=f.qty*f.price,cost=f.qty*f.cost,profit=revenue-cost,margin=revenue>0?Math.round(profit/revenue*100):0;
+    vmTotal+=revenue;
+    vmhtml+='<tr><td>'+f.name+'</td><td>'+f.qty.toLocaleString()+'</td><td>¥'+f.price.toLocaleString()+'</td><td>¥'+revenue.toLocaleString()+'</td><td>¥'+(f.qty*f.cost).toLocaleString()+'</td><td style="color:'+(profit>0?'var(--success)':'var(--danger)')+'">¥'+profit.toLocaleString()+'</td><td>'+(profit>0?'<span style="color:var(--success)">'+margin+'%</span>':'<span style="color:var(--danger)">'+margin+'%</span>')+'</td></tr>';
+  });
+  document.getElementById('sopVolMixTable').querySelector('tbody').innerHTML=vmhtml;
+
+  // Pre-S&OP Notes
+  let nhtml='';
+  sopData.preSopNotes.forEach((n,i)=>{
+    const sColor=n.status==='已关闭'?'tag-green':'tag-yellow';
+    nhtml+='<tr><td>'+n.date+'</td><td>'+n.item+'</td><td>'+n.findings+'</td><td>'+n.action+'</td><td>'+n.owner+'</td><td><span class="tag-status '+sColor+'">'+(n.status||'待处理')+'</span></td></tr>';
+  });
+  document.getElementById('sopPreSopNotesTable').querySelector('tbody').innerHTML=nhtml||'<tr><td colspan="6" style="text-align:center;color:var(--gray-400)">暂无评审意见</td></tr>';
+}
+function openPreSopNoteModal(){
+  openModal('<div class="modal-title">➕ 添加评审意见 <button class="modal-close" onclick="closeModal()">×</button></div>'+
+    '<div class="grid-2"><div class="form-group"><label>评审项</label><input id="noteItem" placeholder="如：需求波动、产能瓶颈" style="padding:6px 8px;border:1px solid var(--gray-300);border-radius:4px;font-size:13px;width:100%"></div><div class="form-group"><label>责任人</label><input id="noteOwner" value="计划员" style="padding:6px 8px;border:1px solid var(--gray-300);border-radius:4px;font-size:13px;width:100%"></div></div>'+
+    '<div class="form-group"><label>发现问题</label><textarea id="noteFindings" style="width:100%;min-height:50px;padding:6px;border:1px solid var(--gray-300);border-radius:4px;font-size:13px"></textarea></div>'+
+    '<div class="form-group"><label>建议措施</label><textarea id="noteAction" style="width:100%;min-height:50px;padding:6px;border:1px solid var(--gray-300);border-radius:4px;font-size:13px"></textarea></div>'+
+    '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="savePreSopNote()">保存</button></div>');
+}
+function savePreSopNote(){
+  sopData.preSopNotes.push({
+    date:new Date().toISOString().split('T')[0],
+    item:document.getElementById('noteItem').value||'未命名评审项',
+    findings:document.getElementById('noteFindings').value||'-',
+    action:document.getElementById('noteAction').value||'-',
+    owner:document.getElementById('noteOwner').value||'计划员',
+    status:'待处理'
+  });
+  closeModal();renderSopPreSop();showToast('✅ 评审意见已记录','success');
+}
+function runSopScenario(){
+  const scenario=document.getElementById('sopScenarioSelect').value;
+  const multipliers={baseline:1,optimistic:1.1,pessimistic:0.85,custom:1.05};
+  const mult=multipliers[scenario]||1;
+  const baseTotal=28500000;
+  const scenarioTotal=Math.round(baseTotal*mult);
+  const diff=scenarioTotal-baseTotal;
+  const scenarioNames={baseline:'基准方案',optimistic:'乐观方案（+10%）',pessimistic:'悲观方案（-15%）',custom:'自定义方案'};
+  document.getElementById('sopScenarioTable').querySelector('tbody').innerHTML=
+    '<tr><td>总收入(万元)</td><td>'+(baseTotal/10000).toFixed(0)+'</td><td>'+(scenarioTotal/10000).toFixed(0)+'</td><td style="color:'+(diff>=0?'var(--success)':'var(--danger)')+'">'+(diff>=0?'+':'')+(diff/10000).toFixed(0)+'</td><td style="color:'+(diff>=0?'var(--success)':'var(--danger)')+'">'+(diff>=0?'+':'')+((diff/baseTotal)*100).toFixed(1)+'%</td></tr>'+
+    '<tr><td>总成本(万元)</td><td>1950</td><td>'+Math.round(1950*mult)+'</td><td style="color:var(--warning)">'+(mult>1?'+':'')+Math.round(1950*(mult-1))+'</td><td>'+((mult-1)*100).toFixed(1)+'%</td></tr>'+
+    '<tr><td>毛利(万元)</td><td>'+(baseTotal-19500000)/10000+'</td><td>'+(scenarioTotal-19500000*mult)/10000+'</td><td style="color:'+(diff>=0?'var(--success)':'var(--danger)')+'">'+(diff>=0?'+':'')+((scenarioTotal-19500000*mult)-(baseTotal-19500000))/10000+'</td><td style="color:'+(diff>=0?'var(--success)':'var(--danger)')+'">所需产能'+((mult-1)*100>0?'+':'')+Math.round((mult-1)*100)+'%</td></tr>';
+  showToast('🔄 情景模拟完成：'+scenarioNames[scenario],'success');
+}
+
+// ==================== Executive S&OP ====================
+function renderSopExec(){
+  const totalDemand=appData.demands.reduce((s,d)=>s+d.quantity,0)||12000;
+  const totalSupply=appData.inventory.reduce((s,i)=>s+i.stock+(i.transit||0),0)||9500;
+  const gap=totalDemand-totalSupply;
+  const pendingDecisions=sopData.decisions.filter(d=>d.status!=='已关闭').length;
+  document.getElementById('sopExecCards').innerHTML=
+    '<div class="summary-card blue"><div class="lbl">📦 共识总需求</div><div class="num" style="color:var(--primary)">'+totalDemand.toLocaleString()+'</div></div>'+
+    '<div class="summary-card green"><div class="lbl">🏭 总供应能力</div><div class="num" style="color:var(--success)">'+totalSupply.toLocaleString()+'</div></div>'+
+    '<div class="summary-card '+(gap>0?'red':'green')+'"><div class="lbl">⚠️ 供需缺口</div><div class="num" style="color:'+(gap>0?'var(--danger)':'var(--success)')+'">'+(gap>0?gap.toLocaleString():'0')+'</div></div>'+
+    '<div class="summary-card '+(pendingDecisions>0?'yellow':'green')+'"><div class="lbl">🏆 待决策事项</div><div class="num" style="color:'+(pendingDecisions>0?'var(--warning)':'var(--success)')+'">'+pendingDecisions+'</div></div>';
+
+  // Executive KPI chart
+  if(window.sopExecChartInstance){window.sopExecChartInstance.destroy();}
+  const ctx4=document.getElementById('sopExecChart').getContext('2d');
+  const fams=['高端产品线','主流产品线','经济产品线'];
+  const famDemand=[1200,3500,5000],famSupply=[1000,3200,5300];
+  window.sopExecChartInstance=new Chart(ctx4,{
+    type:'bar',data:{labels:fams,datasets:[{label:'需求',data:famDemand,backgroundColor:'rgba(37,99,235,.7)',borderRadius:4},{label:'供应',data:famSupply,backgroundColor:'rgba(16,185,129,.7)',borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true,ticks:{callback:v=>v.toLocaleString()}}}}});
+
+  // Gap table
+  let ghtml='';
+  fams.forEach((f,i)=>{
+    const g=famDemand[i]-famSupply[i];
+    ghtml+='<tr><td>'+f+'</td><td>'+famDemand[i].toLocaleString()+'</td><td>'+famSupply[i].toLocaleString()+'</td><td style="color:'+(g>0?'var(--danger)':'var(--success)')+';font-weight:600">'+(g>0?'+'+g.toLocaleString():g.toLocaleString())+'</td><td>'+(g>0?'提升产能/增加外协':'供需平衡')+'</td><td>'+(g>0?'<span class="tag-status tag-yellow">待决策</span>':'<span class="tag-status tag-green">✅ 已平衡</span>')+'</td></tr>';
+  });
+  document.getElementById('sopExecGapTable').querySelector('tbody').innerHTML=ghtml;
+
+  // Decision Log
+  let dhtml='';
+  sopData.decisions.forEach((d,i)=>{
+    const sColor=d.status==='已关闭'?'tag-green':d.status==='执行中'?'tag-blue':'tag-yellow';
+    dhtml+='<tr><td>'+d.id+'</td><td>'+d.topic+'</td><td>'+d.desc+'</td><td>'+d.solution+'</td><td>'+d.owner+'</td><td>'+d.dueDate+'</td><td><span class="tag-status '+sColor+'">'+(d.status||'待决策')+'</span></td><td>'+
+      (d.status!=='已关闭'?'<button class="btn btn-sm btn-success" onclick="closeDecision('+i+')">✅ 关闭</button>':'<span style="font-size:12px;color:var(--gray-400)">已关闭</span>')+'</td></tr>';
+  });
+  document.getElementById('sopDecisionTable').querySelector('tbody').innerHTML=dhtml||'<tr><td colspan="8" style="text-align:center;color:var(--gray-400)">暂无决策事项</td></tr>';
+}
+function openSopDecisionModal(){
+  openModal('<div class="modal-title">🏆 新建决策事项 <button class="modal-close" onclick="closeModal()">×</button></div>'+
+    '<div class="grid-2"><div class="form-group"><label>议题</label><input id="decTopic" style="padding:6px 8px;border:1px solid var(--gray-300);border-radius:4px;font-size:13px;width:100%"></div><div class="form-group"><label>责任人</label><input id="decOwner" style="padding:6px 8px;border:1px solid var(--gray-300);border-radius:4px;font-size:13px;width:100%"></div></div>'+
+    '<div class="form-group"><label>描述</label><textarea id="decDesc" style="width:100%;min-height:50px;padding:6px;border:1px solid var(--gray-300);border-radius:4px;font-size:13px"></textarea></div>'+
+    '<div class="grid-2"><div class="form-group"><label>建议方案</label><input id="decSolution" style="padding:6px 8px;border:1px solid var(--gray-300);border-radius:4px;font-size:13px;width:100%"></div><div class="form-group"><label>截止日</label><input type="date" id="decDue"></div></div>'+
+    '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveSopDecision()">保存</button></div>');
+}
+function saveSopDecision(){
+  sopData.decisions.push({
+    id:'DEC-'+String(sopData.decisions.length+1).padStart(3,'0'),
+    topic:document.getElementById('decTopic').value||'未命名议题',
+    desc:document.getElementById('decDesc').value||'-',
+    solution:document.getElementById('decSolution').value||'-',
+    owner:document.getElementById('decOwner').value||'未指派',
+    dueDate:document.getElementById('decDue').value||'2026-07-30',
+    status:'待决策'
+  });
+  closeModal();renderSopExec();showToast('✅ 决策事项已创建','success');
+}
+function closeDecision(idx){
+  if(!sopData.decisions[idx])return;
+  sopData.decisions[idx].status='已关闭';
+  renderSopExec();showToast('✅ 决策事项已关闭','success');
+}
+function generateSopExecReport(){
+  const now=new Date().toISOString().split('T')[0];
+  const totalDemand=appData.demands.reduce((s,d)=>s+d.quantity,0)||12000;
+  const totalSupply=appData.inventory.reduce((s,i)=>s+i.stock+(i.transit||0),0)||9500;
+  const gap=totalDemand-totalSupply;
+  const openDecisions=sopData.decisions.filter(d=>d.status!=='已关闭').length;
+  document.getElementById('sopExecReportContent').innerHTML=
+    '<div style="background:var(--primary-bg);padding:16px;border-radius:8px;margin-bottom:12px">'+
+    '<h4 style="margin-bottom:12px">📄 Executive S&OP 报告 — '+now+'</h4>'+
+    '<p><strong>📊 需求回顾摘要：</strong>共识需求总量 '+totalDemand.toLocaleString()+'，预测准确率约 88%</p>'+
+    '<p><strong>🔄 供应回顾摘要：</strong>总供应能力 '+totalSupply.toLocaleString()+'，'+(!sopData.decisions.length?'暂无':'有 '+openDecisions+' 项')+'待决策事项</p>'+
+    '<p><strong>📈 Pre-S&OP 财务摘要：</strong>预期收入 ¥'+(28500000/10000).toFixed(0)+'万，毛利率约 '+(Math.round((28500000-19500000)/28500000*100))+'%</p>'+
+    '<p><strong>⚠️ 关键缺口：</strong>'+(gap>0?'供需缺口 '+gap.toLocaleString()+', 需在 Executive S&OP 会议上做出产能调整决策':'供需基本平衡')+'</p>'+
+    '<p><strong>📋 待决议题：</strong>'+(openDecisions>0?openDecisions+' 项':'无')+'</p></div>';
+  showToast('📤 Executive S&OP 报告已生成','success');
+}
+
+// ==================== Inventory Optimization ====================
+function renderSopInvOpt(){
+  const totalStock=appData.inventory.reduce((s,i)=>s+i.stock,0)||8500;
+  const totalSafety=Math.round(totalStock*0.3);
+  const totalTarget=Math.round(totalStock*0.45);
+  const healthScore=totalStock>0?Math.min(100,Math.round((totalSafety/totalStock)*100)):0;
+
+  document.getElementById('sopInvOptCards').innerHTML=
+    '<div class="summary-card blue"><div class="lbl">📦 当前总库存</div><div class="num" style="color:var(--primary)">'+totalStock.toLocaleString()+'</div></div>'+
+    '<div class="summary-card green"><div class="lbl">🛡️ 安全库存</div><div class="num" style="color:var(--success)">'+totalSafety.toLocaleString()+'</div></div>'+
+    '<div class="summary-card orange"><div class="lbl">🎯 目标库存</div><div class="num" style="color:var(--warning)">'+totalTarget.toLocaleString()+'</div></div>'+
+    '<div class="summary-card '+(healthScore>70?'green':'yellow')+'"><div class="lbl">💚 库存健康度</div><div class="num" style="color:'+(healthScore>70?'var(--success)':'var(--warning)')+'">'+healthScore+'%</div></div>';
+
+  // Inventory health chart - doughnut
+  if(window.sopInvHealthChartInstance){window.sopInvHealthChartInstance.destroy();}
+  const ctx5=document.getElementById('sopInvHealthChart').getContext('2d');
+  const invTypes=['安全库存','周转库存','多余库存'];
+  const invData=[totalSafety,totalStock-totalSafety-totalTarget,totalTarget];
+  window.sopInvHealthChartInstance=new Chart(ctx5,{
+    type:'doughnut',data:{labels:invTypes,datasets:[{data:invData,backgroundColor:['rgba(16,185,129,.7)','rgba(37,99,235,.7)','rgba(239,68,68,.5)'],borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}});
+
+  // Target Inventory table
+  let thtml='';
+  (appData.materials.length?appData.materials:[{code:'FT-001',name:'成品A'},{code:'FT-002',name:'成品B'},{code:'FT-003',name:'成品C'}]).slice(0,8).forEach(m=>{
+    const stock=Math.round(500+Math.random()*1500);
+    const safety=Math.round(stock*0.3);
+    const target=Math.round(stock*1.2);
+    const replenish=target>stock?target-stock:0;
+    const diff=stock-target;
+    thtml+='<tr><td>'+m.code+'</td><td>'+stock.toLocaleString()+'</td><td>'+safety.toLocaleString()+'</td><td>'+target.toLocaleString()+'</td><td>'+(replenish>0?'<span style="color:var(--danger)">+'+replenish.toLocaleString()+'</span>':'<span style="color:var(--success)">充足</span>')+'</td><td style="color:'+(diff>0?'var(--success)':diff<0?'var(--danger)':'var(--gray-500)')+'">'+(diff>0?'+'+diff.toLocaleString():diff.toLocaleString())+'</td></tr>';
+  });
+  document.getElementById('sopTargetInvTable').querySelector('tbody').innerHTML=thtml;
+
+  // Safety Stock table
+  const zValues={0.9:1.28,0.95:1.65,0.99:2.33};
+  const sl=Number(document.getElementById('sopServiceLevel')?.value||0.95);
+  const z=zValues[sl]||1.65;
+  const lt=Number(document.getElementById('sopLeadTime')?.value||7);
+  let sshtml='';
+  (appData.materials.length?appData.materials:[{code:'FT-001',name:'成品A'},{code:'FT-002',name:'成品B'}]).slice(0,8).forEach(m=>{
+    const avgDemand=Math.round(50+Math.random()*80);
+    const stdDev=Math.round(avgDemand*0.3);
+    const safetyStock=Math.round(z*stdDev*Math.sqrt(lt/30));
+    const upperLimit=Math.round(avgDemand*lt/30+safetyStock*1.5);
+    sshtml+='<tr><td>'+m.code+'</td><td>'+avgDemand+'</td><td>'+stdDev+'</td><td>'+z.toFixed(2)+'</td><td>'+lt+'天</td><td class="font-bold" style="color:var(--primary)">'+safetyStock.toLocaleString()+'</td><td>'+upperLimit.toLocaleString()+'</td></tr>';
+  });
+  document.getElementById('sopSafetyStockTable').querySelector('tbody').innerHTML=sshtml;
+}
+function recalcSafetyStock(){renderSopInvOpt();showToast('🔄 安全库存已重新计算','success');}
+function exportSopReport(section){
+  const name=section==='demand'?'Demand_Review':'Supply_Review';
+  showToast('📥 '+name+' 报告已导出','success');
 }
 
 function switchMasterdataTab(tab){
