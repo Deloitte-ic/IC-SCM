@@ -1928,6 +1928,7 @@ function handleTypeImport(event,type){
         renderDemand();updateDashboard();
       }else{
         renderAllMasterdata();
+        saveMasterdataToStorage();
       }
       showToast('✅ '+({materials:'物料',bom:'BOM',routing:'工艺路线',suppliers:'供应商',inventory:'库存',wip:'在制品',prpo:'Open PR/Open PO',demand:'Independent Demand'}[type]||type)+'数据导入完成','success');
     }catch(err){showToast('❌ 导入失败：'+err.message,'error');}
