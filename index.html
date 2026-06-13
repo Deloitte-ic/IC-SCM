@@ -883,7 +883,7 @@ function saveDataSourcePreference(){
   try{ localStorage.setItem(STORAGE_KEY_SOURCE, dataSourceMode); }catch(e){}
 }
 function getSapApiUrl(){
-  try{ return localStorage.getItem(STORAGE_KEY_SAP_URL) || 'https://ic-scm.vercel.app/api'; }catch(e){ return 'https://ic-scm.vercel.app/api'; }
+  try{ return localStorage.getItem(STORAGE_KEY_SAP_URL) || 'https://ic-scm-backend-thxq.vercel.app/api'; }catch(e){ return 'https://ic-scm-backend-thxq.vercel.app/api'; }
 }
 function setSapApiUrl(url){
   try{ localStorage.setItem(STORAGE_KEY_SAP_URL, url); }catch(e){}
