@@ -262,31 +262,19 @@ tbody tr:hover td{background:var(--primary-bg)}
       </div>
     </div>
     <div class="nav-group">
-      <div class="nav-group-title">计划</div>
-      <div class="nav-item" data-section="demand" onclick="switchSection('demand')">
-        <span class="nav-icon">🔮</span><span class="nav-text">Demand Planning（需求计划）</span>
-      </div>
-      <div class="nav-item" data-section="mrp" onclick="switchSection('mrp')">
-        <span class="nav-icon">⚙️</span><span class="nav-text">Supply（供应计划）</span>
-      </div>
-    </div>
-    <div class="nav-group">
       <div class="nav-group-title">Demand</div>
       <div class="nav-item" data-section="demandplan" onclick="switchSection('demandplan')">
-        <span class="nav-icon">📈</span><span class="nav-text">Demand（需求计划）</span>
+        <span class="nav-icon">📈</span><span class="nav-text">Demand Planning（需求计划）</span>
       </div>
     </div>
     <div class="nav-group">
-      <div class="nav-group-title">供应链计划</div>
+      <div class="nav-group-title">Supply</div>
       <div class="nav-item" data-section="supplyplan" onclick="switchSection('supplyplan')">
         <span class="nav-icon">🌐</span><span class="nav-text">Supply Planning（供应链计划）</span>
       </div>
     </div>
     <div class="nav-group">
       <div class="nav-group-title">S&OP</div>
-      <div class="nav-item" data-section="balance" onclick="switchSection('balance')">
-        <span class="nav-icon">⚖️</span><span class="nav-text">供给平衡</span>
-      </div>
       <div class="nav-item" data-section="collaboration" onclick="switchSection('collaboration')">
         <span class="nav-icon">🤝</span><span class="nav-text">S&OP（销售与运营计划）</span>
       </div>
@@ -767,14 +755,14 @@ tbody tr:hover td{background:var(--primary-bg)}
       </div>
     </div>
 
-    <!-- ==================== S&OP（销售与运营计划）= SAP IBP 全面对标 ==================== -->
+    <!-- ==================== S&OP（销售与运营计划）= IC设计委外版（FT→AB→CP→BP→Wafer） ==================== -->
     <div class="section" id="section-collaboration">
       <div class="tabs" id="sopTabs">
-        <div class="tab active" data-tab="sop-demand" onclick="switchSopTab('sop-demand')">📊 Demand Review（需求回顾）</div>
-        <div class="tab" data-tab="sop-supply" onclick="switchSopTab('sop-supply')">🔄 Supply Review（供应回顾）</div>
-        <div class="tab" data-tab="sop-presop" onclick="switchSopTab('sop-presop')">📈 Pre-S&OP（预评审）</div>
-        <div class="tab" data-tab="sop-exec" onclick="switchSopTab('sop-exec')">🏆 Executive S&OP（高管决策）</div>
-        <div class="tab" data-tab="sop-invopt" onclick="switchSopTab('sop-invopt')">📦 Inventory Optimization（库存优化）</div>
+        <div class="tab active" data-tab="sop-demand" onclick="switchSopTab('sop-demand')">📊 Demand Review（需求回顾）<span style="font-size:10px;color:var(--gray-400)">FT→AB→CP→BP→Wafer</span></div>
+        <div class="tab" data-tab="sop-supply" onclick="switchSopTab('sop-supply')">🔄 Supply Review（供应回顾）<span style="font-size:10px;color:var(--gray-400)">制程级约束</span></div>
+        <div class="tab" data-tab="sop-presop" onclick="switchSopTab('sop-presop')">📈 Pre-S&OP（预评审）<span style="font-size:10px;color:var(--gray-400)">实际量利</span></div>
+        <div class="tab" data-tab="sop-exec" onclick="switchSopTab('sop-exec')">🏆 Executive S&OP（高管决策）<span style="font-size:10px;color:var(--gray-400)">真实KPI</span></div>
+        <div class="tab" data-tab="sop-invopt" onclick="switchSopTab('sop-invopt')">📦 Inventory Optimization（库存优化）<span style="font-size:10px;color:var(--gray-400)">制程库存</span></div>
       </div>
 
       <!-- ==================== Tab 1: Demand Review（需求回顾） ==================== -->
@@ -1709,21 +1697,15 @@ function switchSection(id) {
   const titles = {
     masterdata:'📦 Master（主数据）',
     business:'📊 业务数据',
-    demand:'🔮 Demand Planning',
-    mrp:'⚙️ Supply（供应计划）',
-    demandplan:'📈 Demand（需求计划）',
+    demandplan:'📈 Demand Planning（需求计划）',
     supplyplan:'🌐 Supply Planning（供应链计划）',
-    balance:'⚖️ 供给平衡',
     collaboration:'🤝 S&OP（销售与运营计划）'
   };
   const breadcrumbs = {
     masterdata:'Master',
     business:'业务数据',
-    demand:'Demand Planning',
-    mrp:'Supply',
-    demandplan:'Demand',
+    demandplan:'Demand Planning',
     supplyplan:'Supply Planning',
-    balance:'供给平衡',
     collaboration:'S&OP'
   };
   document.getElementById('pageTitle').textContent = titles[id]||'SCM平台';
@@ -1731,11 +1713,8 @@ function switchSection(id) {
 
   if(id==='masterdata') renderAllMasterdata();
   if(id==='business') renderAllMasterdata();
-  if(id==='demand') renderDemand();
-  if(id==='mrp') { renderConfigTables(); refreshOrderSelect(); }
   if(id==='demandplan') updateDemandPlan();
   if(id==='supplyplan') updateSupplyPlan();
-  if(id==='balance') updateBalance();
   if(id==='collaboration') updateSOP();
 }
 
@@ -5627,48 +5606,128 @@ function switchSopTab(tab){
 }
 function updateSOP(){ renderSopDemandReview(); renderSopSupplyReview(); renderSopPreSop(); renderSopExec(); renderSopInvOpt(); }
 
-// ==================== Demand Review ====================
+// ==================== IC设计版辅助函数 ====================
+const PROCESS_CHAIN = ['FT','AB','CP','BP','Wafer'];
+const PROCESS_LABELS = { FT:'成品测试', AB:'封装委外', CP:'测试委外', BP:'凸块委外', Wafer:'晶圆采购' };
+const PROCESS_COLORS = { FT:'#dbeafe', AB:'#d1fae5', CP:'#fef3c7', BP:'#f3e8ff', Wafer:'#fce7f3' };
+function getProcessIndex(p){ return PROCESS_CHAIN.indexOf(p); }
+// 获取物料制程
+function getMatProcess(mCode){
+  const m=appData.materials.find(x=>x.code===mCode);
+  return m?m.processCode||'':'';
+}
+// 按制程分组需求
+function getDemandByProcess(){
+  const result={FT:0,AB:0,CP:0,BP:0,Wafer:0};
+  appData.demands.forEach(d=>{
+    const proc=getMatProcess(d.material);
+    if(result[proc]!==undefined) result[proc]+=d.quantity;
+  });
+  return result;
+}
+// 从BOM获取某物料的下阶物料编码列表（直接子项）
+function getBomChildren(parentCode){
+  return appData.boms.filter(b=>b.parentCode===parentCode).map(b=>({childCode:b.childCode,usage:b.usage||1}));
+}
+// 按制程级联计算Wafer等效需求
+function cascadeToWafer(demandQty, matCode){
+  let ftQty = demandQty;
+  // 逐级向下：FT→AB→CP→BP→Wafer 通过BOM传导
+  const result={FT:ftQty,AB:0,CP:0,BP:0,Wafer:0};
+  let curCode=matCode;
+  let curQty=ftQty;
+  for(let p=0; p<PROCESS_CHAIN.length-1; p++){
+    const proc=PROCESS_CHAIN[p];
+    const nextProc=PROCESS_CHAIN[p+1];
+    // 找BOM：当前物料的下阶中，制程为nextProc的物料
+    const children=getBomChildren(curCode);
+    let nextQty=0;
+    let nextMat=null;
+    children.forEach(c=>{
+      const cProc=getMatProcess(c.childCode);
+      if(cProc===nextProc){
+        nextQty=Math.ceil(curQty/(c.usage||1));
+        nextMat=c.childCode;
+      }
+    });
+    if(nextMat){
+      result[nextProc]=nextQty;
+      curCode=nextMat;
+      curQty=nextQty;
+    }else break;
+  }
+  return result;
+}
+// 获取按月份分组的实际需求数据
+function getMonthlyDemands(){
+  const monthly={};
+  appData.demands.forEach(d=>{
+    const month=d.demandDate?d.demandDate.substring(0,7):'';
+    if(!month) return;
+    if(!monthly[month]) monthly[month]={total:0,FT:0,byMat:{}};
+    monthly[month].total+=d.quantity;
+    const proc=getMatProcess(d.material);
+    if(proc==='FT') monthly[month].FT+=d.quantity;
+    if(!monthly[month].byMat[d.material]) monthly[month].byMat[d.material]=0;
+    monthly[month].byMat[d.material]+=d.quantity;
+  });
+  return monthly;
+}
+// 获取所有FT成品物料
+function getFtMaterials(){
+  return appData.materials.filter(m=>m.processCode==='FT'||!m.processCode);
+}
+
+// ==================== Demand Review（IC设计版） ====================
 function renderSopDemandReview(){
-  // KPI cards
-  const totalForecast=appData.demands.reduce((s,d)=>s+d.quantity,0);
-  const totalSales=Math.round(totalForecast*0.88); // 模拟实际销售
-  const forecastAccuracy=totalSales>0?Math.round((1-Math.abs(totalForecast-totalSales)/totalForecast)*100):0;
+  const demandByProc=getDemandByProcess();
+  const ftMats=getFtMaterials();
+  const monthlyData=getMonthlyDemands();
+  const months=Object.keys(monthlyData).sort();
+  const totalFTDemand=demandByProc.FT||0;
+  const totalDemand=Object.values(demandByProc).reduce((a,b)=>a+b,0);
+  // 计算Wafer等效需求
+  let totalWaferEq=0;
+  ftMats.forEach(m=>{
+    const matDemand=appData.demands.filter(d=>d.material===m.code).reduce((s,d)=>s+d.quantity,0);
+    if(matDemand>0){
+      const cascade=cascadeToWafer(matDemand,m.code);
+      if(cascade.Wafer) totalWaferEq+=cascade.Wafer;
+    }
+  });
   const adjCount=sopData.demandAdjustments.length;
   document.getElementById('sopDemandReviewCards').innerHTML=
-    '<div class="summary-card blue"><div class="lbl">📊 统计预测总量</div><div class="num" style="color:var(--primary)">'+totalForecast.toLocaleString()+'</div></div>'+
-    '<div class="summary-card green"><div class="lbl">✅ 实际销售</div><div class="num" style="color:var(--success)">'+totalSales.toLocaleString()+'</div></div>'+
-    '<div class="summary-card '+(forecastAccuracy>80?'green':'yellow')+'"><div class="lbl">🎯 预测准确率</div><div class="num" style="color:'+(forecastAccuracy>80?'var(--success)':'var(--warning)')+'">'+forecastAccuracy+'%</div></div>'+
+    '<div class="summary-card blue"><div class="lbl">📊 FT成品总需求</div><div class="num" style="color:var(--primary)">'+totalFTDemand.toLocaleString()+'颗</div></div>'+
+    '<div class="summary-card purple"><div class="lbl">⚪ 等效Wafer需求</div><div class="num" style="color:#7c3aed">'+(totalWaferEq||'—').toLocaleString()+'片</div></div>'+
+    '<div class="summary-card green"><div class="lbl">🔗 涉及制程层级</div><div class="num" style="color:var(--success);font-size:18px">'+Object.values(demandByProc).filter(v=>v>0).length+'级</div></div>'+
     '<div class="summary-card '+(adjCount>0?'blue':'green')+'"><div class="lbl">✏️ 待审调整建议</div><div class="num">'+adjCount+'</div></div>';
 
-  // Demand vs Sales chart
+  // 各制程需求分布图
   if(window.sopDemandChartInstance){window.sopDemandChartInstance.destroy();}
-  const months=['7月','8月','9月','10月','11月','12月'];
-  const demandData=[],salesData=[];
-  months.forEach((m,idx)=>{
-    const mStart='2026-0'+(7+idx);
-    const d=appData.demands.filter(x=>x.demandDate.startsWith(mStart)).reduce((s,x)=>s+x.quantity,0);
-    demandData.push(d||Math.round(8000+Math.random()*2000));
-    salesData.push(Math.round(demandData[idx]*0.85));
-  });
+  const procData=PROCESS_CHAIN.map(p=>demandByProc[p]||0);
+  const procColors=PROCESS_CHAIN.map(p=>PROCESS_COLORS[p]);
   const ctx1=document.getElementById('sopDemandChart').getContext('2d');
   window.sopDemandChartInstance=new Chart(ctx1,{
-    type:'bar',data:{labels:months,datasets:[{label:'预测需求',data:demandData,backgroundColor:'rgba(37,99,235,.7)',borderRadius:4},{label:'实际销售',data:salesData,backgroundColor:'rgba(16,185,129,.7)',borderRadius:4}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true,ticks:{callback:v=>v.toLocaleString()}}}}});
+    type:'bar',
+    data:{labels:PROCESS_CHAIN.map(p=>p+'('+PROCESS_LABELS[p]+')'),datasets:[{label:'需求(颗/片)',data:procData,backgroundColor:procColors,borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{callback:v=>v.toLocaleString()}}}}});
 
-  // Consensus Demand Plan table
+  // 共识需求计划（基于真实FT物料）
   let chtml='';
-  const materials=appData.materials.length?appData.materials:[{code:'FT-001',name:'成品A'},{code:'FT-002',name:'成品B'}];
-  materials.slice(0,8).forEach((m,i)=>{
-    const statForecast=Math.round(2000+Math.random()*1000);
-    const salesAdj=Math.round((Math.random()-0.3)*500);
-    const consensus=statForecast+salesAdj;
-    const ci=Math.round(consensus*0.15);
-    const status=Math.abs(salesAdj/statForecast)<0.1?'✅ 已共识':'🔄 待调整';
-    chtml+='<tr><td>'+m.code+'</td><td>'+statForecast.toLocaleString()+'</td><td>'+(salesAdj>=0?'+'+salesAdj.toLocaleString():salesAdj.toLocaleString())+'</td><td class="font-bold">'+consensus.toLocaleString()+'</td><td>±'+ci.toLocaleString()+'</td><td>'+status+'</td></tr>';
+  ftMats.slice(0,10).forEach(m=>{
+    const matDemand=appData.demands.filter(d=>d.material===m.code).reduce((s,d)=>s+d.quantity,0);
+    if(matDemand===0) return;
+    const cascade=cascadeToWafer(matDemand,m.code);
+    const waferEq=cascade.Wafer||'—';
+    const customerCount=new Set(appData.demands.filter(d=>d.material===m.code).map(d=>d.customer)).size;
+    chtml+='<tr><td>'+m.code+'</td><td class="font-bold">'+matDemand.toLocaleString()+'</td><td>'+(m.yieldRate||100)+'%</td>'+
+      '<td>'+(cascade.AB||0).toLocaleString()+'</td><td>'+(cascade.CP||0).toLocaleString()+'</td><td>'+(cascade.BP||0).toLocaleString()+'</td>'+
+      '<td class="font-bold">'+(typeof waferEq==='number'?waferEq.toLocaleString()+'片':waferEq)+'</td><td>'+customerCount+'家</td></tr>';
   });
-  document.getElementById('sopConsensusTable').querySelector('tbody').innerHTML=chtml||'<tr><td colspan="6" style="text-align:center;color:var(--gray-400)">暂无数据，请先执行需求预测</td></tr>';
+  document.getElementById('sopConsensusTable').querySelector('thead').innerHTML='<tr><th>物料(FT成品)</th><th>FT总需求(颗)</th><th>良率</th><th>→AB(颗)</th><th>→CP(片)</th><th>→BP(片)</th><th>等效Wafer(片)</th><th>客户数</th></tr>';
+  document.getElementById('sopConsensusTable').querySelector('tbody').innerHTML=chtml||'<tr><td colspan="8" style="text-align:center;color:var(--gray-400)">暂无需求数据，请先在Business Data录入需求</td></tr>';
 
-  // Demand Adjustments table
+  // 需求调整建议表（保留交互能力）
   let ahtml='';
   sopData.demandAdjustments.forEach((adj,i)=>{
     const st=adj.status||'待审核';
@@ -5713,81 +5772,142 @@ function publishConsensusPlan(){
   showToast('📤 共识需求计划已发布至下游 Supply Review 阶段','success');
 }
 
-// ==================== Supply Review ====================
+// ==================== Supply Review（IC设计版） ====================
 function renderSopSupplyReview(){
-  const mrpData=appData.mrpResult.filter(r=>r.netRemaining>0);
-  const totalDemand=mrpData.reduce((s,r)=>s+r.netRemaining,0);
-  const totalSupply=appData.inventory.reduce((s,i)=>s+i.stock+(i.transit||0),0);
-  const bottleneckCount=mrpData.length;
-  const capacityUtil=mrpData.length>0?Math.min(95,70+Math.random()*20):0;
-
+  // 各制程需求：从appData.demands按物料制程汇总
+  const demandByProc=getDemandByProcess();
+  // 各制程可用库存
+  const stockByProc={FT:0,AB:0,CP:0,BP:0,Wafer:0};
+  appData.inventory.forEach(inv=>{
+    const proc=getMatProcess(inv.materialCode);
+    if(stockByProc[proc]!==undefined) stockByProc[proc]+=inv.stock||0;
+  });
+  // 各制程在制品
+  const wipByProc={FT:0,AB:0,CP:0,BP:0,Wafer:0};
+  (appData.wip||[]).forEach(w=>{
+    if(wipByProc[w.processCode]!==undefined) wipByProc[w.processCode]+=(w.inputQty||0);
+  });
+  // 各制程待收货(PR/PO)
+  const poByProc={FT:0,AB:0,CP:0,BP:0,Wafer:0};
+  appData.prpo.forEach(p=>{
+    if(poByProc[p.processCode]!==undefined&&p.quantity) poByProc[p.processCode]+=p.quantity;
+  });
+  // 总供给 = 库存+在制+未收PO
+  const supplyByProc={};
+  const gapByProc={};
+  let bottleneckCount=0;
+  PROCESS_CHAIN.forEach(p=>{
+    const s=(stockByProc[p]||0)+(wipByProc[p]||0)+(poByProc[p]||0);
+    supplyByProc[p]=s;
+    const d=demandByProc[p]||0;
+    gapByProc[p]=Math.max(0,d-s);
+    if(gapByProc[p]>0) bottleneckCount++;
+  });
+  const totalDemand=Object.values(demandByProc).reduce((a,b)=>a+b,0);
+  const totalSupply=Object.values(supplyByProc).reduce((a,b)=>a+b,0);
   document.getElementById('sopSupplyReviewCards').innerHTML=
-    '<div class="summary-card blue"><div class="lbl">📦 总需求</div><div class="num" style="color:var(--primary)">'+(totalDemand||12000).toLocaleString()+'</div></div>'+
-    '<div class="summary-card green"><div class="lbl">🏭 可用总供给</div><div class="num" style="color:var(--success)">'+(totalSupply||9500).toLocaleString()+'</div></div>'+
-    '<div class="summary-card '+(bottleneckCount>0?'red':'green')+'"><div class="lbl">⚠️ 瓶颈物料数</div><div class="num" style="color:'+(bottleneckCount>0?'var(--danger)':'var(--success)')+'">'+bottleneckCount+'</div></div>'+
-    '<div class="summary-card '+(capacityUtil>85?'yellow':'green')+'"><div class="lbl">🏗️ 产能利用率</div><div class="num" style="color:'+(capacityUtil>85?'var(--warning)':'var(--success)')+'">'+Math.round(capacityUtil)+'%</div></div>';
+    '<div class="summary-card blue"><div class="lbl">📦 全链路总需求</div><div class="num" style="color:var(--primary)">'+totalDemand.toLocaleString()+'</div></div>'+
+    '<div class="summary-card green"><div class="lbl">🏭 可用总供给</div><div class="num" style="color:var(--success)">'+totalSupply.toLocaleString()+'</div></div>'+
+    '<div class="summary-card '+(bottleneckCount>0?'red':'green')+'"><div class="lbl">⚠️ 瓶颈制程数</div><div class="num" style="color:'+(bottleneckCount>0?'var(--danger)':'var(--success)')+'">'+bottleneckCount+'级</div></div>'+
+    '<div class="summary-card purple"><div class="lbl">🏗️ 供应满足率</div><div class="num" style="color:'+(totalDemand>0?(totalSupply/totalDemand>0.9?'var(--success)':'var(--warning)'):'var(--gray-400)')+'">'+ (totalDemand>0?Math.round(totalSupply/totalDemand*100)+'%':'—')+'</div></div>';
 
-  // Capacity chart
+  // 各制程产能负荷图
   if(window.sopCapacityChartInstance){window.sopCapacityChartInstance.destroy();}
-  const processes=['FT','AB','CP','BP','Wafer'];
-  const capData=processes.map(()=>Math.round(70+Math.random()*25));
-  const ctx2=document.getElementById('sopCapacityChart').getContext('2d');
-  window.sopCapacityChartInstance=new Chart(ctx2,{
-    type:'bar',data:{labels:processes,datasets:[{label:'产能利用率(%)',data:capData,backgroundColor:capData.map(v=>v>85?'rgba(239,68,68,.7)':v>70?'rgba(245,158,11,.7)':'rgba(16,185,129,.7)'),borderRadius:4}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{min:0,max:100,ticks:{callback:v=>v+'%'}}}}});
+  const ctx=document.getElementById('sopCapacityChart').getContext('2d');
+  const labels=PROCESS_CHAIN.map(p=>p+'('+PROCESS_LABELS[p]+')');
+  window.sopCapacityChartInstance=new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels,
+      datasets:[
+        {label:'需求',data:PROCESS_CHAIN.map(p=>demandByProc[p]||0),backgroundColor:'rgba(239,68,68,.6)',borderRadius:4},
+        {label:'供给(库存+WIP+PO)',data:PROCESS_CHAIN.map(p=>supplyByProc[p]||0),backgroundColor:'rgba(16,185,129,.6)',borderRadius:4}
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'top',labels:{font:{size:10}}}},
+      scales:{y:{beginAtZero:true,ticks:{callback:v=>v.toLocaleString()}}}}});
 
-  // Bottleneck table
+  // 供应约束制程表
   let bhtml='';
-  mrpData.slice(0,10).forEach(r=>{
-    const gap=r.netRemaining;
-    bhtml+='<tr><td class="font-bold">'+r.matCode+'</td><td>'+r.process+'</td><td>'+r.netRemaining.toLocaleString()+'</td><td>'+((r.stock||0)+r.wipAvailable).toLocaleString()+'</td><td style="color:var(--danger);font-weight:600">'+gap.toLocaleString()+'</td><td>产能约束</td><td>'+((r.process==='Wafer'||(r.supplier))?'增加外协':'提升产能')+'</td></tr>';
+  PROCESS_CHAIN.forEach(p=>{
+    const d=demandByProc[p]||0;
+    const s=supplyByProc[p]||0;
+    if(d===0&&s===0) return;
+    const gap=gapByProc[p];
+    const constraintType=gap>0?'供给不足':'供给充足';
+    const suggestion=gap>0?(p==='Wafer'?'增加晶圆采购量，联系TSMC/SMIC争取额外产能':p==='BP'?'协调SPIL/Amkor增加BP凸块产能':p==='CP'?'协调京元/矽格增加测试产能':p==='AB'?'协调ASE/PTI增加封装产能':'协调委外供应商追加产能'):'产能充足';
+    const gapRate=d>0?Math.round(gap/d*100):0;
+    bhtml+='<tr><td><span class="tag-status" style="background:'+PROCESS_COLORS[p]+';color:#333">'+p+'</span></td><td>'+PROCESS_LABELS[p]+'</td><td class="font-bold">'+d.toLocaleString()+'</td><td>'+s.toLocaleString()+'</td><td class="font-bold" style="color:'+(gap>0?'var(--danger)':'var(--success)')+'">'+(gap>0?gap.toLocaleString():'✓ 充足')+'</td><td><span class="tag-status '+(gap>0?'tag-red':'tag-green')+'">'+constraintType+'</span></td><td style="font-size:11px">'+suggestion+'</td></tr>';
   });
-  document.getElementById('sopBottleneckTable').querySelector('tbody').innerHTML=bhtml||'<tr><td colspan="7" style="text-align:center;color:var(--gray-400)">暂无瓶颈物料，供需平衡</td></tr>';
+  document.getElementById('sopBottleneckTable').querySelector('thead').innerHTML='<tr><th>制程</th><th>说明</th><th>总需求</th><th>可用供给</th><th>缺口</th><th>约束类型</th><th>建议方案</th></tr>';
+  document.getElementById('sopBottleneckTable').querySelector('tbody').innerHTML=bhtml||'<tr><td colspan="7" style="text-align:center;color:var(--gray-400)">暂无供需数据</td></tr>';
 
-  // Supply Plan table
-  let shtml='';
-  processes.forEach(p=>{
-    const origPlan=Math.round(3000+Math.random()*2000);
-    const adjPlan=Math.round(origPlan*(0.9+Math.random()*0.2));
-    const util=Math.round(70+Math.random()*25);
-    const outsource=Math.round(Math.random()*20)+'%';
-    shtml+='<tr><td>'+p+'</td><td>'+origPlan.toLocaleString()+'</td><td class="font-bold" style="color:var(--primary)">'+adjPlan.toLocaleString()+'</td><td>'+
-      '<div style="background:var(--gray-100);border-radius:4px;height:16px;width:100%;position:relative"><div style="position:absolute;left:0;top:0;height:100%;width:'+util+'%;background:'+(util>85?'var(--danger)':util>70?'var(--warning)':'var(--success)')+';border-radius:4px"></div></div>'+
-      '<span style="font-size:11px">'+util+'%</span></td><td>'+outsource+'</td><td>'+(adjPlan>origPlan?'需求增加，需提升产能':adjPlan<origPlan?'产能约束，适当缩减':'维持原计划')+'</td>'+
-      '<td><button class="btn btn-sm btn-outline" onclick="showToast(\'供应计划已更新\',\'success\')">✏️ 调整</button></td></tr>';
+  // 供应计划调整表
+  let phtml='';
+  PROCESS_CHAIN.forEach(p=>{
+    const s=supplyByProc[p]||0;
+    const d=demandByProc[p]||0;
+    const utilization=d>0?Math.min(100,Math.round(s/d*100)):0;
+    const invCount=appData.inventory.filter(inv=>getMatProcess(inv.materialCode)===p).length;
+    const wipCount=(appData.wip||[]).filter(w=>w.processCode===p).length;
+    const poCount=appData.prpo.filter(po=>po.processCode===p).length;
+    const color=utilization>90?'var(--danger)':utilization>70?'var(--warning)':'var(--success)';
+    phtml+='<tr><td><span class="tag-status" style="background:'+PROCESS_COLORS[p]+';color:#333;font-weight:600">'+p+'</span></td><td>'+PROCESS_LABELS[p]+'</td><td class="font-bold">'+s.toLocaleString()+'</td><td style="color:'+color+'">'+utilization+'%</td><td>'+invCount+'批/'+wipCount+'单</td><td>'+poCount+'单</td><td><span style="font-size:11px;color:var(--gray-400)">来自实际业务数据</span></td></tr>';
   });
-  document.getElementById('sopSupplyPlanTable').querySelector('tbody').innerHTML=shtml;
+  document.getElementById('sopSupplyPlanTable').querySelector('thead').innerHTML='<tr><th>制程</th><th>说明</th><th>供给总量</th><th>供需比</th><th>库存/WIP</th><th>未收PO</th><th>数据来源</th></tr>';
+  document.getElementById('sopSupplyPlanTable').querySelector('tbody').innerHTML=phtml||'<tr><td colspan="7" style="text-align:center;color:var(--gray-400)">暂无供应数据</td></tr>';
 }
 
-// ==================== Pre-S&OP ====================
+// ==================== Pre-S&OP（IC设计版） ====================
 function renderSopPreSop(){
-  const totalRevenue=28500000,totalCost=19500000,grossProfit=totalRevenue-totalCost,grossMargin=Math.round(grossProfit/totalRevenue*100);
+  // ==================== Pre-S&OP（IC设计版：基于真实需求的量利分析） ====================
+  // 从真实需求数据计算量利
+  const ftMats=getFtMaterials();
+  let totalDemandQty=0, totalRevenue=0, totalCost=0;
+  ftMats.slice(0,10).forEach(m=>{
+    const qty=appData.demands.filter(d=>d.material===m.code).reduce((s,d)=>s+d.quantity,0);
+    if(qty===0) return;
+    totalDemandQty+=qty;
+    const price=m.processCode==='FT'?38:25;
+    const unitCost=m.processCode==='FT'?22:15;
+    totalRevenue+=qty*price;
+    totalCost+=qty*unitCost;
+  });
+  const grossProfit=totalRevenue-totalCost;
+  const grossMargin=totalRevenue>0?Math.round(grossProfit/totalRevenue*100):0;
   document.getElementById('sopPreSopCards').innerHTML=
-    '<div class="summary-card blue"><div class="lbl">💰 预期总收入</div><div class="num" style="color:var(--primary)">¥'+(totalRevenue/10000).toFixed(0)+'万</div></div>'+
-    '<div class="summary-card orange"><div class="lbl">📉 预期总成本</div><div class="num" style="color:var(--warning)">¥'+(totalCost/10000).toFixed(0)+'万</div></div>'+
-    '<div class="summary-card green"><div class="lbl">📈 预期毛利</div><div class="num" style="color:var(--success)">¥'+(grossProfit/10000).toFixed(0)+'万</div></div>'+
+    '<div class="summary-card blue"><div class="lbl">💰 FT成品总销量</div><div class="num" style="color:var(--primary)">'+totalDemandQty.toLocaleString()+'颗</div></div>'+
+    '<div class="summary-card green"><div class="lbl">📈 预期收入</div><div class="num" style="color:var(--success)">¥'+(totalRevenue/10000).toFixed(1)+'万</div></div>'+
+    '<div class="summary-card orange"><div class="lbl">📉 预期变动成本</div><div class="num" style="color:var(--warning)">¥'+(totalCost/10000).toFixed(1)+'万</div></div>'+
     '<div class="summary-card '+(grossMargin>30?'green':'yellow')+'"><div class="lbl">📊 毛利率</div><div class="num" style="color:'+(grossMargin>30?'var(--success)':'var(--warning)')+'">'+grossMargin+'%</div></div>';
 
-  // Revenue chart
+  // 收入预测图（按月）
   if(window.sopRevenueChartInstance){window.sopRevenueChartInstance.destroy();}
-  const rMonths=['7月','8月','9月','10月','11月','12月'];
-  const revData=[],costData=[];
-  rMonths.forEach(()=>{revData.push(Math.round(400+Math.random()*200));costData.push(Math.round(280+Math.random()*150));});
+  
+  const monthlyDemands=getMonthlyDemands();
+  const mKeys=Object.keys(monthlyDemands).sort();
+  const revData=mKeys.map(m=>Math.round((monthlyDemands[m].FT||0)*38/10000));
+  const costData=mKeys.map(m=>Math.round((monthlyDemands[m].FT||0)*22/10000));
   const ctx3=document.getElementById('sopRevenueChart').getContext('2d');
   window.sopRevenueChartInstance=new Chart(ctx3,{
-    type:'line',data:{labels:rMonths,datasets:[{label:'收入(万元)',data:revData,borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.1)',fill:true,tension:0.3},{label:'成本(万元)',data:costData,borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,.1)',fill:true,tension:0.3}]},
+    type:'line',data:{labels:mKeys,datasets:[{label:'收入(万元)',data:revData,borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.1)',fill:true,tension:0.3},{label:'成本(万元)',data:costData,borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,.1)',fill:true,tension:0.3}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true,ticks:{callback:v=>'¥'+v+'万'}}}}});
 
-  // Volume & Mix table
-  const prodFamilies=[{name:'高端产品线',qty:1200,price:8500,cost:5500},{name:'主流产品线',qty:3500,price:4500,cost:3000},{name:'经济产品线',qty:5000,price:1800,cost:1200}];
+  // 量利分析表（基于真实FT物料）
   let vmhtml='';
-  let vmTotal=0;
-  prodFamilies.forEach(f=>{
-    const revenue=f.qty*f.price,cost=f.qty*f.cost,profit=revenue-cost,margin=revenue>0?Math.round(profit/revenue*100):0;
-    vmTotal+=revenue;
-    vmhtml+='<tr><td>'+f.name+'</td><td>'+f.qty.toLocaleString()+'</td><td>¥'+f.price.toLocaleString()+'</td><td>¥'+revenue.toLocaleString()+'</td><td>¥'+(f.qty*f.cost).toLocaleString()+'</td><td style="color:'+(profit>0?'var(--success)':'var(--danger)')+'">¥'+profit.toLocaleString()+'</td><td>'+(profit>0?'<span style="color:var(--success)">'+margin+'%</span>':'<span style="color:var(--danger)">'+margin+'%</span>')+'</td></tr>';
+  ftMats.slice(0,10).forEach(f=>{
+    const qty=appData.demands.filter(d=>d.material===f.code).reduce((s,d)=>s+d.quantity,0);
+    if(qty===0) return;
+    const price=38, unitCost=22;
+    const revenue=qty*price, cost=qty*unitCost, profit=revenue-cost;
+    const margin=revenue>0?Math.round(profit/revenue*100):0;
+    vmhtml+='<tr><td>'+f.code+'</td><td>'+qty.toLocaleString()+'</td><td>¥'+price+'</td><td>¥'+(revenue/10000).toFixed(2)+'万</td><td>¥'+(cost/10000).toFixed(2)+'万</td><td style="color:'+(profit>0?'var(--success)':'var(--danger)')+'">¥'+(profit/10000).toFixed(2)+'万</td><td>'+(profit>0?'<span style="color:var(--success)">'+margin+'%</span>':'<span style="color:var(--danger)">'+margin+'%</span>')+'</td></tr>';
   });
-  document.getElementById('sopVolMixTable').querySelector('tbody').innerHTML=vmhtml;
+  document.getElementById('sopVolMixTable').querySelector('thead').innerHTML='<tr><th>FT成品</th><th>销量(颗)</th><th>均价</th><th>收入(万)</th><th>变动成本(万)</th><th>毛利(万)</th><th>毛利率</th></tr>';
+  document.getElementById('sopVolMixTable').querySelector('tbody').innerHTML=vmhtml||'<tr><td colspan="7" style="text-align:center;color:var(--gray-400)">暂无数据</td></tr>';
+
 
   // Pre-S&OP Notes
   let nhtml='';
@@ -5819,47 +5939,62 @@ function runSopScenario(){
   const scenario=document.getElementById('sopScenarioSelect').value;
   const multipliers={baseline:1,optimistic:1.1,pessimistic:0.85,custom:1.05};
   const mult=multipliers[scenario]||1;
-  const baseTotal=28500000;
-  const scenarioTotal=Math.round(baseTotal*mult);
-  const diff=scenarioTotal-baseTotal;
+  const baseRevenue=appData.demands.reduce((s,d)=>s+d.quantity*38,0);
+  const baseCost=appData.demands.reduce((s,d)=>s+d.quantity*22,0);
+  const scenarioRevenue=Math.round(baseRevenue*mult);
+  const scenarioCost=Math.round(baseCost*mult);
+  const diff=scenarioRevenue-baseRevenue;
   const scenarioNames={baseline:'基准方案',optimistic:'乐观方案（+10%）',pessimistic:'悲观方案（-15%）',custom:'自定义方案'};
   document.getElementById('sopScenarioTable').querySelector('tbody').innerHTML=
-    '<tr><td>总收入(万元)</td><td>'+(baseTotal/10000).toFixed(0)+'</td><td>'+(scenarioTotal/10000).toFixed(0)+'</td><td style="color:'+(diff>=0?'var(--success)':'var(--danger)')+'">'+(diff>=0?'+':'')+(diff/10000).toFixed(0)+'</td><td style="color:'+(diff>=0?'var(--success)':'var(--danger)')+'">'+(diff>=0?'+':'')+((diff/baseTotal)*100).toFixed(1)+'%</td></tr>'+
-    '<tr><td>总成本(万元)</td><td>1950</td><td>'+Math.round(1950*mult)+'</td><td style="color:var(--warning)">'+(mult>1?'+':'')+Math.round(1950*(mult-1))+'</td><td>'+((mult-1)*100).toFixed(1)+'%</td></tr>'+
-    '<tr><td>毛利(万元)</td><td>'+(baseTotal-19500000)/10000+'</td><td>'+(scenarioTotal-19500000*mult)/10000+'</td><td style="color:'+(diff>=0?'var(--success)':'var(--danger)')+'">'+(diff>=0?'+':'')+((scenarioTotal-19500000*mult)-(baseTotal-19500000))/10000+'</td><td style="color:'+(diff>=0?'var(--success)':'var(--danger)')+'">所需产能'+((mult-1)*100>0?'+':'')+Math.round((mult-1)*100)+'%</td></tr>';
+    '<tr><td>总收入(万元)</td><td>'+(baseRevenue/10000).toFixed(1)+'</td><td>'+(scenarioRevenue/10000).toFixed(1)+'</td><td style="color:'+(diff>=0?'var(--success)':'var(--danger)')+'">'+(diff>=0?'+':'')+(diff/10000).toFixed(1)+'</td><td style="color:'+(diff>=0?'var(--success)':'var(--danger)')+'">'+(diff>=0?'+':'')+((diff/baseRevenue)*100).toFixed(1)+'%</td></tr>'+
+    '<tr><td>总成本(万元)</td><td>'+(baseCost/10000).toFixed(1)+'</td><td>'+(scenarioCost/10000).toFixed(1)+'</td><td style="color:var(--warning)">'+(mult>1?'+':'')+((scenarioCost-baseCost)/10000).toFixed(1)+'</td><td>'+((mult-1)*100).toFixed(1)+'%</td></tr>'+
+    '<tr><td>毛利(万元)</td><td>'+((baseRevenue-baseCost)/10000).toFixed(1)+'</td><td>'+((scenarioRevenue-scenarioCost)/10000).toFixed(1)+'</td><td style="color:'+(diff>=0?'var(--success)':'var(--danger)')+'">'+(diff>=0?'+':'')+((scenarioRevenue-scenarioCost)-(baseRevenue-baseCost))/10000+'</td><td style="color:'+(diff>=0?'var(--success)':'var(--danger)')+'">产能变化'+Math.round((mult-1)*100)+'%</td></tr>';
   showToast('🔄 情景模拟完成：'+scenarioNames[scenario],'success');
 }
 
 // ==================== Executive S&OP ====================
 function renderSopExec(){
-  const totalDemand=appData.demands.reduce((s,d)=>s+d.quantity,0)||12000;
-  const totalSupply=appData.inventory.reduce((s,i)=>s+i.stock+(i.transit||0),0)||9500;
-  const gap=totalDemand-totalSupply;
+  const demandByProc=getDemandByProcess();
+  const totalDemand=Object.values(demandByProc).reduce((a,b)=>a+b,0);
+  const totalStock=appData.inventory.reduce((s,i)=>s+(i.stock||0),0);
+  const totalWip=(appData.wip||[]).reduce((s,w)=>s+(w.inputQty||0),0);
+  const totalPo=appData.prpo.reduce((s,p)=>s+(p.quantity||0),0);
+  const totalSupply=totalStock+totalWip+totalPo;
+  const gap=Math.max(0,totalDemand-totalSupply);
   const pendingDecisions=sopData.decisions.filter(d=>d.status!=='已关闭').length;
+  const serviceLevel=totalDemand>0?Math.round(Math.min(totalSupply,totalDemand)/totalDemand*100):0;
   document.getElementById('sopExecCards').innerHTML=
-    '<div class="summary-card blue"><div class="lbl">📦 共识总需求</div><div class="num" style="color:var(--primary)">'+totalDemand.toLocaleString()+'</div></div>'+
-    '<div class="summary-card green"><div class="lbl">🏭 总供应能力</div><div class="num" style="color:var(--success)">'+totalSupply.toLocaleString()+'</div></div>'+
-    '<div class="summary-card '+(gap>0?'red':'green')+'"><div class="lbl">⚠️ 供需缺口</div><div class="num" style="color:'+(gap>0?'var(--danger)':'var(--success)')+'">'+(gap>0?gap.toLocaleString():'0')+'</div></div>'+
-    '<div class="summary-card '+(pendingDecisions>0?'yellow':'green')+'"><div class="lbl">🏆 待决策事项</div><div class="num" style="color:'+(pendingDecisions>0?'var(--warning)':'var(--success)')+'">'+pendingDecisions+'</div></div>';
+    '<div class="summary-card blue"><div class="lbl">📦 全链路总需求</div><div class="num" style="color:var(--primary)">'+totalDemand.toLocaleString()+'</div></div>'+
+    '<div class="summary-card green"><div class="lbl">🏭 总供给(库存+WIP+PO)</div><div class="num" style="color:var(--success)">'+totalSupply.toLocaleString()+'</div></div>'+
+    '<div class="summary-card '+(gap>0?'red':'green')+'"><div class="lbl">⚠️ 供需缺口</div><div class="num" style="color:'+(gap>0?'var(--danger)':'var(--success)')+'">'+(gap>0?gap.toLocaleString():'✓ 平衡')+'</div></div>'+
+    '<div class="summary-card '+(serviceLevel>85?'green':'yellow')+'"><div class="lbl">🎯 供应满足率</div><div class="num" style="color:'+(serviceLevel>85?'var(--success)':'var(--warning)')+'">'+serviceLevel+'%</div></div>';
 
-  // Executive KPI chart
+  // Executive KPI chart - 各制程供需对比
   if(window.sopExecChartInstance){window.sopExecChartInstance.destroy();}
   const ctx4=document.getElementById('sopExecChart').getContext('2d');
-  const fams=['高端产品线','主流产品线','经济产品线'];
-  const famDemand=[1200,3500,5000],famSupply=[1000,3200,5300];
-  window.sopExecChartInstance=new Chart(ctx4,{
-    type:'bar',data:{labels:fams,datasets:[{label:'需求',data:famDemand,backgroundColor:'rgba(37,99,235,.7)',borderRadius:4},{label:'供应',data:famSupply,backgroundColor:'rgba(16,185,129,.7)',borderRadius:4}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true,ticks:{callback:v=>v.toLocaleString()}}}}});
-
-  // Gap table
-  let ghtml='';
-  fams.forEach((f,i)=>{
-    const g=famDemand[i]-famSupply[i];
-    ghtml+='<tr><td>'+f+'</td><td>'+famDemand[i].toLocaleString()+'</td><td>'+famSupply[i].toLocaleString()+'</td><td style="color:'+(g>0?'var(--danger)':'var(--success)')+';font-weight:600">'+(g>0?'+'+g.toLocaleString():g.toLocaleString())+'</td><td>'+(g>0?'提升产能/增加外协':'供需平衡')+'</td><td>'+(g>0?'<span class="tag-status tag-yellow">待决策</span>':'<span class="tag-status tag-green">✅ 已平衡</span>')+'</td></tr>';
+  const famDemand=PROCESS_CHAIN.map(p=>demandByProc[p]||0);
+  const famSupply=PROCESS_CHAIN.map(p=>{
+    const s=appData.inventory.filter(i=>getMatProcess(i.materialCode)===p).reduce((a,i)=>a+(i.stock||0),0);
+    const w=(appData.wip||[]).filter(w=>w.processCode===p).reduce((a,w)=>a+(w.inputQty||0),0);
+    const po=appData.prpo.filter(po=>po.processCode===p).reduce((a,po)=>a+(po.quantity||0),0);
+    return s+w+po;
   });
+  window.sopExecChartInstance=new Chart(ctx4,{
+    type:'bar',data:{labels:PROCESS_CHAIN.map(p=>p+'('+PROCESS_LABELS[p]+')'),datasets:[{label:'需求',data:famDemand,backgroundColor:PROCESS_CHAIN.map(p=>PROCESS_COLORS[p]),borderRadius:4},{label:'供给',data:famSupply,backgroundColor:'rgba(16,185,129,.7)',borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{size:10}}}},scales:{y:{beginAtZero:true,ticks:{callback:v=>v.toLocaleString()}}}}});
+
+  // 供需缺口全景表（按制程）
+  let ghtml='';
+  PROCESS_CHAIN.forEach((p,i)=>{
+    const g=famDemand[i]-famSupply[i];
+    const decision=g>0?'提升产能/增加委外':'供需平衡';
+    const dStatus=g>0?'<span class="tag-status tag-yellow">待决策</span>':'<span class="tag-status tag-green">✅ 已平衡</span>';
+    ghtml+='<tr><td><span class="tag-status" style="background:'+PROCESS_COLORS[p]+';color:#333;font-weight:600">'+p+'</span></td><td>'+PROCESS_LABELS[p]+'</td><td class="font-bold">'+(famDemand[i]||0).toLocaleString()+'</td><td>'+(famSupply[i]||0).toLocaleString()+'</td><td style="color:'+(g>0?'var(--danger)':'var(--success)')+';font-weight:600">'+(g>0?g.toLocaleString():'✓ 充足')+'</td><td>'+decision+'</td><td>'+dStatus+'</td></tr>';
+  });
+  document.getElementById('sopExecGapTable').querySelector('thead').innerHTML='<tr><th>制程</th><th>说明</th><th>需求</th><th>供给</th><th>缺口</th><th>建议决策</th><th>决策状态</th></tr>';
   document.getElementById('sopExecGapTable').querySelector('tbody').innerHTML=ghtml;
 
-  // Decision Log
+  // Decision Log（保留交互）
   let dhtml='';
   sopData.decisions.forEach((d,i)=>{
     const sColor=d.status==='已关闭'?'tag-green':d.status==='执行中'?'tag-blue':'tag-yellow';
@@ -5894,16 +6029,22 @@ function closeDecision(idx){
 }
 function generateSopExecReport(){
   const now=new Date().toISOString().split('T')[0];
-  const totalDemand=appData.demands.reduce((s,d)=>s+d.quantity,0)||12000;
-  const totalSupply=appData.inventory.reduce((s,i)=>s+i.stock+(i.transit||0),0)||9500;
-  const gap=totalDemand-totalSupply;
+  const demandByProc=getDemandByProcess();
+  const totalDemand=Object.values(demandByProc).reduce((a,b)=>a+b,0);
+  const totalStock=appData.inventory.reduce((s,i)=>s+(i.stock||0),0);
+  const totalWip=(appData.wip||[]).reduce((s,w)=>s+(w.inputQty||0),0);
+  const totalPo=appData.prpo.reduce((s,p)=>s+(p.quantity||0),0);
+  const totalSupply=totalStock+totalWip+totalPo;
+  const gap=Math.max(0,totalDemand-totalSupply);
   const openDecisions=sopData.decisions.filter(d=>d.status!=='已关闭').length;
+  const revenue=appData.demands.reduce((s,d)=>s+d.quantity*38,0);
+  const cost=appData.demands.reduce((s,d)=>s+d.quantity*22,0);
   document.getElementById('sopExecReportContent').innerHTML=
     '<div style="background:var(--primary-bg);padding:16px;border-radius:8px;margin-bottom:12px">'+
     '<h4 style="margin-bottom:12px">📄 Executive S&OP 报告 — '+now+'</h4>'+
-    '<p><strong>📊 需求回顾摘要：</strong>共识需求总量 '+totalDemand.toLocaleString()+'，预测准确率约 88%</p>'+
-    '<p><strong>🔄 供应回顾摘要：</strong>总供应能力 '+totalSupply.toLocaleString()+'，'+(!sopData.decisions.length?'暂无':'有 '+openDecisions+' 项')+'待决策事项</p>'+
-    '<p><strong>📈 Pre-S&OP 财务摘要：</strong>预期收入 ¥'+(28500000/10000).toFixed(0)+'万，毛利率约 '+(Math.round((28500000-19500000)/28500000*100))+'%</p>'+
+    '<p><strong>📊 需求回顾摘要：</strong>全链路总需求 '+totalDemand.toLocaleString()+'（FT→Wafer级联）</p>'+
+    '<p><strong>🔄 供应回顾摘要：</strong>总供给能力 '+totalSupply.toLocaleString()+'（库存'+totalStock.toLocaleString()+' + WIP '+totalWip.toLocaleString()+' + PO '+totalPo.toLocaleString()+'）</p>'+
+    '<p><strong>📈 Pre-S&OP 财务摘要：</strong>预期收入 ¥'+(revenue/10000).toFixed(1)+'万，预期成本 ¥'+(cost/10000).toFixed(1)+'万</p>'+
     '<p><strong>⚠️ 关键缺口：</strong>'+(gap>0?'供需缺口 '+gap.toLocaleString()+', 需在 Executive S&OP 会议上做出产能调整决策':'供需基本平衡')+'</p>'+
     '<p><strong>📋 待决议题：</strong>'+(openDecisions>0?openDecisions+' 项':'无')+'</p></div>';
   showToast('📤 Executive S&OP 报告已生成','success');
@@ -5911,52 +6052,72 @@ function generateSopExecReport(){
 
 // ==================== Inventory Optimization ====================
 function renderSopInvOpt(){
-  const totalStock=appData.inventory.reduce((s,i)=>s+i.stock,0)||8500;
-  const totalSafety=Math.round(totalStock*0.3);
-  const totalTarget=Math.round(totalStock*0.45);
-  const healthScore=totalStock>0?Math.min(100,Math.round((totalSafety/totalStock)*100)):0;
+  const totalStock=appData.inventory.reduce((s,i)=>s+(i.stock||0),0);
+  const totalSafety=appData.inventory.reduce((s,i)=>s+(i.safetyStock||0),0);
+  const totalWip=(appData.wip||[]).reduce((s,w)=>s+(w.inputQty||0),0);
+  const totalGood=appData.inventory.reduce((s,i)=>s+(i.goodQty!==undefined?i.goodQty:i.stock||0),0);
+  const totalDefect=appData.inventory.reduce((s,i)=>s+(i.defectQty||0),0);
+  const excessStock=Math.max(0,totalStock-totalSafety*2);
+  const healthScore=totalStock>0?Math.min(100,Math.round(totalSafety/(totalStock||1)*100)):0;
 
   document.getElementById('sopInvOptCards').innerHTML=
-    '<div class="summary-card blue"><div class="lbl">📦 当前总库存</div><div class="num" style="color:var(--primary)">'+totalStock.toLocaleString()+'</div></div>'+
+    '<div class="summary-card blue"><div class="lbl">📦 当前库存总量</div><div class="num" style="color:var(--primary)">'+totalStock.toLocaleString()+'</div></div>'+
     '<div class="summary-card green"><div class="lbl">🛡️ 安全库存</div><div class="num" style="color:var(--success)">'+totalSafety.toLocaleString()+'</div></div>'+
-    '<div class="summary-card orange"><div class="lbl">🎯 目标库存</div><div class="num" style="color:var(--warning)">'+totalTarget.toLocaleString()+'</div></div>'+
+    '<div class="summary-card orange"><div class="lbl">⚙️ 在制品(WIP)</div><div class="num" style="color:var(--warning)">'+totalWip.toLocaleString()+'</div></div>'+
     '<div class="summary-card '+(healthScore>70?'green':'yellow')+'"><div class="lbl">💚 库存健康度</div><div class="num" style="color:'+(healthScore>70?'var(--success)':'var(--warning)')+'">'+healthScore+'%</div></div>';
 
-  // Inventory health chart - doughnut
+  // 库存健康度饼图（按制程分组）
   if(window.sopInvHealthChartInstance){window.sopInvHealthChartInstance.destroy();}
   const ctx5=document.getElementById('sopInvHealthChart').getContext('2d');
-  const invTypes=['安全库存','周转库存','多余库存'];
-  const invData=[totalSafety,totalStock-totalSafety-totalTarget,totalTarget];
+  const invByProc=PROCESS_CHAIN.map(p=>appData.inventory.filter(i=>getMatProcess(i.materialCode)===p).reduce((s,i)=>s+(i.stock||0),0));
+  const procColors=['rgba(59,130,246,.7)','rgba(16,185,129,.7)','rgba(245,158,11,.7)','rgba(139,92,246,.7)','rgba(236,72,153,.7)'];
   window.sopInvHealthChartInstance=new Chart(ctx5,{
-    type:'doughnut',data:{labels:invTypes,datasets:[{data:invData,backgroundColor:['rgba(16,185,129,.7)','rgba(37,99,235,.7)','rgba(239,68,68,.5)'],borderWidth:0}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}});
+    type:'doughnut',data:{labels:PROCESS_CHAIN.map(p=>p+'('+PROCESS_LABELS[p]+')'),datasets:[{data:invByProc,backgroundColor:procColors,borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{font:{size:10}}}}}});
 
-  // Target Inventory table
+  // 目标库存水平（基于真实物料数据）
   let thtml='';
-  (appData.materials.length?appData.materials:[{code:'FT-001',name:'成品A'},{code:'FT-002',name:'成品B'},{code:'FT-003',name:'成品C'}]).slice(0,8).forEach(m=>{
-    const stock=Math.round(500+Math.random()*1500);
-    const safety=Math.round(stock*0.3);
-    const target=Math.round(stock*1.2);
+  (appData.materials.length?appData.materials:[]).slice(0,12).forEach(m=>{
+    const inv=appData.inventory.find(i=>i.materialCode===m.code);
+    const stock=inv?(inv.goodQty!==undefined?inv.goodQty:inv.stock||0):0;
+    const wip=(appData.wip||[]).filter(w=>w.materialCode===m.code).reduce((s,w)=>s+(w.inputQty||0),0);
+    const safety=inv?inv.safetyStock||Math.round(stock*0.3):Math.round(stock*0.3);
+    const target=Math.max(safety,Math.round(stock*1.1));
     const replenish=target>stock?target-stock:0;
     const diff=stock-target;
-    thtml+='<tr><td>'+m.code+'</td><td>'+stock.toLocaleString()+'</td><td>'+safety.toLocaleString()+'</td><td>'+target.toLocaleString()+'</td><td>'+(replenish>0?'<span style="color:var(--danger)">+'+replenish.toLocaleString()+'</span>':'<span style="color:var(--success)">充足</span>')+'</td><td style="color:'+(diff>0?'var(--success)':diff<0?'var(--danger)':'var(--gray-500)')+'">'+(diff>0?'+'+diff.toLocaleString():diff.toLocaleString())+'</td></tr>';
+    thtml+='<tr><td>'+m.code+'</td><td><span class="tag-status" style="background:'+(PROCESS_COLORS[m.processCode]||'#eee')+';color:#333;font-size:10px">'+(m.processCode||'-')+'</span></td><td class="font-bold">'+stock.toLocaleString()+'</td><td>'+(wip||0).toLocaleString()+'</td><td>'+safety.toLocaleString()+'</td><td>'+target.toLocaleString()+'</td><td>'+(replenish>0?'<span style="color:var(--danger)">+'+replenish.toLocaleString()+'</span>':'<span style="color:var(--success)">充足</span>')+'</td><td style="color:'+(diff>0?'var(--success)':diff<0?'var(--danger)':'var(--gray-500)')+'">'+(diff>0?'+'+diff.toLocaleString():diff.toLocaleString())+'</td></tr>';
   });
-  document.getElementById('sopTargetInvTable').querySelector('tbody').innerHTML=thtml;
+  document.getElementById('sopTargetInvTable').querySelector('thead').innerHTML='<tr><th>物料</th><th>制程</th><th>当前库存</th><th>在制品</th><th>安全库存</th><th>目标库存</th><th>建议补货</th><th>差异</th></tr>';
+  document.getElementById('sopTargetInvTable').querySelector('tbody').innerHTML=thtml||'<tr><td colspan="8" style="text-align:center;color:var(--gray-400)">暂无数据</td></tr>';
 
-  // Safety Stock table
+  // 安全库存计算（基于历史需求数据的标准差）
   const zValues={0.9:1.28,0.95:1.65,0.99:2.33};
   const sl=Number(document.getElementById('sopServiceLevel')?.value||0.95);
   const z=zValues[sl]||1.65;
   const lt=Number(document.getElementById('sopLeadTime')?.value||7);
   let sshtml='';
-  (appData.materials.length?appData.materials:[{code:'FT-001',name:'成品A'},{code:'FT-002',name:'成品B'}]).slice(0,8).forEach(m=>{
-    const avgDemand=Math.round(50+Math.random()*80);
-    const stdDev=Math.round(avgDemand*0.3);
+  (appData.materials.length?appData.materials:[]).slice(0,12).forEach(m=>{
+    // 从实际需求数据计算日均需求和标准差
+    const matDemands=appData.demands.filter(d=>d.material===m.code);
+    const totalDemand=matDemands.reduce((s,d)=>s+d.quantity,0);
+    const n=matDemands.length;
+    let avgDemand=0,stdDev=0;
+    if(n>0){
+      avgDemand=Math.round(totalDemand/n/30);
+      if(n>1){
+        const mean=totalDemand/n;
+        const sqDiff=matDemands.reduce((s,d)=>s+Math.pow(d.quantity-mean,2),0);
+        stdDev=Math.round(Math.sqrt(sqDiff/(n-1))/30);
+      }else stdDev=Math.round(avgDemand*0.3);
+    }else{
+      avgDemand=Math.round(30+Math.random()*50);
+      stdDev=Math.round(avgDemand*0.3);
+    }
     const safetyStock=Math.round(z*stdDev*Math.sqrt(lt/30));
     const upperLimit=Math.round(avgDemand*lt/30+safetyStock*1.5);
     sshtml+='<tr><td>'+m.code+'</td><td>'+avgDemand+'</td><td>'+stdDev+'</td><td>'+z.toFixed(2)+'</td><td>'+lt+'天</td><td class="font-bold" style="color:var(--primary)">'+safetyStock.toLocaleString()+'</td><td>'+upperLimit.toLocaleString()+'</td></tr>';
   });
-  document.getElementById('sopSafetyStockTable').querySelector('tbody').innerHTML=sshtml;
+  document.getElementById('sopSafetyStockTable').querySelector('tbody').innerHTML=sshtml||'<tr><td colspan="7" style="text-align:center;color:var(--gray-400)">暂无安全库存数据</td></tr>';
 }
 function recalcSafetyStock(){renderSopInvOpt();showToast('🔄 安全库存已重新计算','success');}
 function exportSopReport(section){
