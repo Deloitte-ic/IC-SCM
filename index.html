@@ -514,23 +514,39 @@ tbody tr:hover td{background:var(--primary-bg)}
         <!-- Card 2: 预测参数 -->
         <div class="card">
           <div class="card-header">
-            <div class="card-title">🔮 预测参数 <span class="tag">Holt-Winters 三次指数平滑</span></div>
+            <div class="card-title">🔮 预测参数 <span class="tag" id="forecastModelTag">Holt-Winters 三次指数平滑</span></div>
             <div style="display:flex;gap:8px;align-items:center">
               <span style="font-size:12px;color:var(--gray-500)">版本名:</span>
               <input type="text" id="forecastVersionName" value="V1-默认" style="width:100px;padding:4px 8px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px">
             </div>
           </div>
-          <div class="grid-4">
-            <div class="form-group"><label>α (水平因子, 0~1)</label><input type="number" id="forecastAlpha" value="0.3" min="0" max="1" step="0.05"></div>
-            <div class="form-group"><label>β (趋势因子, 0~1)</label><input type="number" id="forecastBeta" value="0.1" min="0" max="1" step="0.05"></div>
-            <div class="form-group"><label>γ (季节因子, 0~1)</label><input type="number" id="forecastGamma" value="0.1" min="0" max="1" step="0.05"></div>
+          <div class="grid-4" style="margin-bottom:12px">
+            <div class="form-group"><label>预测模型</label>
+              <select id="forecastModelSelect" onchange="onForecastModelChange()" style="padding:6px 8px;border:1px solid var(--gray-300);border-radius:6px;font-size:13px">
+                <option value="auto">🤖 自动选型（推荐）</option>
+                <option value="holt-winters" selected>📐 Holt-Winters 三次指数平滑</option>
+                <option value="sma">📊 移动平均 (SMA)</option>
+                <option value="croston">📉 Croston 间歇需求</option>
+              </select>
+            </div>
+            <div class="form-group"><label>自动优化参数</label>
+              <label style="display:flex;align-items:center;gap:6px;padding:6px 0;cursor:pointer;font-size:13px;color:var(--gray-600)">
+                <input type="checkbox" id="forecastAutoOptimize" checked onchange="onAutoOptimizeChange()"> 网格搜索最优 α/β/γ
+              </label>
+            </div>
             <div class="form-group"><label>季节周期</label><select id="forecastSeasonLength"><option value="3">季度(3个月)</option><option value="6" selected>半年(6个月)</option><option value="12">年度(12个月)</option></select></div>
+            <div class="form-group"><label>置信区间</label><select id="forecastCI"><option value="0.8">80%</option><option value="0.9" selected>90%</option><option value="0.95">95%</option></select></div>
           </div>
-          <div class="grid-4" style="margin-top:8px">
+          <div class="grid-4" id="hwParamsRow">
+            <div class="form-group"><label>α (水平因子, 0~1)</label><input type="number" id="forecastAlpha" value="0.3" min="0" max="1" step="0.05" disabled></div>
+            <div class="form-group"><label>β (趋势因子, 0~1)</label><input type="number" id="forecastBeta" value="0.1" min="0" max="1" step="0.05" disabled></div>
+            <div class="form-group"><label>γ (季节因子, 0~1)</label><input type="number" id="forecastGamma" value="0.1" min="0" max="1" step="0.05" disabled></div>
+            <div class="form-group"><label>&nbsp;</label><span id="optStatus" style="font-size:12px;color:var(--gray-400);padding:6px 0;display:block">✅ 执行预测时自动优化</span></div>
+          </div>
+          <div class="grid-4" style="margin-top:4px">
             <div class="form-group"><label>预测期数</label><input type="number" id="forecastHorizon" value="6" min="1" max="24"></div>
             <div class="form-group"><label>粒度</label><select id="forecastGranularity"><option value="month">月度</option><option value="week">周度</option></select></div>
-            <div class="form-group"><label>置信区间</label><select id="forecastCI"><option value="0.8">80%</option><option value="0.9" selected>90%</option><option value="0.95">95%</option></select></div>
-            <div style="display:flex;align-items:flex-end"><button class="btn btn-primary btn-lg" onclick="runDemandForecast()">🚀 执行预测</button></div>
+            <div class="form-group" style="grid-column:span 2;display:flex;align-items:flex-end"><button class="btn btn-primary btn-lg" onclick="runDemandForecast()" style="width:100%">🚀 执行预测</button></div>
           </div>
         </div>
 
@@ -2620,11 +2636,194 @@ function holtWintersForecast(data, alpha, beta, gamma, seasonLength, forecastHor
   return { forecast, level, trend, season, method:'holt-winters' };
 }
 
+// ======================== 自动参数优化与模型选型 ========================
+
+// 模型切换UI
+function onForecastModelChange(){
+  const model = document.getElementById('forecastModelSelect').value;
+  const tag = document.getElementById('forecastModelTag');
+  const hwRow = document.getElementById('hwParamsRow');
+  const autoCb = document.getElementById('forecastAutoOptimize');
+
+  if(model === 'auto'){
+    tag.textContent = '🤖 自动选型';
+    hwRow.style.display = '';
+    autoCb.checked = true;
+    onAutoOptimizeChange();
+  } else if(model === 'holt-winters'){
+    tag.textContent = '📐 Holt-Winters 三次指数平滑';
+    hwRow.style.display = '';
+  } else if(model === 'sma'){
+    tag.textContent = '📊 移动平均 (SMA)';
+    hwRow.style.display = 'none';
+  } else if(model === 'croston'){
+    tag.textContent = '📉 Croston 间歇需求';
+    hwRow.style.display = 'none';
+  }
+}
+
+function onAutoOptimizeChange(){
+  const auto = document.getElementById('forecastAutoOptimize').checked;
+  document.getElementById('forecastAlpha').disabled = auto;
+  document.getElementById('forecastBeta').disabled = auto;
+  document.getElementById('forecastGamma').disabled = auto;
+  document.getElementById('optStatus').textContent = auto ? '✅ 执行预测时自动优化' : '📝 手动输入参数';
+}
+
+// 计算单步拟合MAPE（用于参数优化）
+function computeFittedMAPE(data, level, trend, season, seasonLength, method) {
+  let totalAPE = 0, count = 0;
+  const warmup = Math.max(seasonLength, 3);
+  for (let t = warmup; t < data.length; t++) {
+    let fitted;
+    if (method === 'holt-winters' && season && season.length > 0) {
+      fitted = level[t-1] + trend[t-1] + (season[t - seasonLength] || 0);
+    } else {
+      fitted = level[t-1] + trend[t-1];
+    }
+    if (data[t] > 0) {
+      totalAPE += Math.abs((data[t] - fitted) / data[t]);
+      count++;
+    }
+  }
+  return count > 0 ? (totalAPE / count) * 100 : Infinity;
+}
+
+// 网格搜索最优α/β/γ（与SAP IBP内部参数优化逻辑一致）
+function optimizeHoltWintersParams(data, seasonLength) {
+  const alphas = [0.05,0.1,0.15,0.2,0.25,0.3,0.35,0.4,0.45,0.5,0.6,0.7,0.8];
+  const betas = [0.01,0.02,0.05,0.1,0.15,0.2,0.3,0.4,0.5];
+  const gammas = [0.01,0.02,0.05,0.1,0.15,0.2,0.3,0.4,0.5];
+
+  if (data.length < seasonLength) {
+    let bestMAPE = Infinity, best = { alpha:0.3, beta:0.1, gamma:0 };
+    for (const a of alphas) {
+      for (const b of betas) {
+        const r = holtWintersForecast(data, a, b, 0, seasonLength, 1);
+        const m = computeFittedMAPE(data, r.level, r.trend, [], 0, 'holt-linear');
+        if (m < bestMAPE) { bestMAPE = m; best = { alpha:a, beta:b, gamma:0 }; }
+      }
+    }
+    return { ...best, mape:bestMAPE };
+  }
+
+  let bestMAPE = Infinity, best = { alpha:0.3, beta:0.1, gamma:0.1 };
+  for (const a of alphas) {
+    for (const b of betas) {
+      for (const g of gammas) {
+        const r = holtWintersForecast(data, a, b, g, seasonLength, 1);
+        const m = computeFittedMAPE(data, r.level, r.trend, r.season, seasonLength, 'holt-winters');
+        if (m < bestMAPE) { bestMAPE = m; best = { alpha:a, beta:b, gamma:g }; }
+      }
+    }
+  }
+  return { ...best, mape:bestMAPE };
+}
+
+// 简单移动平均SMA
+function smaForecast(data, forecastHorizon, windowSize) {
+  if (data.length < windowSize) windowSize = data.length;
+  const sma = data.slice(-windowSize).reduce((s,v)=>s+v,0)/windowSize;
+  const forecast = new Array(forecastHorizon).fill(Math.round(sma));
+  let totalAPE = 0, count = 0;
+  for (let t = windowSize; t < data.length; t++) {
+    const fitted = data.slice(t-windowSize,t).reduce((s,v)=>s+v,0)/windowSize;
+    if (data[t] > 0) { totalAPE += Math.abs((data[t]-fitted)/data[t]); count++; }
+  }
+  return { forecast, fittedMAPE: count>0?(totalAPE/count)*100:Infinity, windowSize, method:'sma' };
+}
+
+// 优化SMA窗口大小
+function optimizeSmaWindow(data) {
+  const maxWindow = Math.min(12, Math.max(2, data.length-1));
+  let bestMAPE = Infinity, bestW = Math.min(3, maxWindow);
+  for (let w = 2; w <= maxWindow; w++) {
+    const r = smaForecast(data, 1, w);
+    if (r.fittedMAPE < bestMAPE) { bestMAPE = r.fittedMAPE; bestW = w; }
+  }
+  return bestW;
+}
+
+// Croston方法（间歇需求，IC物料常见）
+function crostonForecast(data, forecastHorizon) {
+  const nonZero = data.filter(v=>v>0);
+  const nonZeroRatio = nonZero.length / data.length;
+  if (nonZeroRatio >= 0.4 || nonZero.length < 3) {
+    return { forecast:[], method:'croston', applicable:false };
+  }
+
+  // 提取需求间隔和需求大小
+  let intervals = [], sizes = [], lastIdx = -1;
+  for (let i = 0; i < data.length; i++) {
+    if (data[i] > 0) {
+      if (lastIdx >= 0) intervals.push(i - lastIdx);
+      sizes.push(data[i]);
+      lastIdx = i;
+    }
+  }
+
+  const alphaC = 0.15, betaC = 0.1;
+  let s = sizes[0], q = intervals.length>0 ? intervals[0] : 1;
+  for (let i = 1; i < sizes.length; i++) s = alphaC * sizes[i] + (1-alphaC) * s;
+  for (let i = 1; i < intervals.length; i++) q = betaC * intervals[i] + (1-betaC) * q;
+
+  const crostonVal = s / Math.max(q, 1);
+  const forecast = new Array(forecastHorizon).fill(Math.round(crostonVal));
+
+  // 拟合MAPE
+  let totalAPE = 0, count = 0;
+  let cs = sizes[0], cq = intervals.length>0 ? intervals[0] : 1, di = 0;
+  for (let i = 0; i < data.length; i++) {
+    if (data[i] > 0 && di < sizes.length) {
+      if (di > 0 && di-1 < intervals.length) {
+        cs = alphaC * sizes[di] + (1-alphaC) * cs;
+        cq = betaC * intervals[di-1] + (1-betaC) * cq;
+        const fv = cs / Math.max(cq, 1);
+        if (data[i] > 0) { totalAPE += Math.abs((data[i]-fv)/data[i]); count++; }
+      }
+      di++;
+    }
+  }
+  return {
+    forecast, method:'croston', applicable:true, fittedMAPE: count>0?(totalAPE/count)*100:Infinity,
+    crostonValue: Math.round(crostonVal), sizeEst: Math.round(s), intervalEst: Math.round(q)
+  };
+}
+
+// 自动选型：运行所有模型，选最优（与SAP IBP最佳模型匹配逻辑一致）
+function autoSelectModel(data, seasonLength, forecastHorizon) {
+  const models = [];
+
+  // 1. Holt-Winters（自动优化参数）
+  const opt = optimizeHoltWintersParams(data, seasonLength);
+  const hw = holtWintersForecast(data, opt.alpha, opt.beta, opt.gamma, seasonLength, forecastHorizon);
+  models.push({ name:'Holt-Winters', method:hw.method, forecast:hw.forecast,
+    mape:opt.mape, params:{ alpha:+opt.alpha.toFixed(2), beta:+opt.beta.toFixed(2), gamma:+opt.gamma.toFixed(2), seasonLength } });
+
+  // 2. SMA
+  const bw = optimizeSmaWindow(data);
+  const sm = smaForecast(data, forecastHorizon, bw);
+  models.push({ name:'移动平均(SMA)', method:'sma', forecast:sm.forecast, mape:sm.fittedMAPE, params:{ windowSize:bw } });
+
+  // 3. Croston（仅间歇数据）
+  const nr = data.filter(v=>v>0).length / data.length;
+  if (nr < 0.4) {
+    const cr = crostonForecast(data, forecastHorizon);
+    if (cr.applicable) models.push({ name:'Croston间歇需求', method:'croston',
+      forecast:cr.forecast, mape:cr.fittedMAPE, params:{ sizeEst:cr.sizeEst, intervalEst:cr.intervalEst } });
+  }
+
+  models.sort((a,b)=>a.mape-b.mape);
+  return { models, best: models[0] };
+}
+
 function runDemandForecast(){
   // 1. 获取参数
-  const alpha = parseFloat(document.getElementById('forecastAlpha').value) || 0.3;
-  const beta = parseFloat(document.getElementById('forecastBeta').value) || 0.1;
-  const gamma = parseFloat(document.getElementById('forecastGamma').value) || 0.1;
+  const modelSelect = document.getElementById('forecastModelSelect').value;
+  const autoOptimize = document.getElementById('forecastAutoOptimize').checked;
+  let alpha = parseFloat(document.getElementById('forecastAlpha').value) || 0.3;
+  let beta = parseFloat(document.getElementById('forecastBeta').value) || 0.1;
+  let gamma = parseFloat(document.getElementById('forecastGamma').value) || 0.1;
   const seasonLength = parseInt(document.getElementById('forecastSeasonLength').value) || 6;
   const forecastHorizon = parseInt(document.getElementById('forecastHorizon').value) || 6;
   const granularity = document.getElementById('forecastGranularity').value;
@@ -2657,8 +2856,63 @@ function runDemandForecast(){
   const { flags, adjustedData } = preprocessData(rawData, sortedPeriods);
   renderPreprocessTable(flags);
 
-  // 4. 执行 Holt-Winters
-  const result = holtWintersForecast(adjustedData, alpha, beta, gamma, seasonLength, forecastHorizon);
+  // 4. 模型选择 + 自动优化 + 执行预测
+  let result;
+
+  if (modelSelect === 'auto') {
+    // 🤖 自动选型：运行所有模型，选最优
+    const autoResult = autoSelectModel(adjustedData, seasonLength, forecastHorizon);
+    result = holtWintersForecast(adjustedData, autoResult.best.params.alpha || 0.3,
+      autoResult.best.params.beta || 0.1, autoResult.best.params.gamma || 0.1,
+      seasonLength, forecastHorizon);
+    // 覆盖为最佳模型的预测结果
+    if (autoResult.best.method === 'sma') {
+      const sm = smaForecast(adjustedData, forecastHorizon, autoResult.best.params.windowSize);
+      result.forecast = sm.forecast;
+      result.method = 'sma';
+    } else if (autoResult.best.method === 'croston') {
+      const cr = crostonForecast(adjustedData, forecastHorizon);
+      if (cr.applicable) result.forecast = cr.forecast;
+      result.method = 'croston';
+    }
+    result._modelComparison = autoResult.models;
+    result._bestModelName = autoResult.best.name;
+    result._bestMAPE = autoResult.best.mape;
+  } else if (modelSelect === 'sma') {
+    // 📊 移动平均
+    const bw = autoOptimize ? optimizeSmaWindow(adjustedData) : 3;
+    const sm = smaForecast(adjustedData, forecastHorizon, bw);
+    result = {
+      forecast: sm.forecast, method: 'sma', level: [], trend: [], season: [],
+      _windowSize: bw, _fittedMAPE: sm.fittedMAPE
+    };
+  } else if (modelSelect === 'croston') {
+    // 📉 Croston 间歇需求
+    const cr = crostonForecast(adjustedData, forecastHorizon);
+    if (!cr.applicable) {
+      showToast('⚠️ 数据非间歇性需求（非零比例≥40%），建议使用Holt-Winters或自动选型','warning');
+      result = holtWintersForecast(adjustedData, 0.3, 0.1, 0.1, seasonLength, forecastHorizon);
+      result.method = 'croston-fallback-hw';
+    } else {
+      result = { forecast: cr.forecast, method: 'croston', level: [], trend: [], season: [],
+        _crostonVal: cr.crostonValue, _sizeEst: cr.sizeEst, _intervalEst: cr.intervalEst, _fittedMAPE: cr.fittedMAPE };
+    }
+  } else {
+    // 📐 Holt-Winters（包括手动参数或自动优化）
+    let opt = null;
+    if (autoOptimize) {
+      opt = optimizeHoltWintersParams(adjustedData, seasonLength);
+      alpha = opt.alpha; beta = opt.beta; gamma = opt.gamma;
+      if (document.getElementById('forecastAlpha')) {
+        document.getElementById('forecastAlpha').value = opt.alpha.toFixed(2);
+        document.getElementById('forecastBeta').value = opt.beta.toFixed(2);
+        document.getElementById('forecastGamma').value = opt.gamma.toFixed(2);
+      }
+    }
+    result = holtWintersForecast(adjustedData, alpha, beta, gamma, seasonLength, forecastHorizon);
+    result._optimizedMAPE = opt ? opt.mape : null;
+  }
+
   result.historyData = rawData;
   result.historyAdjustedData = adjustedData;
   result.historyPeriods = sortedPeriods;
@@ -2788,25 +3042,74 @@ function displayForecastResult(result){
   // 预测结果表格
   let tableHtml = '<table><thead><tr><th>预测期</th><th>预测需求量</th><th>置信下限</th><th>置信上限</th><th>来源</th></tr></thead><tbody>';
   const totalForecastQty = forecast.reduce((s, v) => s + Math.round(Math.max(0, v)), 0);
+  const sourceLabel = method==='sma' ? '移动平均外推' : method==='croston' ? 'Croston需求率' : method==='croston-fallback-hw' ? 'Croston(回退HW)' : method==='holt-winters' ? '季节外推' : '趋势外推';
   forecastPeriods.forEach((period, i) => {
     const fv = Math.round(Math.max(0, forecast[i]));
     const ci = computeCI(fv, ciLevel||0.9);
-    const seasonInfo = method==='holt-winters' ? '季节外推' : '趋势外推';
-    tableHtml += '<tr><td>' + period + '</td><td class="font-bold" style="color:var(--warning)">' + fv.toLocaleString() + '</td><td>' + ci.lower.toLocaleString() + '</td><td>' + ci.upper.toLocaleString() + '</td><td><span class="tag-status tag-blue">'+seasonInfo+'</span></td></tr>';
+    tableHtml += '<tr><td>' + period + '</td><td class="font-bold" style="color:var(--warning)">' + fv.toLocaleString() + '</td><td>' + ci.lower.toLocaleString() + '</td><td>' + ci.upper.toLocaleString() + '</td><td><span class="tag-status tag-blue">'+sourceLabel+'</span></td></tr>';
   });
   tableHtml += '</tbody></table>';
 
   // 模型参数摘要
-  tableHtml += '<div style="margin-top:10px;padding:10px 14px;background:var(--gray-50);border-radius:6px;font-size:12px;color:var(--gray-600)">';
-  tableHtml += '<div style="display:flex;gap:20px;flex-wrap:wrap">';
-  tableHtml += '<span>📐 模型：' + (method === 'holt-winters' ? 'Holt-Winters' : 'Holt线性趋势') + '</span>';
-  tableHtml += '<span>α=' + alpha + '</span><span>β=' + beta + '</span><span>γ=' + gamma + '</span>';
-  tableHtml += '<span>季节周期=' + seasonLength + '</span>';
-  tableHtml += '<span>置信水平=' + Math.round((ciLevel||0.9)*100) + '%</span>';
-  tableHtml += '<span>📦 预测总量：<strong>' + totalForecastQty.toLocaleString() + '</strong></span>';
-  tableHtml += '</div></div>';
+  let summaryHtml = '<div style="margin-top:10px;padding:10px 14px;background:var(--gray-50);border-radius:6px;font-size:12px;color:var(--gray-600)">';
+  summaryHtml += '<div style="display:flex;gap:20px;flex-wrap:wrap">';
 
-  document.getElementById('forecastResultTable').innerHTML = tableHtml;
+  let modelLabel = 'Holt-Winters';
+  if (method === 'sma') modelLabel = '移动平均(SMA)';
+  else if (method === 'croston') modelLabel = 'Croston间歇需求';
+  else if (method === 'croston-fallback-hw') modelLabel = 'Croston(回退Holt-Winters)';
+  else if (result._bestModelName) modelLabel = result._bestModelName;
+
+  summaryHtml += '<span>📐 模型：' + modelLabel + '</span>';
+
+  if (method === 'sma') {
+    summaryHtml += '<span>窗口大小=' + (result._windowSize || 3) + '</span>';
+    if (result._fittedMAPE && result._fittedMAPE < Infinity) summaryHtml += '<span>拟合MAPE=' + result._fittedMAPE.toFixed(1) + '%</span>';
+  } else if (method === 'croston') {
+    summaryHtml += '<span>需求大小均值=' + (result._sizeEst||'-').toLocaleString() + '</span>';
+    summaryHtml += '<span>需求间隔均值=' + (result._intervalEst||'-') + '</span>';
+    if (result._fittedMAPE && result._fittedMAPE < Infinity) summaryHtml += '<span>拟合MAPE=' + result._fittedMAPE.toFixed(1) + '%</span>';
+  } else {
+    summaryHtml += '<span>α=' + alpha + '</span><span>β=' + beta + '</span><span>γ=' + gamma + '</span>';
+    summaryHtml += '<span>季节周期=' + seasonLength + '</span>';
+  }
+  summaryHtml += '<span>置信水平=' + Math.round((ciLevel||0.9)*100) + '%</span>';
+  summaryHtml += '<span>📦 预测总量：<strong>' + totalForecastQty.toLocaleString() + '</strong></span>';
+
+  // 自动选型时的拟合MAPE
+  if (result._bestMAPE !== undefined) {
+    summaryHtml += '<span style="color:var(--primary);font-weight:600">🏆 拟合MAPE=' + result._bestMAPE.toFixed(1) + '%</span>';
+  } else if (result._optimizedMAPE !== null && result._optimizedMAPE !== undefined) {
+    summaryHtml += '<span>拟合MAPE=' + result._optimizedMAPE.toFixed(1) + '%</span>';
+  }
+
+  summaryHtml += '</div>';
+
+  // 自动选型：模型对比表
+  if (result._modelComparison && result._modelComparison.length > 0) {
+    summaryHtml += '<div style="margin-top:10px;border-top:1px solid var(--gray-200);padding-top:10px">';
+    summaryHtml += '<div style="font-weight:600;margin-bottom:6px;font-size:13px">🤖 模型对比（按MAPE排序）</div>';
+    summaryHtml += '<table style="font-size:12px;width:100%"><thead><tr style="background:var(--gray-100)">';
+    summaryHtml += '<th style="padding:4px 8px;text-align:left">模型</th><th style="padding:4px 8px;text-align:right">拟合MAPE</th><th style="padding:4px 8px;text-align:left">参数</th><th style="padding:4px 8px;text-align:center">排名</th></tr></thead><tbody>';
+    result._modelComparison.forEach((m, i) => {
+      const isBest = i === 0;
+      let paramsStr = '';
+      if (m.method === 'holt-winters' || m.method === 'holt-linear') paramsStr = 'α='+m.params.alpha+' β='+m.params.beta+' γ='+m.params.gamma;
+      else if (m.method === 'sma') paramsStr = '窗口='+m.params.windowSize;
+      else if (m.method === 'croston') paramsStr = '需求='+(m.params.sizeEst||'-')+' 间隔='+(m.params.intervalEst||'-');
+      summaryHtml += '<tr'+(isBest?' style="background:#f0fdf4;font-weight:600"':'')+'>';
+      summaryHtml += '<td style="padding:4px 8px">' + (isBest?'🏆 ':'') + m.name + '</td>';
+      summaryHtml += '<td style="padding:4px 8px;text-align:right;color:'+(m.mape<15?'var(--success)':m.mape<30?'var(--warning)':'var(--danger)')+'">' + m.mape.toFixed(1) + '%</td>';
+      summaryHtml += '<td style="padding:4px 8px;font-size:11px;color:var(--gray-500)">' + paramsStr + '</td>';
+      summaryHtml += '<td style="padding:4px 8px;text-align:center">' + (i+1) + '/' + result._modelComparison.length + '</td>';
+      summaryHtml += '</tr>';
+    });
+    summaryHtml += '</tbody></table></div>';
+  }
+
+  summaryHtml += '</div>';
+
+  document.getElementById('forecastResultTable').innerHTML = summaryHtml;
 }
 
 // ---- 版本管理 ----
@@ -2830,6 +3133,12 @@ function saveForecastVersion(){
     forecastHorizon: lastForecastResult.forecastHorizon,
     granularity: lastForecastResult.granularity,
     method: lastForecastResult.method,
+    modelName: lastForecastResult._bestModelName || null,
+    mape: lastForecastResult._bestMAPE !== undefined ? lastForecastResult._bestMAPE :
+          lastForecastResult._fittedMAPE !== undefined ? lastForecastResult._fittedMAPE :
+          lastForecastResult._optimizedMAPE !== undefined ? lastForecastResult._optimizedMAPE : null,
+    windowSize: lastForecastResult._windowSize || null,
+    crostonParams: lastForecastResult._sizeEst ? {sizeEst:lastForecastResult._sizeEst, intervalEst:lastForecastResult._intervalEst} : null,
     forecast: lastForecastResult.forecast,
     forecastPeriods: lastForecastResult.forecastPeriods,
     historyPeriods: lastForecastResult.historyPeriods,
@@ -2837,8 +3146,7 @@ function saveForecastVersion(){
     historyData: lastForecastResult.historyData,
     totalQty: Math.round(lastForecastResult.forecast.reduce((s,v)=>s+Math.max(0,v),0)),
     createdAt: new Date().toISOString().substring(0,16).replace('T',' '),
-    ciLevel: lastForecastResult.ciLevel,
-    mape: null  // 初始无准确度
+    ciLevel: lastForecastResult.ciLevel
   };
 
   versions.push(version);
