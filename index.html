@@ -6865,7 +6865,7 @@ function runDpSensing(){
   renderDpSensing();showToast('📡 委外级联承诺感知完成','success');
 }
 function openDpSignalConfig(){
-  const html='<h3>⚙️ IC设计承诺感知配置</h3><div style="margin:12px 0;padding:12px;background:var(--gray-50);border-radius:6px;font-size:13px"><strong>委外级联承诺配置：</strong><br><br>1️⃣ <strong>Hard→Wafer折算：</strong> FT硬承诺经AB/CP/BP/Wafer全链折算<br>• 1颗FT成品 = 1/120片/(0.95*0.97*0.96*0.99) ≈ 等效0.0095片Wafer<br><br>2️⃣ <strong>Flexible信号权重：</strong> 柔性承诺30天内可转为Hard，需预留10%Wafer缓冲区<br><br>3️⃣ <strong>Wafer Bank水位：</strong><br>• <30%：🔴 紧缺，建议增产<br>• 30-60%：🟡 正常<br>• >60%：🟢 充裕<br><br>4️⃣ <strong>信号有效期：</strong> Hard7天/Flexible14天/Forecast21天</div><div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-sm btn-primary" onclick="closeModal();showToast('✅ 承诺感知配置已更新','success')">应用配置</button><button class="btn btn-sm btn-outline" onclick="closeModal()">关闭</button></div>';
+  const html=`<h3>⚙️ IC设计承诺感知配置</h3><div style="margin:12px 0;padding:12px;background:var(--gray-50);border-radius:6px;font-size:13px"><strong>委外级联承诺配置：</strong><br><br>1️⃣ <strong>Hard→Wafer折算：</strong> FT硬承诺经AB/CP/BP/Wafer全链折算<br>• 1颗FT成品 = 1/120片/(0.95*0.97*0.96*0.99) ≈ 等效0.0095片Wafer<br><br>2️⃣ <strong>Flexible信号权重：</strong> 柔性承诺30天内可转为Hard，需预留10%Wafer缓冲区<br><br>3️⃣ <strong>Wafer Bank水位：</strong><br>• <30%：🔴 紧缺，建议增产<br>• 30-60%：🟡 正常<br>• >60%：🟢 充裕<br><br>4️⃣ <strong>信号有效期：</strong> Hard7天/Flexible14天/Forecast21天</div><div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-sm btn-primary" onclick="closeModal();showToast('✅ 承诺感知配置已更新','success')">应用配置</button><button class="btn btn-sm btn-outline" onclick="closeModal()">关闭</button></div>`;
   openModal(html);
 }
 function applyDpSignal(idx){
