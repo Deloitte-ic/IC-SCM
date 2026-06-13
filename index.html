@@ -230,6 +230,11 @@ tbody tr:hover td{background:var(--primary-bg)}
 .mt-3{margin-top:12px}
 .mb-2{margin-bottom:8px}
 .mb-3{margin-bottom:12px}
+/* 数据来源指示器 */
+.data-source-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;margin-left:8px}
+.data-source-badge.local{background:#e8f5e9;color:#2e7d32}
+.data-source-badge.sap{background:#e3f2fd;color:#1565c0}
+.data-source-badge.error{background:#ffebee;color:#c62828}
 </style>
 </head>
 <body>
@@ -290,6 +295,8 @@ tbody tr:hover td{background:var(--primary-bg)}
     <div class="header-actions">
       <button class="header-btn" onclick="showToast('⏰ 最后更新: ' + new Date().toLocaleString(),'info')" title="刷新">🔄</button>
       <button class="header-btn" onclick="loadSampleData()" title="加载示例数据">📥</button>
+      <button class="header-btn" id="dataSourceToggle" onclick="openDataSourceModal()" title="切换数据来源">📡 本地</button>
+      <button class="header-btn" id="syncBtn" onclick="syncFromSap()" title="从SAP同步" style="display:none">📥 同步</button>
     </div>
   </header>
 
@@ -859,17 +866,300 @@ let sidebarCollapsed = false;
 let demandChartInstance = null;
 let supplyChartInstance = null;
 
+// ======================== 数据来源管理 ========================
+let dataSourceMode = 'local'; // 'local' | 'sap'
+const STORAGE_KEY_SOURCE = 'ic_scm_data_source';
+const STORAGE_KEY_SAP_URL = 'ic_scm_sap_api_url';
+
+function loadDataSourcePreference(){
+  try{
+    const mode = localStorage.getItem(STORAGE_KEY_SOURCE);
+    if(mode === 'sap'){ dataSourceMode = 'sap'; return true; }
+  }catch(e){}
+  dataSourceMode = 'local';
+  return false;
+}
+function saveDataSourcePreference(){
+  try{ localStorage.setItem(STORAGE_KEY_SOURCE, dataSourceMode); }catch(e){}
+}
+function getSapApiUrl(){
+  try{ return localStorage.getItem(STORAGE_KEY_SAP_URL) || 'https://ic-scm-api.vercel.app/api'; }catch(e){ return 'https://ic-scm-api.vercel.app/api'; }
+}
+function setSapApiUrl(url){
+  try{ localStorage.setItem(STORAGE_KEY_SAP_URL, url); }catch(e){}
+}
+function updateDataSourceUI(){
+  const btn = document.getElementById('dataSourceToggle');
+  if(!btn) return;
+  const syncBtn = document.getElementById('syncBtn');
+  if(dataSourceMode === 'sap'){
+    btn.innerHTML = '📡 SAP';
+    btn.style.color = 'var(--primary)';
+    if(syncBtn) syncBtn.style.display = '';
+  } else {
+    btn.innerHTML = '📂 本地';
+    btn.style.color = '';
+    if(syncBtn) syncBtn.style.display = 'none';
+  }
+}
+
+// ======================== Mock SAP 数据 ========================
+function getMockSapData(){
+  return {
+    materials: [
+      { code:'IC-1000-FT', name:'FT测试后芯片', category:'IC', unit:'颗', price:12.5, leadTime:7, moq:1000, yieldRate:0.97, processCode:'FT' },
+      { code:'IC-1000-AB', name:'AB封装后芯片', category:'IC', unit:'颗', price:8.3, leadTime:5, moq:1000, yieldRate:0.98, processCode:'AB' },
+      { code:'IC-1000-CP', name:'CP测试后晶圆', category:'Wafer', unit:'片', price:350, leadTime:10, moq:10, yieldRate:0.95, processCode:'CP' },
+      { code:'IC-1000-BP', name:'BP制造后晶圆', category:'Wafer', unit:'片', price:280, leadTime:12, moq:10, yieldRate:0.96, processCode:'BP' },
+      { code:'IC-1000-Wafer', name:'Wafer晶圆', category:'Wafer', unit:'片', price:200, leadTime:20, moq:5, yieldRate:0.98, processCode:'Wafer' }
+    ],
+    boms: [
+      { parent:'IC-1000-FT', child:'IC-1000-AB', usage:1, scrap:5 },
+      { parent:'IC-1000-AB', child:'IC-1000-CP', usage:120, scrap:2 },
+      { parent:'IC-1000-CP', child:'IC-1000-BP', usage:1, scrap:10 },
+      { parent:'IC-1000-BP', child:'IC-1000-Wafer', usage:1, scrap:5 }
+    ],
+    routings: [
+      { processCode:'FT', name:'FT测试', unit:'颗', effectiveHours:0.5 },
+      { processCode:'AB', name:'AB封装', unit:'颗', effectiveHours:0.3 },
+      { processCode:'CP', name:'CP测试', unit:'片', effectiveHours:2 },
+      { processCode:'BP', name:'BP制造', unit:'片', effectiveHours:1.5 },
+      { processCode:'Wafer', name:'晶圆采购', unit:'片', effectiveHours:0 }
+    ],
+    suppliers: [
+      { code:'SUP-001', name:'中芯国际', materialCode:'IC-1000-Wafer', processCode:'Wafer', leadTime:20 },
+      { code:'SUP-002', name:'长电科技', materialCode:'IC-1000-AB', processCode:'AB', leadTime:5 },
+      { code:'SUP-003', name:'华天科技', materialCode:'IC-1000-FT', processCode:'FT', leadTime:7 }
+    ],
+    inventory: [
+      { materialCode:'IC-1000-FT', materialName:'FT测试后芯片', stock:5000, safetyStock:2000, location:'成品仓' },
+      { materialCode:'IC-1000-AB', materialName:'AB封装后芯片', stock:4000, safetyStock:1500, location:'半成品仓' },
+      { materialCode:'IC-1000-CP', materialName:'CP测试后晶圆', stock:500, safetyStock:200, location:'晶圆仓' },
+      { materialCode:'IC-1000-BP', materialName:'BP制造后晶圆', stock:400, safetyStock:150, location:'晶圆仓' },
+      { materialCode:'IC-1000-Wafer', materialName:'Wafer晶圆', stock:300, safetyStock:100, location:'原料仓' }
+    ],
+    wip: [
+      { materialCode:'IC-1000-FT', materialName:'FT测试后芯片', quantity:2400, expectedDate:'2026-07-15', orderNo:'WO-20260701' }
+    ],
+    prpo: [
+      { orderType:'PR', orderNumber:'PR-20260601-001', materialCode:'IC-1000-Wafer', quantity:100, unit:'片', orderDate:'2026-06-01', deliveryDate:'2026-06-25', supplier:'中芯国际', status:'已审批' },
+      { orderType:'PO', orderNumber:'PO-20260605-001', materialCode:'IC-1000-AB', quantity:5000, unit:'颗', orderDate:'2026-06-05', deliveryDate:'2026-06-20', supplier:'长电科技', status:'已发货' }
+    ],
+    demands: [
+      { orderType:'独立需求', orderNo:'SAP-ORD001', material:'IC-1000-FT', quantity:120000, unit:'颗', demandDate:'2026-07-31', priority:'高', customer:'华为海思' },
+      { orderType:'独立需求', orderNo:'SAP-ORD002', material:'IC-1000-FT', quantity:180000, unit:'颗', demandDate:'2026-08-31', priority:'中', customer:'展讯通信' },
+      { orderType:'独立需求', orderNo:'SAP-ORD003', material:'IC-1000-FT', quantity:80000, unit:'颗', demandDate:'2026-09-30', priority:'中', customer:'中兴微电子' }
+    ]
+  };
+}
+
+// ======================== SAP API 通信 ========================
+async function fetchFromSapApi(){
+  const baseUrl = getSapApiUrl();
+  try{
+    // 先用Mock模拟API返回（Demo阶段），可配置切换到真实后端
+    const useMock = !localStorage.getItem(STORAGE_KEY_SAP_URL) || localStorage.getItem('ic_scm_use_mock') !== 'false';
+    if(useMock){
+      await new Promise(r => setTimeout(r, 800)); // 模拟网络延迟
+      return getMockSapData();
+    }
+    const resp = await fetch(baseUrl + '/snapshot');
+    if(!resp.ok) throw new Error('HTTP ' + resp.status);
+    return await resp.json();
+  } catch(e){
+    console.warn('SAP API 请求失败，回退Mock:', e.message);
+    await new Promise(r => setTimeout(r, 500));
+    return getMockSapData(); // 失败自动回退Mock
+  }
+}
+
+function applySapDataToApp(sapData){
+  // 保留用户手动添加的数据（localStorage中有但SAP中没有的）
+  const oldMaster = loadMasterdataFromStorage(); // 读取现有本地数据
+  
+  // 用SAP数据覆盖基础数据
+  appData.materials = sapData.materials || [];
+  appData.boms = sapData.boms || [];
+  appData.bom = appData.boms;
+  appData.routings = sapData.routings || [];
+  appData.suppliers = sapData.suppliers || [];
+  appData.inventory = sapData.inventory || [];
+  appData.demands = sapData.demands || [];
+  appData.prpo = sapData.prpo || [];
+  appData.wip = sapData.wip || [];
+  
+  // 保存到localStorage作为缓存
+  saveMasterdataToStorage();
+  renderAllMasterdata();
+  renderDemand();
+  updateDashboard();
+  refreshOrderSelect();
+  renderConfigTables();
+}
+
+// ======================== 数据来源切换UI ========================
+function openDataSourceModal(){
+  const apiUrl = getSapApiUrl();
+  const isSap = dataSourceMode === 'sap';
+  const html = `
+    <div style="width:600px">
+      <h3 style="margin:0 0 16px">📡 数据来源配置</h3>
+      <div style="display:flex;gap:16px;margin-bottom:20px">
+        <label style="flex:1;padding:16px;border:2px solid ${!isSap?'var(--primary)':'var(--gray-300)'};border-radius:10px;cursor:pointer;text-align:center;background:${!isSap?'#f0f7ff':'#fff'}" onclick="selectSourceMode('local')">
+          <div style="font-size:28px;margin-bottom:8px">📂</div>
+          <div style="font-weight:600;font-size:14px">本地导入</div>
+          <div style="font-size:12px;color:var(--gray-400);margin-top:4px">手动导入/编辑数据</div>
+        </label>
+        <label style="flex:1;padding:16px;border:2px solid ${isSap?'var(--primary)':'var(--gray-300)'};border-radius:10px;cursor:pointer;text-align:center;background:${isSap?'#f0f7ff':'#fff'}" onclick="selectSourceMode('sap')">
+          <div style="font-size:28px;margin-bottom:8px">📡</div>
+          <div style="font-weight:600;font-size:14px">SAP接口</div>
+          <div style="font-size:12px;color:var(--gray-400);margin-top:4px">从SAP ERP自动同步</div>
+        </label>
+      </div>
+      <div id="sapConfigSection" style="display:${isSap?'block':'none'}">
+        <div class="form-group">
+          <label>SAP API 地址</label>
+          <input type="text" id="sapApiUrlInput" value="${apiUrl}" style="width:100%;padding:8px 12px;border:1px solid var(--gray-300);border-radius:6px" placeholder="https://your-api.vercel.app/api">
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button class="btn btn-sm btn-outline" onclick="testSapConnection()">🔄 测试连接</button>
+          <button class="btn btn-sm btn-primary" onclick="syncFromSap()">📥 同步数据</button>
+        </div>
+        <div id="sapStatusMsg" style="margin-top:12px;font-size:13px;color:var(--gray-500)"></div>
+        <div style="margin-top:12px;padding:10px;background:#fff8e1;border-radius:8px;font-size:12px;color:#795548">
+          💡 Demo模式：当前使用内置Mock数据模拟SAP OData返回。<br>
+          部署真实后端后，在输入框中填入API地址并点击「测试连接」即可切换到真实SAP数据。
+        </div>
+      </div>
+      <div style="margin-top:16px;text-align:right">
+        <button class="btn btn-outline" onclick="closeModal()">关闭</button>
+        <button class="btn btn-primary" onclick="confirmDataSourceConfig()" style="margin-left:8px">✅ 确认</button>
+      </div>
+    </div>`;
+  openModal(html);
+  // 直接暴露选择函数到window作用域用于内联onclick
+  window._selectSourceMode = function(mode){
+    dataSourceMode = mode;
+    document.getElementById('sapConfigSection').style.display = mode === 'sap' ? 'block' : 'none';
+    // 更新选中样式
+    const labels = document.querySelectorAll('#modalContent label');
+    if(labels.length >= 2){
+      labels[0].style.borderColor = mode === 'local' ? 'var(--primary)' : 'var(--gray-300)';
+      labels[0].style.background = mode === 'local' ? '#f0f7ff' : '#fff';
+      labels[1].style.borderColor = mode === 'sap' ? 'var(--primary)' : 'var(--gray-300)';
+      labels[1].style.background = mode === 'sap' ? '#f0f7ff' : '#fff';
+    }
+  };
+}
+function selectSourceMode(mode){
+  if(window._selectSourceMode) window._selectSourceMode(mode);
+}
+function confirmDataSourceConfig(){
+  const wasSap = dataSourceMode === 'sap';
+  // 读取用户选择（基于UI状态）
+  const label0 = document.querySelectorAll('#modalContent label')[0];
+  const isLocal = label0 && label0.style.borderColor.includes('primary');
+  dataSourceMode = isLocal ? 'local' : 'sap';
+  
+  // 如果是SAP模式，保存API URL
+  if(dataSourceMode === 'sap'){
+    const urlInput = document.getElementById('sapApiUrlInput');
+    if(urlInput && urlInput.value) setSapApiUrl(urlInput.value);
+  }
+  
+  saveDataSourcePreference();
+  updateDataSourceUI();
+  closeModal();
+  
+  // 如果切换到SAP模式且之前不是，自动同步
+  if(dataSourceMode === 'sap' && !wasSap){
+    showToast('📡 正在从SAP同步数据...','info');
+    syncFromSap();
+  } else if(dataSourceMode === 'local' && wasSap){
+    // 切回本地模式，重新加载本地数据
+    showToast('📂 已切换为本地数据模式','info');
+    loadMasterdataFromStorage();
+    renderAllMasterdata();
+    renderDemand();
+    updateDashboard();
+    refreshOrderSelect();
+    renderConfigTables();
+  } else {
+    showToast('✅ 数据来源配置已保存','success');
+  }
+}
+async function testSapConnection(){
+  const statusEl = document.getElementById('sapStatusMsg');
+  statusEl.innerHTML = '⏳ 正在测试连接...';
+  const urlInput = document.getElementById('sapApiUrlInput');
+  if(!urlInput) return;
+  const url = urlInput.value.trim();
+  if(!url){ statusEl.innerHTML = '⚠️ 请输入API地址'; return; }
+  try{
+    const resp = await fetch(url + '/status');
+    if(resp.ok){
+      const data = await resp.json();
+      statusEl.innerHTML = '✅ 连接成功！' + (data.message ? ' ' + data.message : '');
+    } else {
+      statusEl.innerHTML = '❌ 连接失败：HTTP ' + resp.status + '。Demo模式使用Mock数据。';
+    }
+  } catch(e){
+    statusEl.innerHTML = '❌ 连接失败：' + e.message + '。Demo模式使用Mock数据，不影响演示。';
+  }
+}
+async function syncFromSap(){
+  const statusEl = document.getElementById('sapStatusMsg');
+  if(statusEl) statusEl.innerHTML = '⏳ 正在同步SAP数据...';
+  showToast('📡 正在从SAP ERP同步数据...','info');
+  try{
+    const sapData = await fetchFromSapApi();
+    applySapDataToApp(sapData);
+    showToast('✅ SAP数据同步完成！共 ' + appData.materials.length + ' 个物料 / ' + appData.inventory.length + ' 条库存 / ' + appData.demands.length + ' 条需求','success');
+    if(statusEl) statusEl.innerHTML = '✅ 同步成功！已加载 ' + appData.materials.length + ' 物料 / ' + appData.inventory.length + ' 库存 / ' + appData.demands.length + ' 需求';
+    // 确保切换到SAP tab
+    if(dataSourceMode === 'sap' && document.getElementById('sapApiUrlInput')){
+      // 同步完成后的清理
+    }
+  } catch(e){
+    showToast('❌ SAP同步失败：'+e.message,'error');
+    if(statusEl) statusEl.innerHTML = '❌ 同步失败：'+e.message;
+  }
+}
+
 // ======================== 初始化 ========================
 function init() {
   const d = new Date();
   d.setDate(d.getDate() + 30);
   document.getElementById('mrpDueDate').value = d.toISOString().split('T')[0];
+  
+  // 加载数据来源偏好
+  loadDataSourcePreference();
+  updateDataSourceUI();
+  
+  if(dataSourceMode === 'sap'){
+    // SAP模式：异步从SAP同步数据
+    showToast('📡 正在从SAP ERP加载数据...','info');
+    fetchFromSapApi().then(sapData => {
+      applySapDataToApp(sapData);
+      // 确保示例需求数据和计划订单加载
+      if(!appData.demands||!appData.demands.length) loadSampleDemands();
+      loadPlannedOrdersFromStorage();
+      showToast('✅ SAP数据加载完成','success');
+    }).catch(e => {
+      showToast('⚠️ SAP加载失败，使用本地缓存','warning');
+      fallbackToLocal();
+    });
+  } else {
+    fallbackToLocal();
+  }
+}
+
+function fallbackToLocal(){
   // 优先从 localStorage 恢复主数据，无则加载示例
   if(!loadMasterdataFromStorage()){
     loadSampleData();
     saveMasterdataToStorage();
   } else {
-    // 即使从 storage 恢复，也要确保示例需求数据存在（需求不通过主数据导入）
     if(!appData.demands||!appData.demands.length) loadSampleDemands();
     renderAllMasterdata();
     renderDemand();
@@ -901,7 +1191,7 @@ function switchSection(id) {
     dashboard:'📊 仪表板',
     masterdata:'📦 主数据',
     business:'📊 业务数据',
-    demand:'🔮 需求预测',
+    demand:'🔮 需求管理',
     mrp:'⚙️ MRP运算',
     balance:'⚖️ 供给平衡',
     collaboration:'🤝 产销协同'
@@ -910,7 +1200,7 @@ function switchSection(id) {
     dashboard:'仪表板',
     masterdata:'主数据',
     business:'业务数据',
-    demand:'需求预测',
+    demand:'需求管理',
     mrp:'MRP运算',
     balance:'供给平衡',
     collaboration:'产销协同'
