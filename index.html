@@ -204,6 +204,8 @@ tbody tr:hover td{background:var(--primary-bg)}
 .tag-red{background:#fef2f2;color:#991b1b}
 .tag-yellow{background:#fffbeb;color:#92400e}
 .tag-blue{background:var(--primary-bg);color:var(--primary-dark)}
+.tag-purple{background:#f3e8ff;color:#6d28d9}
+.tag-cyan{background:#ecfeff;color:#0e7490}
 .tag-indigo{background:#eef2ff;color:#3730a3}
 .tag-purple{background:#f5f3ff;color:#5b21b6}
 .tag-orange{background:#fff7ed;color:#9a3412}
@@ -248,17 +250,13 @@ tbody tr:hover td{background:var(--primary-bg)}
   </div>
   <nav class="sidebar-nav" id="sidebarNav">
     <div class="nav-group">
-      <div class="nav-group-title">概览</div>
-      <div class="nav-item active" data-section="dashboard" onclick="switchSection('dashboard')">
-        <span class="nav-icon">📊</span><span class="nav-text">仪表板</span>
+      <div class="nav-group-title">Master</div>
+      <div class="nav-item active" data-section="masterdata" onclick="switchSection('masterdata')">
+        <span class="nav-icon">📦</span><span class="nav-text">Master（主数据）</span>
       </div>
     </div>
     <div class="nav-group">
       <div class="nav-group-title">数据管理</div>
-      <div class="nav-item" data-section="masterdata" onclick="switchSection('masterdata')">
-        <span class="nav-icon">📦</span><span class="nav-text">主数据</span>
-        <span class="badge" id="masterdataBadge" style="display:none">!</span>
-      </div>
       <div class="nav-item" data-section="business" onclick="switchSection('business')">
         <span class="nav-icon">📊</span><span class="nav-text">业务数据</span>
       </div>
@@ -301,8 +299,8 @@ tbody tr:hover td{background:var(--primary-bg)}
 <main class="main-content" id="mainContent">
   <header class="header">
     <div class="header-left">
-      <h2 id="pageTitle">📊 仪表板</h2>
-      <div class="breadcrumb" id="breadcrumb">供应链计划及产销协同平台 <span>/ 仪表板</span></div>
+      <h2 id="pageTitle">📦 Master（主数据）</h2>
+      <div class="breadcrumb" id="breadcrumb">供应链计划及产销协同平台 <span>/ Master</span></div>
     </div>
     <div class="header-actions">
     </div>
@@ -310,60 +308,36 @@ tbody tr:hover td{background:var(--primary-bg)}
 
   <div class="content">
 
-    <!-- ==================== 仪表板 ==================== -->
-    <div class="section active" id="section-dashboard">
-      <div class="result-summary" id="dashboardKPI"></div>
-
-      <div class="grid-2">
-        <div class="card">
-          <div class="card-title">📈 需求趋势 <span class="tag">月度</span></div>
-          <div class="chart-container chart-container-sm"><canvas id="dashboardDemandChart"></canvas></div>
-        </div>
-        <div class="card">
-          <div class="card-title">⚖️ 供需对比 <span class="tag">按物料</span></div>
-          <div class="chart-container chart-container-sm"><canvas id="dashboardSupplyChart"></canvas></div>
-        </div>
-      </div>
-
-      <div class="grid-2">
-        <div class="card">
-          <div class="card-title">⏰ 近期待办提醒</div>
-          <div id="dashboardTodos"><div class="empty-state"><span class="icon">📋</span><div class="text">暂无待办事项</div></div></div>
-        </div>
-        <div class="card">
-          <div class="card-title">📋 数据状态概览</div>
-          <div id="dashboardDataStatus"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ==================== 主数据 ==================== -->
-    <div class="section" id="section-masterdata">
+    <!-- ==================== Master（主数据） ==================== -->
+    <div class="section active" id="section-masterdata">
       <div class="tabs" id="masterdataTabs">
         <div class="tab active" data-tab="md-materials" onclick="switchMasterdataTab('md-materials')">🏭 物料主数据</div>
         <div class="tab" data-tab="md-bom" onclick="switchMasterdataTab('md-bom')">🔗 BOM结构</div>
         <div class="tab" data-tab="md-routing" onclick="switchMasterdataTab('md-routing')">📋 工艺路线</div>
         <div class="tab" data-tab="md-suppliers" onclick="switchMasterdataTab('md-suppliers')">🏢 供应商</div>
+        <div class="tab" data-tab="md-customers" onclick="switchMasterdataTab('md-customers')">👥 客户</div>
       </div>
 
+      <!-- 🏭 物料主数据：半导体IC设计版 -->
       <div class="tab-content active" id="tab-md-materials">
         <div class="card">
           <div class="card-header">
-            <div class="card-title">🏭 物料主数据 <span class="tag" id="materialCount">0条</span></div>
+            <div class="card-title">🏭 物料主数据 <span class="tag" id="materialCount">0条</span><span class="tag" style="background:#fef3c7;color:#92400e">IC设计·委外模式</span></div>
             <div class="card-actions">
               <button class="btn btn-sm btn-outline" onclick="importToType('materials')">📥 导入</button>
               <input type="file" id="importFile_materials" accept=".xlsx,.xls" onchange="handleTypeImport(event,'materials')" style="display:none">
               <button class="btn btn-sm btn-primary" onclick="openAddMaterialModal()">➕ 新增</button>
             </div>
           </div>
-          <div class="table-wrapper"><table id="materialTable"><thead><tr><th>物料编码</th><th>物料描述</th><th>物料类型</th><th>制程代码</th><th>基本计量单位</th><th>生产方式</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+          <div class="table-wrapper"><table id="materialTable"><thead><tr><th>物料编码</th><th>物料描述</th><th>物料类型</th><th>制程代码</th><th>基本计量单位</th><th>生产方式</th><th>委外/采购供应商</th><th>制程良率(%)</th><th>晶圆当量系数</th><th>操作</th></tr></thead><tbody></tbody></table></div>
         </div>
         </div>
 
+      <!-- 🔗 BOM结构：半导体级联 -->
       <div class="tab-content" id="tab-md-bom">
         <div class="card">
           <div class="card-header">
-            <div class="card-title">🔗 BOM结构 <span class="tag" id="bomCount">0条</span></div>
+            <div class="card-title">🔗 BOM结构 <span class="tag" id="bomCount">0条</span><span class="tag" style="background:#fef3c7;color:#92400e">FT→AB→CP→BP→Wafer</span></div>
             <div class="card-actions">
               <button class="btn btn-sm btn-outline" onclick="importToType('bom')">📥 导入</button>
               <input type="file" id="importFile_bom" accept=".xlsx,.xls" onchange="handleTypeImport(event,'bom')" style="display:none">
@@ -371,36 +345,53 @@ tbody tr:hover td{background:var(--primary-bg)}
               <button class="btn btn-sm btn-outline" onclick="renderBomTree()">🌳 BOM树形图</button>
             </div>
           </div>
-          <div class="table-wrapper"><table id="bomTable"><thead><tr><th>父项物料</th><th>子项物料</th><th>单位用量</th><th>损耗率(%)</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+          <div class="table-wrapper"><table id="bomTable"><thead><tr><th>父项物料</th><th>子项物料</th><th>单位用量</th><th>损耗率(%)</th><th>制程代码</th><th>委外供应链环节</th><th>操作</th></tr></thead><tbody></tbody></table></div>
           <div id="bomTreeView" style="display:none;margin-top:12px"></div>
         </div>
       </div>
 
+      <!-- 📋 工艺路线：委外工艺 -->
       <div class="tab-content" id="tab-md-routing">
         <div class="card">
           <div class="card-header">
-            <div class="card-title">📋 工艺路线 <span class="tag" id="routingCount">0条</span></div>
+            <div class="card-title">📋 工艺路线 <span class="tag" id="routingCount">0条</span><span class="tag" style="background:#fef3c7;color:#92400e">FT→AB→CP→BP→Wafer</span></div>
             <div class="card-actions">
               <button class="btn btn-sm btn-outline" onclick="importToType('routing')">📥 导入</button>
               <input type="file" id="importFile_routing" accept=".xlsx,.xls" onchange="handleTypeImport(event,'routing')" style="display:none">
               <button class="btn btn-sm btn-primary" onclick="openAddRoutingModal()">➕ 新增</button>
             </div>
           </div>
-          <div class="table-wrapper"><table id="routingTable"><thead><tr><th>物料</th><th>制程代码</th><th>工序</th><th>计量单位</th><th>每日有效工时</th><th>日产能</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+          <div class="table-wrapper"><table id="routingTable"><thead><tr><th>物料</th><th>制程代码</th><th>工序描述</th><th>计量单位</th><th>标准工时(天)</th><th>日产能</th><th>委外供应商</th><th>工序良率(%)</th><th>操作</th></tr></thead><tbody></tbody></table></div>
         </div>
       </div>
 
+      <!-- 🏢 供应商：半导体委外 + 晶圆采购 -->
       <div class="tab-content" id="tab-md-suppliers">
         <div class="card">
           <div class="card-header">
-            <div class="card-title">🏢 供应商信息 <span class="tag" id="supplierCount">0条</span></div>
+            <div class="card-title">🏢 供应商信息 <span class="tag" id="supplierCount">0条</span><span class="tag" style="background:#fef3c7;color:#92400e">委外+采购</span></div>
             <div class="card-actions">
               <button class="btn btn-sm btn-outline" onclick="importToType('suppliers')">📥 导入</button>
               <input type="file" id="importFile_suppliers" accept=".xlsx,.xls" onchange="handleTypeImport(event,'suppliers')" style="display:none">
               <button class="btn btn-sm btn-primary" onclick="openAddSupplierModal()">➕ 新增</button>
             </div>
           </div>
-          <div class="table-wrapper"><table id="supplierTable"><thead><tr><th>供应商编码</th><th>供应商名称</th><th>供应物料</th><th>制程代码</th><th>交期（天）</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+          <div class="table-wrapper"><table id="supplierTable"><thead><tr><th>供应商编码</th><th>供应商名称</th><th>供应制程</th><th>供应物料</th><th>交期（天）</th><th>MOQ</th><th>品质等级</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- 👥 客户 -->
+      <div class="tab-content" id="tab-md-customers">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">👥 客户信息 <span class="tag" id="customerCount">0条</span><span class="tag" style="background:#fef3c7;color:#92400e">IC设计客户</span></div>
+            <div class="card-actions">
+              <button class="btn btn-sm btn-outline" onclick="importToType('customers')">📥 导入</button>
+              <input type="file" id="importFile_customers" accept=".xlsx,.xls" onchange="handleTypeImport(event,'customers')" style="display:none">
+              <button class="btn btn-sm btn-primary" onclick="openAddCustomerModal()">➕ 新增</button>
+            </div>
+          </div>
+          <div class="table-wrapper"><table id="customerTable"><thead><tr><th>客户编码</th><th>客户名称</th><th>联系人</th><th>联系方式</th><th>信用等级</th><th>付款条件</th><th>合作产品</th><th>操作</th></tr></thead><tbody></tbody></table></div>
         </div>
       </div>
     </div>
@@ -1339,6 +1330,7 @@ const appData = {
   boms: [],           // BOM结构
   routings: [],       // 工艺路线
   suppliers: [],      // 供应商
+  customers: [],      // 客户
   inventory: [],      // 库存
   wip: [],            // 在途
   demands: [],        // 独立需求
@@ -1688,7 +1680,6 @@ function fallbackToLocal(){
     if(!appData.demands||!appData.demands.length) loadSampleDemands();
     renderAllMasterdata();
     renderDemand();
-    updateDashboard();
     refreshOrderSelect();
     renderConfigTables();
   }
@@ -1713,8 +1704,7 @@ function switchSection(id) {
   if(navItem) navItem.classList.add('active');
 
   const titles = {
-    dashboard:'📊 仪表板',
-    masterdata:'📦 主数据',
+    masterdata:'📦 Master（主数据）',
     business:'📊 业务数据',
     demand:'🔮 Demand Planning',
     mrp:'⚙️ Supply（供应计划）',
@@ -1724,8 +1714,7 @@ function switchSection(id) {
     collaboration:'🤝 S&OP（销售与运营计划）'
   };
   const breadcrumbs = {
-    dashboard:'仪表板',
-    masterdata:'主数据',
+    masterdata:'Master',
     business:'业务数据',
     demand:'Demand Planning',
     mrp:'Supply',
@@ -1737,7 +1726,6 @@ function switchSection(id) {
   document.getElementById('pageTitle').textContent = titles[id]||'SCM平台';
   document.getElementById('breadcrumb').innerHTML = '供应链计划及产销协同平台 <span>/ '+breadcrumbs[id]+'</span>';
 
-  if(id==='dashboard') updateDashboard();
   if(id==='masterdata') renderAllMasterdata();
   if(id==='business') renderAllMasterdata();
   if(id==='demand') renderDemand();
@@ -2530,32 +2518,32 @@ document.addEventListener('DOMContentLoaded', function() {
 // ======================== 示例数据 ========================
 function loadSampleData() {
   appData.materials = [
-    { code:'IC-1000-FT', name:'FT测试后成品芯片', category:'成品', processCode:'FT', unit:'颗', type:'自制' },
-    { code:'IC-1000-AB', name:'AB封装后芯片', category:'半成品', processCode:'AB', unit:'颗', type:'自制' },
-    { code:'IC-1000-CP', name:'CP测试后晶圆', category:'半成品', processCode:'CP', unit:'片', type:'自制' },
-    { code:'IC-1000-BP', name:'BP制造后晶圆', category:'半成品', processCode:'BP', unit:'片', type:'自制' },
-    { code:'IC-1000-Wafer', name:'Wafer晶圆', category:'原材料', processCode:'Wafer', unit:'片', type:'采购' }
+    { code:'IC-1000-FT', name:'FT测试后成品芯片', category:'成品', processCode:'FT', unit:'颗', type:'委外', supplier:'SUP-FT-001', yieldRate:98.5, waferFactor:1 },
+    { code:'IC-1000-AB', name:'AB封装后芯片', category:'半成品', processCode:'AB', unit:'颗', type:'委外', supplier:'SUP-AB-001', yieldRate:97.2, waferFactor:1 },
+    { code:'IC-1000-CP', name:'CP测试后晶圆', category:'半成品', processCode:'CP', unit:'片', type:'委外', supplier:'SUP-CP-001', yieldRate:96.8, waferFactor:120 },
+    { code:'IC-1000-BP', name:'BP制造后晶圆', category:'半成品', processCode:'BP', unit:'片', type:'委外', supplier:'SUP-BP-001', yieldRate:95.5, waferFactor:120 },
+    { code:'IC-1000-Wafer', name:'Wafer晶圆', category:'原材料', processCode:'Wafer', unit:'片', type:'采购', supplier:'SUP-WF-001', yieldRate:100, waferFactor:1 }
   ];
   appData.boms = [
-    { parent:'IC-1000-FT', child:'IC-1000-AB', usage:1, scrap:5 },
-    { parent:'IC-1000-AB', child:'IC-1000-CP', usage:120, scrap:2 },
-    { parent:'IC-1000-CP', child:'IC-1000-BP', usage:1, scrap:10 },
-    { parent:'IC-1000-BP', child:'IC-1000-Wafer', usage:1, scrap:5 }
+    { parent:'IC-1000-FT', child:'IC-1000-AB', usage:1, scrap:5, processCode:'FT→AB', supplyChain:'FT测试→封装委外' },
+    { parent:'IC-1000-AB', child:'IC-1000-CP', usage:120, scrap:2, processCode:'AB→CP', supplyChain:'封装委外→CP测试委外' },
+    { parent:'IC-1000-CP', child:'IC-1000-BP', usage:1, scrap:10, processCode:'CP→BP', supplyChain:'CP测试→凸块委外' },
+    { parent:'IC-1000-BP', child:'IC-1000-Wafer', usage:1, scrap:5, processCode:'BP→Wafer', supplyChain:'凸块委外→晶圆采购' }
   ];
   appData.bom = appData.boms;
   appData.routings = [
-    { code:'R-FT', name:'FT测试', operation:'FT测试工序', unit:'颗', effectiveHours:8, capacity:5000 },
-    { code:'R-AB', name:'AB封装', operation:'AB封装工序', unit:'颗', effectiveHours:8, capacity:3000 },
-    { code:'R-CP', name:'CP测试', operation:'CP测试工序', unit:'片', effectiveHours:8, capacity:4000 },
-    { code:'R-BP', name:'BP制造', operation:'BP凸块制造', unit:'片', effectiveHours:8, capacity:3500 },
-    { code:'R-Wafer', name:'Wafer', operation:'晶圆制造', unit:'片', effectiveHours:8, capacity:2000 }
+    { code:'R-FT', name:'FT测试', operation:'FT终测·成品测试', unit:'颗', effectiveHours:8, capacity:5000, supplier:'ASE/PTI', yieldRate:98.5 },
+    { code:'R-AB', name:'AB封装', operation:'AB封装·基板打线', unit:'颗', effectiveHours:8, capacity:3000, supplier:'京元/矽格', yieldRate:97.2 },
+    { code:'R-CP', name:'CP测试', operation:'CP晶圆测试·探针卡', unit:'片', effectiveHours:8, capacity:4000, supplier:'SPIL/Amkor', yieldRate:96.8 },
+    { code:'R-BP', name:'BP制造', operation:'BP凸块制作·电镀', unit:'片', effectiveHours:8, capacity:3500, supplier:'京元/硅品', yieldRate:95.5 },
+    { code:'R-Wafer', name:'Wafer采购', operation:'晶圆制造·光刻', unit:'片', effectiveHours:8, capacity:2000, supplier:'TSMC/SMIC', yieldRate:100 }
   ];
   appData.suppliers = [
-    { code:'SUP-FT-001', name:'FT封装测试供应商', material:'IC-1000-FT', processCode:'FT', leadTime:5 },
-    { code:'SUP-AB-001', name:'AB封装供应商', material:'IC-1000-AB', processCode:'AB', leadTime:15 },
-    { code:'SUP-CP-001', name:'CP测试供应商', material:'IC-1000-CP', processCode:'CP', leadTime:8 },
-    { code:'SUP-BP-001', name:'BP凸块供应商', material:'IC-1000-BP', processCode:'BP', leadTime:15 },
-    { code:'SUP-WF-001', name:'Wafer晶圆供应商', material:'IC-1000-Wafer', processCode:'Wafer', leadTime:50 }
+    { code:'SUP-FT-001', name:'FT封装测试供应商', processCode:'FT', material:'IC-1000-FT', leadTime:5, moq:1000, qualityLevel:'A' },
+    { code:'SUP-AB-001', name:'AB封装供应商(京元/矽格)', processCode:'AB', material:'IC-1000-AB', leadTime:15, moq:500, qualityLevel:'A' },
+    { code:'SUP-CP-001', name:'CP测试供应商(SPIL/Amkor)', processCode:'CP', material:'IC-1000-CP', leadTime:8, moq:200, qualityLevel:'B' },
+    { code:'SUP-BP-001', name:'BP凸块供应商(京元/硅品)', processCode:'BP', material:'IC-1000-BP', leadTime:15, moq:200, qualityLevel:'A' },
+    { code:'SUP-WF-001', name:'Wafer晶圆供应商(TSMC/SMIC)', processCode:'Wafer', material:'IC-1000-Wafer', leadTime:50, moq:25, qualityLevel:'S' }
   ];
   appData.leadTimes = [
     { process:'FT', code:'SUP-FT-001', name:'FT封装测试供应商', prod:2, trans:2, inspect:1 },
@@ -2571,6 +2559,11 @@ function loadSampleData() {
     { materialCode:'IC-1000-BP', materialName:'BP制造后晶圆', safetyStock:200, warehouse:'半成品仓', stock:400, transit:0, transitArrival:'' },
     { materialCode:'IC-1000-Wafer', materialName:'Wafer晶圆', safetyStock:500, warehouse:'原材料仓', stock:300, transit:0, transitArrival:'' }
   ];
+  appData.customers = [
+    { code:'CUST-001', name:'华为海思', contact:'张经理', phone:'138****1234', creditlevel:'AA', paymentTerms:'N30', products:'IC-1000-FT' },
+    { code:'CUST-002', name:'展讯通信', contact:'李工', phone:'139****5678', creditlevel:'A', paymentTerms:'N45', products:'IC-1000-FT' },
+    { code:'CUST-003', name:'中兴微电子', contact:'王总', phone:'136****9012', creditlevel:'AA', paymentTerms:'N30', products:'IC-1000-FT' }
+  ];
   appData.demands = [
     { orderType:'独立需求', orderNo:'ORD001', material:'IC-1000-FT', quantity:120000, unit:'颗', demandDate:'2026-07-31', priority:'高', customer:'华为海思' },
     { orderType:'独立需求', orderNo:'ORD002', material:'IC-1000-FT', quantity:180000, unit:'颗', demandDate:'2026-08-31', priority:'中', customer:'展讯通信' },
@@ -2584,7 +2577,6 @@ function loadSampleData() {
   showToast('✅ 示例数据加载完成！','success');
   renderAllMasterdata();
   renderDemand();
-  updateDashboard();
   refreshOrderSelect();
   renderConfigTables();
 }
@@ -2593,28 +2585,38 @@ function loadSampleData() {
 function renderAllMasterdata() {
   let mhtml = '';
   appData.materials.forEach((m,i)=>{
-    mhtml += '<tr><td>'+m.code+'</td><td>'+m.name+'</td><td>'+m.category+'</td><td>'+(m.processCode||'-')+'</td><td>'+m.unit+'</td><td><span class="tag-status '+(m.type==='采购'?'tag-yellow':'tag-blue')+'">'+m.type+'</span></td><td><button class="btn btn-sm btn-outline" onclick="editMaterial('+i+')">✏️</button><button class="btn btn-sm btn-outline" onclick="deleteMaterial('+i+')">🗑️</button></td></tr>';
+    const typeColor = m.type==='采购'?'tag-yellow':m.type==='委外'?'tag-purple':'tag-blue';
+    mhtml += '<tr><td>'+m.code+'</td><td>'+m.name+'</td><td>'+m.category+'</td><td><span class="tag-status tag-cyan">'+(m.processCode||'-')+'</span></td><td>'+m.unit+'</td><td><span class="tag-status '+typeColor+'">'+m.type+'</span></td><td>'+(m.supplier||'-')+'</td><td>'+(m.yieldRate||'-')+'%</td><td>'+(m.waferFactor||1)+'</td><td><button class="btn btn-sm btn-outline" onclick="editMaterial('+i+')">✏️</button><button class="btn btn-sm btn-outline" onclick="deleteMaterial('+i+')">🗑️</button></td></tr>';
   });
-  document.querySelector('#materialTable tbody').innerHTML = mhtml || '<tr><td colspan="7" style="text-align:center;color:var(--gray-400)">暂无数据，请上传或加载示例数据</td></tr>';
+  document.querySelector('#materialTable tbody').innerHTML = mhtml || '<tr><td colspan="10" style="text-align:center;color:var(--gray-400)">暂无数据，请上传或加载示例数据</td></tr>';
   document.getElementById('materialCount').textContent = appData.materials.length+'条';
   let bhtml = '';
   appData.boms.forEach((b,i)=>{
-    bhtml += '<tr><td>'+b.parent+'</td><td>'+b.child+'</td><td>'+b.usage+'</td><td>'+b.scrap+'%</td><td><button class="btn btn-sm btn-outline" onclick="editBom('+i+')">✏️</button><button class="btn btn-sm btn-outline" onclick="deleteBom('+i+')">🗑️</button></td></tr>';
+    bhtml += '<tr><td>'+b.parent+'</td><td>'+b.child+'</td><td>'+b.usage+'</td><td>'+b.scrap+'%</td><td><span class="tag-status tag-cyan">'+(b.processCode||'-')+'</span></td><td>'+(b.supplyChain||'-')+'</td><td><button class="btn btn-sm btn-outline" onclick="editBom('+i+')">✏️</button><button class="btn btn-sm btn-outline" onclick="deleteBom('+i+')">🗑️</button></td></tr>';
   });
-  document.querySelector('#bomTable tbody').innerHTML = bhtml || '<tr><td colspan="5" style="text-align:center;color:var(--gray-400)">暂无数据</td></tr>';
+  document.querySelector('#bomTable tbody').innerHTML = bhtml || '<tr><td colspan="7" style="text-align:center;color:var(--gray-400)">暂无数据</td></tr>';
   document.getElementById('bomCount').textContent = appData.boms.length+'条';
   let rhtml = '';
   appData.routings.forEach((r,i)=>{
-    rhtml += '<tr><td>'+r.code+'</td><td>'+r.name+'</td><td>'+r.operation+'</td><td>'+(r.unit||'')+'</td><td>'+(r.effectiveHours||0)+'</td><td>'+r.capacity+'</td><td><button class="btn btn-sm btn-outline" onclick="editRouting('+i+')">✏️</button><button class="btn btn-sm btn-outline" onclick="deleteRouting('+i+')">🗑️</button></td></tr>';
+    rhtml += '<tr><td>'+r.code+'</td><td><span class="tag-status tag-cyan">'+(r.name||'')+'</span></td><td>'+r.operation+'</td><td>'+(r.unit||'')+'</td><td>'+(r.effectiveHours||0)+'</td><td>'+r.capacity+'</td><td>'+(r.supplier||'-')+'</td><td>'+(r.yieldRate||'-')+'%</td><td><button class="btn btn-sm btn-outline" onclick="editRouting('+i+')">✏️</button><button class="btn btn-sm btn-outline" onclick="deleteRouting('+i+')">🗑️</button></td></tr>';
   });
-  document.querySelector('#routingTable tbody').innerHTML = rhtml || '<tr><td colspan="7" style="text-align:center;color:var(--gray-400)">暂无数据</td></tr>';
+  document.querySelector('#routingTable tbody').innerHTML = rhtml || '<tr><td colspan="9" style="text-align:center;color:var(--gray-400)">暂无数据</td></tr>';
   document.getElementById('routingCount').textContent = appData.routings.length+'条';
   let shtml = '';
   appData.suppliers.forEach((s,i)=>{
-    shtml += '<tr><td>'+s.code+'</td><td>'+s.name+'</td><td>'+s.material+'</td><td>'+(s.processCode||'')+'</td><td>'+s.leadTime+'</td><td><button class="btn btn-sm btn-outline" onclick="editSupplier('+i+')">✏️</button><button class="btn btn-sm btn-outline" onclick="deleteSupplier('+i+')">🗑️</button></td></tr>';
+    const qlColor = s.qualityLevel==='S'?'tag-green':s.qualityLevel==='A'?'tag-blue':'tag-yellow';
+    shtml += '<tr><td>'+s.code+'</td><td>'+s.name+'</td><td><span class="tag-status tag-cyan">'+(s.processCode||'')+'</span></td><td>'+(s.material||'-')+'</td><td>'+s.leadTime+'天</td><td>'+(s.moq||'-')+'</td><td><span class="tag-status '+qlColor+'">'+(s.qualityLevel||'-')+'</span></td><td><button class="btn btn-sm btn-outline" onclick="editSupplier('+i+')">✏️</button><button class="btn btn-sm btn-outline" onclick="deleteSupplier('+i+')">🗑️</button></td></tr>';
   });
-  document.querySelector('#supplierTable tbody').innerHTML = shtml || '<tr><td colspan="6" style="text-align:center;color:var(--gray-400)">暂无数据</td></tr>';
+  document.querySelector('#supplierTable tbody').innerHTML = shtml || '<tr><td colspan="8" style="text-align:center;color:var(--gray-400)">暂无数据</td></tr>';
   document.getElementById('supplierCount').textContent = appData.suppliers.length+'条';
+  // 客户渲染
+  let chtml = '';
+  appData.customers.forEach((c,i)=>{
+    const clColor = c.creditlevel==='AA'||c.creditlevel==='AAA'?'tag-green':c.creditlevel==='A'?'tag-blue':'tag-yellow';
+    chtml += '<tr><td>'+c.code+'</td><td>'+c.name+'</td><td>'+(c.contact||'-')+'</td><td>'+(c.phone||'-')+'</td><td><span class="tag-status '+clColor+'">'+(c.creditlevel||'-')+'</span></td><td>'+(c.paymentTerms||'-')+'</td><td>'+(c.products||'-')+'</td><td><button class="btn btn-sm btn-outline" onclick="editCustomer('+i+')">✏️</button><button class="btn btn-sm btn-outline" onclick="deleteCustomer('+i+')">🗑️</button></td></tr>';
+  });
+  document.querySelector('#customerTable tbody').innerHTML = chtml || '<tr><td colspan="8" style="text-align:center;color:var(--gray-400)">暂无客户数据</td></tr>';
+  document.getElementById('customerCount').textContent = appData.customers.length+'条';
   let ihtml = '';
   appData.inventory.forEach((inv,idx)=>{
     ihtml += '<tr><td>'+inv.materialCode+'</td><td>'+inv.materialName+'</td><td class="font-bold">'+(inv.safetyStock||0).toLocaleString()+'</td><td class="font-bold">'+inv.stock.toLocaleString()+'</td><td>'+inv.warehouse+'</td><td><button class="btn btn-sm btn-outline" onclick="editInventory('+idx+')">✏️</button><button class="btn btn-sm btn-outline" onclick="deleteInventory('+idx+')">🗑️</button></td></tr>';
@@ -2654,13 +2656,17 @@ function deletePrpo(idx) { appData.prpo.splice(idx,1); renderAllMasterdata(); sh
 function editMaterial(idx) {
   const m=appData.materials[idx];
   if(!m) return;
+  const supOpts = appData.suppliers.map(s=>'<option value="'+s.code+'" '+(s.code===m.supplier?'selected':'')+'>'+s.code+' - '+s.name+'</option>').join('');
   openModal('<div class="modal-title">编辑物料 <button class="modal-close" onclick="closeModal()">×</button></div>'+
     '<div class="grid-2"><div class="form-group"><label>物料编码</label><input id="formMatCode" value="'+escapeHtml(m.code)+'"></div>'+
     '<div class="form-group"><label>物料描述</label><input id="formMatName" value="'+escapeHtml(m.name)+'"></div></div>'+
     '<div class="grid-2"><div class="form-group"><label>物料类型</label><select id="formMatCategory"><option '+(m.category==='成品'?'selected':'')+'>成品</option><option '+(m.category==='半成品'?'selected':'')+'>半成品</option><option '+(m.category==='原材料'?'selected':'')+'>原材料</option></select></div>'+
-    '<div class="form-group"><label>制程代码</label><input id="formMatProcess" value="'+escapeHtml(m.processCode||'')+'" placeholder="如 FT"></div></div>'+
+    '<div class="form-group"><label>制程代码</label><select id="formMatProcess"><option value="FT" '+(m.processCode==='FT'?'selected':'')+'>FT（成品测试）</option><option value="AB" '+(m.processCode==='AB'?'selected':'')+'>AB（封装委外）</option><option value="CP" '+(m.processCode==='CP'?'selected':'')+'>CP（测试委外）</option><option value="BP" '+(m.processCode==='BP'?'selected':'')+'>BP（凸块委外）</option><option value="Wafer" '+(m.processCode==='Wafer'?'selected':'')+'>Wafer（晶圆采购）</option></select></div></div>'+
     '<div class="grid-2"><div class="form-group"><label>基本计量单位</label><select id="formMatUnit"><option '+(m.unit==='颗'?'selected':'')+'>颗</option><option '+(m.unit==='片'?'selected':'')+'>片</option><option '+(m.unit==='个'?'selected':'')+'>个</option></select></div>'+
-    '<div class="form-group"><label>生产方式</label><select id="formMatType"><option '+(m.type==='自制'?'selected':'')+'>自制</option><option '+(m.type==='采购'?'selected':'')+'>采购</option></select></div></div>'+
+    '<div class="form-group"><label>生产方式</label><select id="formMatType"><option '+(m.type==='委外'?'selected':'')+'>委外</option><option '+(m.type==='采购'?'selected':'')+'>采购</option><option '+(m.type==='自制'?'selected':'')+'>自制</option></select></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>委外/采购供应商</label><select id="formMatSupplier"><option value="">无</option>'+supOpts+'</select></div>'+
+    '<div class="form-group"><label>制程良率(%)</label><input type="number" id="formMatYield" value="'+(m.yieldRate||100)+'" min="0" max="100" step="0.1"></div></div>'+
+    '<div class="form-group"><label>晶圆当量系数（每片等效颗数）</label><input type="number" id="formMatWafer" value="'+(m.waferFactor||1)+'" min="1" step="1"></div>'+
     '<input type="hidden" id="editMatIdx" value="'+idx+'">'+
     '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveEditMaterial()">保存</button></div>');
 }
@@ -2670,7 +2676,7 @@ function saveEditMaterial() {
   const code=document.getElementById('formMatCode').value.trim();
   const name=document.getElementById('formMatName').value.trim();
   if(!code||!name){showToast('请填写物料编码和描述','error');return;}
-  appData.materials[idx]={code,name,category:document.getElementById('formMatCategory').value,processCode:document.getElementById('formMatProcess').value.trim(),unit:document.getElementById('formMatUnit').value,type:document.getElementById('formMatType').value};
+  appData.materials[idx]={code,name,category:document.getElementById('formMatCategory').value,processCode:document.getElementById('formMatProcess').value,unit:document.getElementById('formMatUnit').value,type:document.getElementById('formMatType').value,supplier:document.getElementById('formMatSupplier').value,yieldRate:parseFloat(document.getElementById('formMatYield').value)||100,waferFactor:parseInt(document.getElementById('formMatWafer').value)||1};
   closeModal();renderAllMasterdata();showToast('✅ 物料已更新','success');
 }
 
@@ -2684,6 +2690,8 @@ function editBom(idx) {
     '<div class="form-group"><label>子项物料</label><select id="formBomChild">'+childOpts+'</select></div></div>'+
     '<div class="grid-2"><div class="form-group"><label>单位用量</label><input type="number" id="formBomUsage" value="'+b.usage+'" min="0.01" step="0.01"></div>'+
     '<div class="form-group"><label>损耗率(%)</label><input type="number" id="formBomScrap" value="'+b.scrap+'" min="0" max="100"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>制程代码</label><select id="formBomProcess"><option value="FT→AB" '+(b.processCode==='FT→AB'?'selected':'')+'>FT→AB（测试→封装）</option><option value="AB→CP" '+(b.processCode==='AB→CP'?'selected':'')+'>AB→CP（封装→测试）</option><option value="CP→BP" '+(b.processCode==='CP→BP'?'selected':'')+'>CP→BP（测试→凸块）</option><option value="BP→Wafer" '+(b.processCode==='BP→Wafer'?'selected':'')+'>BP→Wafer（凸块→晶圆）</option></select></div>'+
+    '<div class="form-group"><label>委外供应链环节</label><input id="formBomSupplyChain" value="'+escapeHtml(b.supplyChain||'')+'" placeholder="如 FT测试→封装委外"></div></div>'+
     '<input type="hidden" id="editBomIdx" value="'+idx+'">'+
     '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveEditBom()">保存</button></div>');
 }
@@ -2692,7 +2700,7 @@ function saveEditBom() {
   if(isNaN(idx)||!appData.boms[idx]){showToast('数据异常','error');return;}
   const parent=document.getElementById('formBomParent').value,child=document.getElementById('formBomChild').value;
   if(parent===child){showToast('父项和子项不能相同','error');return;}
-  appData.boms[idx]={parent,child,usage:parseFloat(document.getElementById('formBomUsage').value)||1,scrap:parseFloat(document.getElementById('formBomScrap').value)||0};
+  appData.boms[idx]={parent,child,usage:parseFloat(document.getElementById('formBomUsage').value)||1,scrap:parseFloat(document.getElementById('formBomScrap').value)||0,processCode:document.getElementById('formBomProcess').value,supplyChain:document.getElementById('formBomSupplyChain').value.trim()};
   appData.bom=appData.boms;
   closeModal();renderAllMasterdata();showToast('✅ BOM已更新','success');
 }
@@ -2701,16 +2709,18 @@ function editRouting(idx) {
   const r=appData.routings[idx];
   if(!r) return;
   openModal('<div class="modal-title">编辑工艺路线 <button class="modal-close" onclick="closeModal()">×</button></div>'+
-    '<div class="grid-2"><div class="form-group"><label>物料</label><input id="formRtCode" value="'+escapeHtml(r.code)+'"></div><div class="form-group"><label>制程代码</label><input id="formRtName" value="'+escapeHtml(r.name)+'"></div></div>'+
-    '<div class="grid-2"><div class="form-group"><label>工序</label><input id="formRtOp" value="'+escapeHtml(r.operation)+'"></div><div class="form-group"><label>计量单位</label><input id="formRtUnit" value="'+escapeHtml(r.unit||'')+'" placeholder="如 颗/片"></div></div>'+
-    '<div class="grid-2"><div class="form-group"><label>每日有效工时</label><input type="number" id="formRtHours" value="'+(r.effectiveHours||8)+'"></div><div class="form-group"><label>日产能</label><input type="number" id="formRtCap" value="'+r.capacity+'"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>物料</label><input id="formRtCode" value="'+escapeHtml(r.code)+'"></div><div class="form-group"><label>制程代码</label><select id="formRtName"><option value="FT" '+(r.name==='FT'||r.name==='FT测试'?'selected':'')+'>FT（成品测试）</option><option value="AB" '+(r.name==='AB'||r.name==='AB封装'?'selected':'')+'>AB（封装委外）</option><option value="CP" '+(r.name==='CP'||r.name==='CP测试'?'selected':'')+'>CP（测试委外）</option><option value="BP" '+(r.name==='BP'||r.name==='BP制造'?'selected':'')+'>BP（凸块委外）</option><option value="Wafer" '+(r.name==='Wafer'||r.name==='Wafer采购'?'selected':'')+'>Wafer（晶圆采购）</option></select></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>工序描述</label><input id="formRtOp" value="'+escapeHtml(r.operation)+'"></div><div class="form-group"><label>计量单位</label><input id="formRtUnit" value="'+escapeHtml(r.unit||'')+'" placeholder="如 颗/片"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>标准工时(天)</label><input type="number" id="formRtHours" value="'+(r.effectiveHours||8)+'"></div><div class="form-group"><label>日产能</label><input type="number" id="formRtCap" value="'+r.capacity+'"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>委外供应商</label><input id="formRtSupplier" value="'+escapeHtml(r.supplier||'')+'" placeholder="如 ASE/PTI"></div>'+
+    '<div class="form-group"><label>工序良率(%)</label><input type="number" id="formRtYield" value="'+(r.yieldRate||100)+'" min="0" max="100" step="0.1"></div></div>'+
     '<input type="hidden" id="editRtIdx" value="'+idx+'">'+
     '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveEditRouting()">保存</button></div>');
 }
 function saveEditRouting() {
   const idx=parseInt(document.getElementById('editRtIdx').value);
   if(isNaN(idx)||!appData.routings[idx]){showToast('数据异常','error');return;}
-  appData.routings[idx]={code:document.getElementById('formRtCode').value.trim(),name:document.getElementById('formRtName').value.trim(),operation:document.getElementById('formRtOp').value.trim(),unit:document.getElementById('formRtUnit').value.trim(),effectiveHours:parseFloat(document.getElementById('formRtHours').value)||0,capacity:parseInt(document.getElementById('formRtCap').value)||0};
+  appData.routings[idx]={code:document.getElementById('formRtCode').value.trim(),name:document.getElementById('formRtName').value,operation:document.getElementById('formRtOp').value.trim(),unit:document.getElementById('formRtUnit').value.trim(),effectiveHours:parseFloat(document.getElementById('formRtHours').value)||0,capacity:parseInt(document.getElementById('formRtCap').value)||0,supplier:document.getElementById('formRtSupplier').value.trim(),yieldRate:parseFloat(document.getElementById('formRtYield').value)||100};
   closeModal();renderAllMasterdata();showToast('✅ 工艺路线已更新','success');
 }
 
@@ -2719,15 +2729,18 @@ function editSupplier(idx) {
   if(!s) return;
   openModal('<div class="modal-title">编辑供应商 <button class="modal-close" onclick="closeModal()">×</button></div>'+
     '<div class="grid-2"><div class="form-group"><label>供应商编码</label><input id="formSupCode" value="'+escapeHtml(s.code)+'"></div><div class="form-group"><label>供应商名称</label><input id="formSupName" value="'+escapeHtml(s.name)+'"></div></div>'+
-    '<div class="grid-2"><div class="form-group"><label>供应物料</label><input id="formSupMat" value="'+escapeHtml(s.material)+'"></div><div class="form-group"><label>制程代码</label><input id="formSupProcess" value="'+escapeHtml(s.processCode||'')+'" placeholder="如 FT"></div></div>'+
-    '<div class="form-group"><label>交期（天）</label><input type="number" id="formSupLead" value="'+s.leadTime+'"></div>'+
+    '<div class="grid-2"><div class="form-group"><label>供应制程</label><select id="formSupProcess"><option value="FT" '+(s.processCode==='FT'?'selected':'')+'>FT（成品测试）</option><option value="AB" '+(s.processCode==='AB'?'selected':'')+'>AB（封装委外）</option><option value="CP" '+(s.processCode==='CP'?'selected':'')+'>CP（测试委外）</option><option value="BP" '+(s.processCode==='BP'?'selected':'')+'>BP（凸块委外）</option><option value="Wafer" '+(s.processCode==='Wafer'?'selected':'')+'>Wafer（晶圆采购）</option></select></div>'+
+    '<div class="form-group"><label>供应物料</label><input id="formSupMat" value="'+escapeHtml(s.material)+'"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>交期（天）</label><input type="number" id="formSupLead" value="'+s.leadTime+'"></div>'+
+    '<div class="form-group"><label>MOQ（最小起订量）</label><input type="number" id="formSupMoq" value="'+(s.moq||0)+'"></div></div>'+
+    '<div class="form-group"><label>品质等级</label><select id="formSupQuality"><option value="S" '+(s.qualityLevel==='S'?'selected':'')+'>S（卓越）</option><option value="A" '+(s.qualityLevel==='A'?'selected':'')+'>A（优秀）</option><option value="B" '+(s.qualityLevel==='B'?'selected':'')+'>B（良好）</option><option value="C" '+(s.qualityLevel==='C'?'selected':'')+'>C（普通）</option></select></div>'+
     '<input type="hidden" id="editSupIdx" value="'+idx+'">'+
     '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveEditSupplier()">保存</button></div>');
 }
 function saveEditSupplier() {
   const idx=parseInt(document.getElementById('editSupIdx').value);
   if(isNaN(idx)||!appData.suppliers[idx]){showToast('数据异常','error');return;}
-  appData.suppliers[idx]={code:document.getElementById('formSupCode').value.trim(),name:document.getElementById('formSupName').value.trim(),material:document.getElementById('formSupMat').value.trim(),processCode:document.getElementById('formSupProcess').value.trim(),leadTime:parseInt(document.getElementById('formSupLead').value)||0};
+  appData.suppliers[idx]={code:document.getElementById('formSupCode').value.trim(),name:document.getElementById('formSupName').value.trim(),processCode:document.getElementById('formSupProcess').value,material:document.getElementById('formSupMat').value.trim(),leadTime:parseInt(document.getElementById('formSupLead').value)||0,moq:parseInt(document.getElementById('formSupMoq').value)||0,qualityLevel:document.getElementById('formSupQuality').value};
   closeModal();renderAllMasterdata();showToast('✅ 供应商已更新','success');
 }
 
@@ -2751,20 +2764,24 @@ function saveEditInventory() {
 }
 
 function openAddMaterialModal() {
+  const supOpts = appData.suppliers.map(s=>'<option value="'+s.code+'">'+s.code+' - '+s.name+'</option>').join('');
   openModal('<div class="modal-title">新增物料 <button class="modal-close" onclick="closeModal()">×</button></div>'+
     '<div class="grid-2"><div class="form-group"><label>物料编码</label><input id="formMatCode" placeholder="如 IC-1000-XXX"></div>'+
     '<div class="form-group"><label>物料描述</label><input id="formMatName" placeholder="物料描述"></div></div>'+
     '<div class="grid-2"><div class="form-group"><label>物料类型</label><select id="formMatCategory"><option>成品</option><option>半成品</option><option>原材料</option></select></div>'+
-    '<div class="form-group"><label>制程代码</label><input id="formMatProcess" placeholder="如 FT"></div></div>'+
+    '<div class="form-group"><label>制程代码</label><select id="formMatProcess"><option value="FT">FT（成品测试）</option><option value="AB">AB（封装委外）</option><option value="CP">CP（测试委外）</option><option value="BP">BP（凸块委外）</option><option value="Wafer">Wafer（晶圆采购）</option></select></div></div>'+
     '<div class="grid-2"><div class="form-group"><label>基本计量单位</label><select id="formMatUnit"><option>颗</option><option>片</option><option>个</option></select></div>'+
-    '<div class="form-group"><label>生产方式</label><select id="formMatType"><option>自制</option><option>采购</option></select></div></div>'+
+    '<div class="form-group"><label>生产方式</label><select id="formMatType"><option>委外</option><option>采购</option><option>自制</option></select></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>委外/采购供应商</label><select id="formMatSupplier"><option value="">无</option>'+supOpts+'</select></div>'+
+    '<div class="form-group"><label>制程良率(%)</label><input type="number" id="formMatYield" value="100" min="0" max="100" step="0.1"></div></div>'+
+    '<div class="form-group"><label>晶圆当量系数（每片等效颗数）</label><input type="number" id="formMatWafer" value="1" min="1" step="1"></div>'+
     '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveNewMaterial()">保存</button></div>');
 }
 function saveNewMaterial() {
   const code = document.getElementById('formMatCode').value.trim();
   const name = document.getElementById('formMatName').value.trim();
   if(!code||!name) { showToast('请填写物料编码和描述','error'); return; }
-  appData.materials.push({code,name,category:document.getElementById('formMatCategory').value,processCode:document.getElementById('formMatProcess').value.trim(),unit:document.getElementById('formMatUnit').value,type:document.getElementById('formMatType').value});
+  appData.materials.push({code,name,category:document.getElementById('formMatCategory').value,processCode:document.getElementById('formMatProcess').value,unit:document.getElementById('formMatUnit').value,type:document.getElementById('formMatType').value,supplier:document.getElementById('formMatSupplier').value,yieldRate:parseFloat(document.getElementById('formMatYield').value)||100,waferFactor:parseInt(document.getElementById('formMatWafer').value)||1});
   closeModal();renderAllMasterdata();showToast('✅ 物料添加成功','success');
 }
 function openAddBomModal() {
@@ -2774,36 +2791,85 @@ function openAddBomModal() {
     '<div class="form-group"><label>子项物料</label><select id="formBomChild">'+matOpts+'</select></div></div>'+
     '<div class="grid-2"><div class="form-group"><label>单位用量</label><input type="number" id="formBomUsage" value="1" min="0.01" step="0.01"></div>'+
     '<div class="form-group"><label>损耗率(%)</label><input type="number" id="formBomScrap" value="0" min="0" max="100"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>制程代码</label><select id="formBomProcess"><option value="FT→AB">FT→AB（测试→封装）</option><option value="AB→CP">AB→CP（封装→测试）</option><option value="CP→BP">CP→BP（测试→凸块）</option><option value="BP→Wafer">BP→Wafer（凸块→晶圆）</option></select></div>'+
+    '<div class="form-group"><label>委外供应链环节</label><input id="formBomSupplyChain" placeholder="如 FT测试→封装委外"></div></div>'+
     '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveNewBom()">保存</button></div>');
 }
 function saveNewBom() {
   const parent=document.getElementById('formBomParent').value,child=document.getElementById('formBomChild').value;
   if(parent===child){showToast('父项和子项不能相同','error');return;}
-  appData.boms.push({parent,child,usage:parseFloat(document.getElementById('formBomUsage').value)||1,scrap:parseFloat(document.getElementById('formBomScrap').value)||0});
+  appData.boms.push({parent,child,usage:parseFloat(document.getElementById('formBomUsage').value)||1,scrap:parseFloat(document.getElementById('formBomScrap').value)||0,processCode:document.getElementById('formBomProcess').value,supplyChain:document.getElementById('formBomSupplyChain').value.trim()});
   appData.bom=appData.boms;closeModal();renderAllMasterdata();showToast('✅ BOM添加成功','success');
 }
 function openAddRoutingModal() {
   openModal('<div class="modal-title">新增工艺路线 <button class="modal-close" onclick="closeModal()">×</button></div>'+
-    '<div class="grid-2"><div class="form-group"><label>物料</label><input id="formRtCode" placeholder="如 R-XXX"></div><div class="form-group"><label>制程代码</label><input id="formRtName" placeholder="如 FT"></div></div>'+
-    '<div class="grid-2"><div class="form-group"><label>工序</label><input id="formRtOp" placeholder="工序描述"></div><div class="form-group"><label>计量单位</label><input id="formRtUnit" placeholder="如 颗/片"></div></div>'+
-    '<div class="grid-2"><div class="form-group"><label>每日有效工时</label><input type="number" id="formRtHours" value="8"></div><div class="form-group"><label>日产能</label><input type="number" id="formRtCap" value="1000"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>物料</label><input id="formRtCode" placeholder="如 R-XXX"></div><div class="form-group"><label>制程代码</label><select id="formRtName"><option value="FT">FT（成品测试）</option><option value="AB">AB（封装委外）</option><option value="CP">CP（测试委外）</option><option value="BP">BP（凸块委外）</option><option value="Wafer">Wafer（晶圆采购）</option></select></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>工序描述</label><input id="formRtOp" placeholder="工序描述"></div><div class="form-group"><label>计量单位</label><input id="formRtUnit" placeholder="如 颗/片"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>标准工时(天)</label><input type="number" id="formRtHours" value="8"></div><div class="form-group"><label>日产能</label><input type="number" id="formRtCap" value="1000"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>委外供应商</label><input id="formRtSupplier" placeholder="如 ASE/PTI"></div>'+
+    '<div class="form-group"><label>工序良率(%)</label><input type="number" id="formRtYield" value="100" min="0" max="100" step="0.1"></div></div>'+
     '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveNewRouting()">保存</button></div>');
 }
 function saveNewRouting() {
-  appData.routings.push({code:document.getElementById('formRtCode').value.trim(),name:document.getElementById('formRtName').value.trim(),operation:document.getElementById('formRtOp').value.trim(),unit:document.getElementById('formRtUnit').value.trim(),effectiveHours:parseFloat(document.getElementById('formRtHours').value)||0,capacity:parseInt(document.getElementById('formRtCap').value)||0});
+  appData.routings.push({code:document.getElementById('formRtCode').value.trim(),name:document.getElementById('formRtName').value,operation:document.getElementById('formRtOp').value.trim(),unit:document.getElementById('formRtUnit').value.trim(),effectiveHours:parseFloat(document.getElementById('formRtHours').value)||0,capacity:parseInt(document.getElementById('formRtCap').value)||0,supplier:document.getElementById('formRtSupplier').value.trim(),yieldRate:parseFloat(document.getElementById('formRtYield').value)||100});
   closeModal();renderAllMasterdata();showToast('✅ 工艺路线添加成功','success');
 }
 function openAddSupplierModal() {
   openModal('<div class="modal-title">新增供应商 <button class="modal-close" onclick="closeModal()">×</button></div>'+
     '<div class="grid-2"><div class="form-group"><label>供应商编码</label><input id="formSupCode" placeholder="如 SUP-XXX-001"></div><div class="form-group"><label>供应商名称</label><input id="formSupName" placeholder="供应商名称"></div></div>'+
-    '<div class="grid-2"><div class="form-group"><label>供应物料</label><input id="formSupMat" placeholder="物料编码"></div><div class="form-group"><label>制程代码</label><input id="formSupProcess" placeholder="如 FT"></div></div>'+
-    '<div class="form-group"><label>交期（天）</label><input type="number" id="formSupLead" value="10"></div>'+
+    '<div class="grid-2"><div class="form-group"><label>供应制程</label><select id="formSupProcess"><option value="FT">FT（成品测试）</option><option value="AB">AB（封装委外）</option><option value="CP">CP（测试委外）</option><option value="BP">BP（凸块委外）</option><option value="Wafer">Wafer（晶圆采购）</option></select></div>'+
+    '<div class="form-group"><label>供应物料</label><input id="formSupMat" placeholder="物料编码"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>交期（天）</label><input type="number" id="formSupLead" value="10"></div>'+
+    '<div class="form-group"><label>MOQ（最小起订量）</label><input type="number" id="formSupMoq" value="0"></div></div>'+
+    '<div class="form-group"><label>品质等级</label><select id="formSupQuality"><option value="A">A（优秀）</option><option value="B">B（良好）</option><option value="S">S（卓越）</option><option value="C">C（普通）</option></select></div>'+
     '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveNewSupplier()">保存</button></div>');
 }
 function saveNewSupplier() {
-  appData.suppliers.push({code:document.getElementById('formSupCode').value.trim(),name:document.getElementById('formSupName').value.trim(),material:document.getElementById('formSupMat').value.trim(),processCode:document.getElementById('formSupProcess').value.trim(),leadTime:parseInt(document.getElementById('formSupLead').value)||0});
+  appData.suppliers.push({code:document.getElementById('formSupCode').value.trim(),name:document.getElementById('formSupName').value.trim(),processCode:document.getElementById('formSupProcess').value,material:document.getElementById('formSupMat').value.trim(),leadTime:parseInt(document.getElementById('formSupLead').value)||0,moq:parseInt(document.getElementById('formSupMoq').value)||0,qualityLevel:document.getElementById('formSupQuality').value});
   closeModal();renderAllMasterdata();showToast('✅ 供应商添加成功','success');
 }
+
+// ======================== 客户CRUD ========================
+function deleteCustomer(idx) { appData.customers.splice(idx,1); renderAllMasterdata(); }
+function openAddCustomerModal() {
+  openModal('<div class="modal-title">新增客户 <button class="modal-close" onclick="closeModal()">×</button></div>'+
+    '<div class="grid-2"><div class="form-group"><label>客户编码</label><input id="formCustCode" placeholder="如 CUST-001"></div>'+
+    '<div class="form-group"><label>客户名称</label><input id="formCustName" placeholder="客户名称"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>联系人</label><input id="formCustContact" placeholder="联系人姓名"></div>'+
+    '<div class="form-group"><label>联系方式</label><input id="formCustPhone" placeholder="手机号/邮箱"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>信用等级</label><select id="formCustCredit"><option value="AAA">AAA（最优）</option><option value="AA">AA（优秀）</option><option value="A">A（良好）</option><option value="B">B（一般）</option><option value="C">C（较差）</option></select></div>'+
+    '<div class="form-group"><label>付款条件</label><input id="formCustPayTerms" placeholder="如 N30/N45" value="N30"></div></div>'+
+    '<div class="form-group"><label>合作产品</label><input id="formCustProducts" placeholder="如 IC-1000-FT"></div>'+
+    '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveNewCustomer()">保存</button></div>');
+}
+function saveNewCustomer() {
+  const code=document.getElementById('formCustCode').value.trim();
+  const name=document.getElementById('formCustName').value.trim();
+  if(!code||!name){showToast('请填写客户编码和名称','error');return;}
+  appData.customers.push({code,name,contact:document.getElementById('formCustContact').value.trim(),phone:document.getElementById('formCustPhone').value.trim(),creditlevel:document.getElementById('formCustCredit').value,paymentTerms:document.getElementById('formCustPayTerms').value.trim(),products:document.getElementById('formCustProducts').value.trim()});
+  closeModal();renderAllMasterdata();showToast('✅ 客户添加成功','success');
+}
+function editCustomer(idx) {
+  const c=appData.customers[idx];
+  if(!c) return;
+  openModal('<div class="modal-title">编辑客户 <button class="modal-close" onclick="closeModal()">×</button></div>'+
+    '<div class="grid-2"><div class="form-group"><label>客户编码</label><input id="formCustCode" value="'+escapeHtml(c.code)+'"></div>'+
+    '<div class="form-group"><label>客户名称</label><input id="formCustName" value="'+escapeHtml(c.name)+'"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>联系人</label><input id="formCustContact" value="'+escapeHtml(c.contact||'')+'"></div>'+
+    '<div class="form-group"><label>联系方式</label><input id="formCustPhone" value="'+escapeHtml(c.phone||'')+'"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>信用等级</label><select id="formCustCredit"><option value="AAA" '+(c.creditlevel==='AAA'?'selected':'')+'>AAA（最优）</option><option value="AA" '+(c.creditlevel==='AA'?'selected':'')+'>AA（优秀）</option><option value="A" '+(c.creditlevel==='A'?'selected':'')+'>A（良好）</option><option value="B" '+(c.creditlevel==='B'?'selected':'')+'>B（一般）</option><option value="C" '+(c.creditlevel==='C'?'selected':'')+'>C（较差）</option></select></div>'+
+    '<div class="form-group"><label>付款条件</label><input id="formCustPayTerms" value="'+escapeHtml(c.paymentTerms||'')+'" placeholder="如 N30"></div></div>'+
+    '<div class="form-group"><label>合作产品</label><input id="formCustProducts" value="'+escapeHtml(c.products||'')+'" placeholder="如 IC-1000-FT"></div>'+
+    '<input type="hidden" id="editCustIdx" value="'+idx+'">'+
+    '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveEditCustomer()">保存</button></div>');
+}
+function saveEditCustomer() {
+  const idx=parseInt(document.getElementById('editCustIdx').value);
+  if(isNaN(idx)||!appData.customers[idx]){showToast('数据异常','error');return;}
+  appData.customers[idx]={code:document.getElementById('formCustCode').value.trim(),name:document.getElementById('formCustName').value.trim(),contact:document.getElementById('formCustContact').value.trim(),phone:document.getElementById('formCustPhone').value.trim(),creditlevel:document.getElementById('formCustCredit').value,paymentTerms:document.getElementById('formCustPayTerms').value.trim(),products:document.getElementById('formCustProducts').value.trim()};
+  closeModal();renderAllMasterdata();showToast('✅ 客户已更新','success');
+}
+
 function openAddInventoryModal() {
   const matOpts = appData.materials.map(m=>'<option value="'+m.code+'">'+m.code+' - '+m.name+'</option>').join('');
   openModal('<div class="modal-title">新增库存记录 <button class="modal-close" onclick="closeModal()">×</button></div>'+
@@ -4415,6 +4481,7 @@ function saveMasterdataToStorage(){
       boms: appData.boms||[],
       routings: appData.routings||[],
       suppliers: appData.suppliers||[],
+      customers: appData.customers||[],
       inventory: appData.inventory||[],
       demands: appData.demands||[],
       prpo: appData.prpo||[]
@@ -4435,6 +4502,7 @@ function loadMasterdataFromStorage(){
     appData.bom=appData.boms;
     appData.routings=data.routings||[];
     appData.suppliers=data.suppliers||[];
+    appData.customers=data.customers||[];
     appData.inventory=data.inventory||[];
     appData.demands=data.demands||[];
     appData.prpo=data.prpo||[];
@@ -5807,7 +5875,7 @@ function switchMasterdataTab(tab){
   document.querySelectorAll('#section-masterdata .tab-content').forEach(t=>t.classList.remove('active'));
   document.querySelector('#masterdataTabs .tab[data-tab="'+tab+'"]').classList.add('active');
   document.getElementById('tab-'+tab).classList.add('active');
-  if(tab==='md-materials'||tab==='md-bom'||tab==='md-routing'||tab==='md-suppliers')renderAllMasterdata();
+  if(tab==='md-materials'||tab==='md-bom'||tab==='md-routing'||tab==='md-suppliers'||tab==='md-customers')renderAllMasterdata();
 }
 
 function switchBusinessTab(tab){
