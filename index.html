@@ -2610,7 +2610,7 @@ function renderAllMasterdata() {
   document.getElementById('materialCount').textContent = appData.materials.length+'条';
   let bhtml = '';
   appData.boms.forEach((b,i)=>{
-    bhtml += '<tr><td>'+b.parent+'</td><td>'+b.child+'</td><td>'+b.usage+'</td><td>'+b.scrap+'%</td><td><span class="tag-status tag-cyan">'+(b.processCode||'-')+'</span></td><td>'+(b.supplyChain||'-')+'</td><td><button class="btn btn-sm btn-outline" onclick="editBom('+i+')">✏️</button><button class="btn btn-sm btn-outline" onclick="deleteBom('+i+')">🗑️</button></td></tr>';
+    bhtml += '<tr><td>'+b.parent+'</td><td>'+b.child+'</td><td>'+b.usage+'</td><td>'+b.scrap+'%</td><td><span class="tag-status tag-cyan">'+(b.processCode||'-')+'</span></td><td><button class="btn btn-sm btn-outline" onclick="editBom('+i+')">✏️</button><button class="btn btn-sm btn-outline" onclick="deleteBom('+i+')">🗑️</button></td></tr>';
   });
   document.querySelector('#bomTable tbody').innerHTML = bhtml || '<tr><td colspan="6" style="text-align:center;color:var(--gray-400)">暂无数据</td></tr>';
   document.getElementById('bomCount').textContent = appData.boms.length+'条';
