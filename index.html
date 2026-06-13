@@ -929,84 +929,81 @@ tbody tr:hover td{background:var(--primary-bg)}
       </div>
     </div>
 
-    <!-- ==================== Demand（需求计划）= SAP IBP Demand Planning 半导体对标 ==================== -->
+    <!-- ==================== Demand（需求计划）= IC设计企业多层级需求计划 半导体委外版 ==================== -->
     <div class="section" id="section-demandplan">
       <div class="tabs" id="demandPlanTabs">
-        <div class="tab active" data-tab="dp-statistical" onclick="switchDemandPlanTab('dp-statistical')">📊 统计预测 <span class="tag" style="font-size:10px">Statistical</span></div>
-        <div class="tab" data-tab="dp-sensing" onclick="switchDemandPlanTab('dp-sensing')">📡 承诺感知 <span class="tag" style="font-size:10px">Commitment Sensing</span></div>
-        <div class="tab" data-tab="dp-consensus" onclick="switchDemandPlanTab('dp-consensus')">🤝 滚动共识 <span class="tag" style="font-size:10px">Rolling Consensus</span></div>
-        <div class="tab" data-tab="dp-promotion" onclick="switchDemandPlanTab('dp-promotion')">📋 客户承诺 <span class="tag" style="font-size:10px">Customer Commitment</span></div>
-        <div class="tab" data-tab="dp-npi" onclick="switchDemandPlanTab('dp-npi')">🔄 NPI生命周期 <span class="tag" style="font-size:10px">NPI Lifecycle</span></div>
-        <div class="tab" data-tab="dp-analytics" onclick="switchDemandPlanTab('dp-analytics')">📈 需求分析 <span class="tag" style="font-size:10px">Analytics</span></div>
+        <div class="tab active" data-tab="dp-statistical" onclick="switchDemandPlanTab('dp-statistical')">📊 统计预测 <span style="font-size:10px;color:var(--gray-400)">FT↓Wafer</span></div>
+        <div class="tab" data-tab="dp-sensing" onclick="switchDemandPlanTab('dp-sensing')">📡 承诺感知 <span style="font-size:10px;color:var(--gray-400)">委外级联</span></div>
+        <div class="tab" data-tab="dp-consensus" onclick="switchDemandPlanTab('dp-consensus')">🤝 滚动共识 <span style="font-size:10px;color:var(--gray-400)">晶圆约束</span></div>
+        <div class="tab" data-tab="dp-promotion" onclick="switchDemandPlanTab('dp-promotion')">📋 客户承诺 <span style="font-size:10px;color:var(--gray-400)">产能博弈</span></div>
+        <div class="tab" data-tab="dp-npi" onclick="switchDemandPlanTab('dp-npi')">🔄 NPI生命周期 <span style="font-size:10px;color:var(--gray-400)">良率学习</span></div>
+        <div class="tab" data-tab="dp-analytics" onclick="switchDemandPlanTab('dp-analytics')">📈 需求分析 <span style="font-size:10px;color:var(--gray-400)">委外维度</span></div>
       </div>
 
-      <!-- ==================== Tab 1: Statistical Forecasting（半导体统计预测） ==================== -->
+      <!-- 制程级联信息栏 -->
+      <div id="dpProcessChainBar" style="display:flex;gap:6px;align-items:center;padding:6px 12px;background:linear-gradient(90deg,#f8fafc,#f0f7ff);border-radius:6px;margin-bottom:8px;font-size:11px;flex-wrap:wrap">
+        <span style="font-weight:600;color:var(--gray-500)">🔗 委外级联：</span>
+        <span class="tag" style="background:#dbeafe;color:#1e40af">FT成品</span>
+        <span style="color:var(--gray-400)">←AB封装委外</span>
+        <span class="tag" style="background:#d1fae5;color:#065f46">AB</span>
+        <span style="color:var(--gray-400)">←CP测试委外</span>
+        <span class="tag" style="background:#fef3c7;color:#92400e">CP</span>
+        <span style="color:var(--gray-400)">←BP凸块委外</span>
+        <span class="tag" style="background:#f3e8ff;color:#6b21a8">BP</span>
+        <span style="color:var(--gray-400)">←Wafer晶圆采购</span>
+        <span class="tag" style="background:#fce7f3;color:#9d174d">Wafer</span>
+        <span style="color:var(--gray-500);margin-left:6px">|  委外: ASE/PTI→京元/矽格→SPIL/Amkor→TSMC/SMIC</span>
+      </div>
+
+      <!-- ==================== Tab 1: Statistical（IC设计多层级统计预测） ==================== -->
       <div class="tab-content active" id="tab-dp-statistical">
         <div class="result-summary" id="dpStatCards"></div>
-        <div style="margin-bottom:10px;padding:8px 12px;background:#f0f7ff;border-radius:6px;font-size:12px;color:var(--gray-600)">
-          🏭 <strong>半导体全链路预测</strong>：从成品(FT)→封装(AB)→测试(CP)→凸块(BP)→晶圆(Wafer)多层级需求传导，自动折算晶圆当量
-        </div>
         <div class="grid-2">
           <div class="card">
-            <div class="card-title">📈 统计预测结果 <span class="tag">Statistical Forecast</span></div>
+            <div class="card-title">📈 <strong>IC设计成品→晶圆全链路预测</strong> <span class="tag">FT→Wafer Cascade</span></div>
             <div class="chart-container chart-container-sm"><canvas id="dpStatChart"></canvas></div>
+            <div style="font-size:10px;color:var(--gray-400);text-align:center;margin-top:4px">FT成品需求 → 经AB/CP/BP委外级联 → 等效Wafer晶圆需求</div>
           </div>
           <div class="card">
-            <div class="card-title">⚙️ 预测模型配置 <span class="tag">Model Configuration</span></div>
-            <div style="padding:10px;background:var(--gray-50);border-radius:6px">
-              <div class="grid-2" style="margin-bottom:10px">
-                <div class="form-group"><label style="font-size:12px">预测模型</label>
-                  <select id="dpModelSelect" style="width:100%;padding:5px 8px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px">
-                    <option value="auto">🤖 自动选型（推荐）</option>
+            <div class="card-title">⚙️ 委外预测模型配置 <span class="tag">Model Config</span></div>
+            <div style="padding:10px;background:var(--gray-50);border-radius:6px;font-size:12px">
+              <div class="grid-2" style="margin-bottom:8px">
+                <div class="form-group"><label>模型</label>
+                  <select id="dpModelSelect" style="width:100%;padding:4px 6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px">
+                    <option value="auto">🤖 自动选型</option>
                     <option value="holt-winters" selected>📐 Holt-Winters</option>
-                    <option value="sma">📊 移动平均 SMA</option>
-                    <option value="croston">📉 Croston 间歇需求</option>
+                    <option value="sma">📊 SMA</option>
+                    <option value="croston">📉 Croston</option>
                   </select>
                 </div>
-                <div class="form-group"><label style="font-size:12px">滚动预测周期(周)</label><input type="number" id="dpForecastHorizon" value="18" min="4" max="52" style="width:100%;padding:5px 8px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px"></div>
+                <div class="form-group"><label>滚动周期(周)</label><input type="number" id="dpForecastHorizon" value="18" min="4" max="52" style="width:100%;padding:4px 6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px"></div>
               </div>
-              <div class="grid-2" style="margin-bottom:10px">
-                <div class="form-group"><label style="font-size:12px">制程层级</label>
-                  <select id="dpProcessLevel" style="width:100%;padding:5px 8px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px">
-                    <option value="all">📦 全层级（含折算）</option>
-                    <option value="FT" selected>✅ FT 成品级</option>
-                    <option value="AB">📦 AB 封装级</option>
-                    <option value="CP">💠 CP 测试级</option>
-                    <option value="BP">💠 BP 凸块级</option>
-                    <option value="Wafer">⚪ Wafer 晶圆级</option>
+              <div class="grid-2" style="margin-bottom:8px">
+                <div class="form-group"><label>制程层级预测</label>
+                  <select id="dpProcessLevel" style="width:100%;padding:4px 6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px">
+                    <option value="all">📦 全链路级联</option>
+                    <option value="FT" selected>✅ FT成品(颗)</option>
+                    <option value="AB">📦 AB委外封装(颗)</option>
+                    <option value="CP">💠 CP委外测试(片)</option>
+                    <option value="BP">💠 BP委外凸块(片)</option>
+                    <option value="Wafer">⚪ Wafer晶圆采购(片)</option>
                   </select>
                 </div>
-                <div class="form-group"><label style="font-size:12px">置信区间</label>
-                  <select id="dpConfidenceLevel" style="width:100%;padding:5px 8px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px">
-                    <option value="0.8">80%</option>
-                    <option value="0.9" selected>90%</option>
-                    <option value="0.95">95%</option>
-                  </select>
-                </div>
-              </div>
-              <div class="grid-2" style="margin-bottom:10px">
-                <div class="form-group"><label style="font-size:12px">良率因子</label>
-                  <select id="dpYieldFactor" style="width:100%;padding:5px 8px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px">
-                    <option value="none">不启用</option>
-                    <option value="apply" selected>✅ 应用良率折算</option>
-                  </select>
-                </div>
-                <div class="form-group"><label style="font-size:12px">季节性周期</label>
-                  <select id="dpSeasonLength" style="width:100%;padding:5px 8px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px">
-                    <option value="4">4周(月周期)</option>
-                    <option value="13">13周(季周期)</option>
-                    <option value="52" selected>52周(年周期)</option>
+                <div class="form-group"><label>季节性</label>
+                  <select id="dpSeasonLength" style="width:100%;padding:4px 6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px">
+                    <option value="4">4周(月)</option>
+                    <option value="13">13周(季)</option>
+                    <option value="52" selected>52周(年)</option>
                   </select>
                 </div>
               </div>
-              <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
-                <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="checkbox" id="dpAutoOptimize" checked> 自动参数优化</label>
-                <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="checkbox" id="dpOutlierFilter" checked> 异常值修正</label>
-                <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="checkbox" id="dpYieldAuto" checked> 良率学习曲线</label>
-                <span style="font-size:11px;color:var(--gray-400)">|</span>
-                <label style="font-size:12px;cursor:pointer"><input type="checkbox" id="dpMultiLevel" checked> 多层级传导</label>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+                <label style="font-size:11px;cursor:pointer"><input type="checkbox" id="dpAutoOptimize" checked> 自动参数优化</label>
+                <label style="font-size:11px;cursor:pointer"><input type="checkbox" id="dpOutlierFilter" checked> 异常值修正</label>
+                <label style="font-size:11px;cursor:pointer"><input type="checkbox" id="dpYieldAuto" checked> 良率折算</label>
+                <label style="font-size:11px;cursor:pointer"><input type="checkbox" id="dpMultiLevel" checked> 委外级联传导</label>
               </div>
-              <div style="display:flex;gap:8px;margin-top:12px">
+              <div style="display:flex;gap:6px">
                 <button class="btn btn-sm btn-primary" onclick="runDpForecast()">🔮 运行预测</button>
                 <button class="btn btn-sm btn-outline" onclick="runDpModelComparison()">📊 多模型对比</button>
                 <button class="btn btn-sm btn-outline" onclick="saveDpForecastVersion()">💾 保存版本</button>
@@ -1016,42 +1013,40 @@ tbody tr:hover td{background:var(--primary-bg)}
         </div>
         <div class="card">
           <div class="card-header">
-            <div class="card-title">📋 预测准确度追踪 <span class="tag">Forecast Accuracy KPI</span></div>
-            <div style="display:flex;gap:8px;align-items:center">
-              <span style="font-size:12px;color:var(--gray-500)">版本:</span>
-              <select id="dpVersionSelect" style="padding:4px 8px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px"></select>
-              <span style="font-size:12px;color:var(--gray-500)">| 晶圆当量:</span>
-              <span id="dpWaferEquivalent" style="font-size:12px;font-weight:600;color:var(--primary)">—</span>
+            <div class="card-title">📋 各制程层级预测准确度 <span class="tag">Per-Process Forecast Accuracy</span></div>
+            <div style="display:flex;gap:6px;align-items:center;font-size:11px">
+              <span style="color:var(--gray-400)">版本:</span>
+              <select id="dpVersionSelect" style="padding:2px 6px;border:1px solid var(--gray-300);border-radius:4px;font-size:11px"></select>
+              <span style="color:var(--gray-400)">| 等效晶圆总需求:</span>
+              <span id="dpWaferEquivalent" style="font-weight:600;color:var(--primary);font-size:12px">—</span>
             </div>
           </div>
-          <div class="table-wrapper"><table id="dpAccuracyTable"><thead><tr><th>物料</th><th>制程</th><th>模型</th><th>MAPE</th><th>MAE</th><th>RMSE</th><th>Bias(%)</th><th>预测总量</th><th>良率因子</th><th>晶圆当量</th><th>推荐</th></tr></thead><tbody></tbody></table></div>
+          <div class="table-wrapper"><table id="dpAccuracyTable"><thead><tr><th>物料</th><th>制程</th><th>委外/采购</th><th>模型</th><th>MAPE</th><th>MAE</th><th>RMSE</th><th>预测总量</th><th>良率因子</th><th>晶圆当量(片)</th><th>推荐</th></tr></thead><tbody></tbody></table></div>
         </div>
         <div class="card">
           <div class="card-header">
-            <div class="card-title">📊 全链路需求传导 <span class="tag">Multi-Level Demand Propagation</span></div>
-            <div style="display:flex;gap:6px;align-items:center;font-size:11px;">
-              <span class="tag" style="background:#dbeafe;color:#1e40af">FT成品</span>→<span class="tag" style="background:#d1fae5;color:#065f46">AB封装</span>→<span class="tag" style="background:#fef3c7;color:#92400e">CP测试</span>→<span class="tag" style="background:#f3e8ff;color:#6b21a8">BP凸块</span>→<span class="tag" style="background:#fce7f3;color:#9d174d">Wafer晶圆</span>
-            </div>
+            <div class="card-title">📊 全链路委外级联需求传导 <span class="tag">FT→AB→CP→BP→Wafer Propagation</span></div>
+            <div style="font-size:10px;color:var(--gray-400)">FT成品(ASE/PTI封装) → AB(京元/矽格测试) → CP(SPIL/Amkor凸块) → BP(TSMC/SMIC晶圆)</div>
           </div>
-          <div class="table-wrapper" style="max-height:250px"><table id="dpHistoryTable"><thead><tr><th>期间</th><th>物料</th><th>层级</th><th>历史实际</th><th>预测值</th><th>误差率</th><th>折算晶圆</th><th>良率(%)</th><th>置信区间</th></tr></thead><tbody></tbody></table></div>
+          <div class="table-wrapper" style="max-height:250px"><table id="dpHistoryTable"><thead><tr><th>期间</th><th>物料</th><th>制程</th><th>委外供应商</th><th>历史实际</th><th>预测值</th><th>误差%</th><th>折算晶圆(片)</th><th>良率%</th></tr></thead><tbody></tbody></table></div>
         </div>
       </div>
 
-      <!-- ==================== Tab 2: Commitment Sensing（承诺感知） ==================== -->
+      <!-- ==================== Tab 2: Commitment Sensing（委外级联承诺感知） ==================== -->
       <div class="tab-content" id="tab-dp-sensing">
         <div class="result-summary" id="dpSensingCards"></div>
-        <div style="margin-bottom:10px;padding:8px 12px;background:#f0f7ff;border-radius:6px;font-size:12px;color:var(--gray-600)">
-          📡 <strong>客户承诺感知</strong>：监控客户承诺等级变更(Hard/Flexible/Forecast)、订单Pull-in/Push-out/Cancel信号、Wafer Bank水位及渠道库存
+        <div style="margin-bottom:8px;padding:6px 10px;background:#f0f7ff;border-radius:6px;font-size:11px;color:var(--gray-600)">
+          📡 <strong>IC设计承诺感知</strong>：客户承诺变更 → 影响各委外制程级联需求 → 折算至等效Wafer → 触发Wafer Bank调整
         </div>
         <div class="grid-2">
           <div class="card">
-            <div class="card-title">📡 承诺等级分布 <span class="tag">Commitment Level</span></div>
+            <div class="card-title">📡 承诺等级分布 <span class="tag">FT→Wafer Commitment</span></div>
             <div class="chart-container chart-container-sm"><canvas id="dpSensingChart"></canvas></div>
           </div>
           <div class="card">
-            <div class="card-title">📊 感知调整明细 <span class="tag">Sensing Adjustment</span></div>
-            <div class="table-wrapper" style="max-height:240px"><table id="dpSensingAdjustTable"><thead><tr><th>物料</th><th>基线预测</th><th>信号类型</th><th>调整量</th><th>调整后预测</th><th>调整幅度(%)</th><th>信号来源</th></tr></thead><tbody></tbody></table></div>
-            <div style="margin-top:8px;display:flex;gap:8px">
+            <div class="card-title">📊 感知调整明细 <span class="tag">Sensed Adjustments</span></div>
+            <div class="table-wrapper" style="max-height:240px"><table id="dpSensingAdjustTable"><thead><tr><th>物料</th><th>基线预测</th><th>信号类型</th><th>调整量(颗)</th><th>调整后(颗)</th><th>等效晶圆(片)</th><th>信号来源</th></tr></thead><tbody></tbody></table></div>
+            <div style="margin-top:6px;display:flex;gap:6px">
               <button class="btn btn-sm btn-primary" onclick="runDpSensing()">📡 运行承诺感知</button>
               <button class="btn btn-sm btn-outline" onclick="openDpSignalConfig()">⚙️ 信号配置</button>
             </div>
@@ -1059,65 +1054,67 @@ tbody tr:hover td{background:var(--primary-bg)}
         </div>
         <div class="card">
           <div class="card-header">
-            <div class="card-title">⏱️ 客户承诺变更信号 <span class="tag">Commitment Change Signals</span></div>
-            <div style="display:flex;gap:8px;align-items:center">
-              <span style="font-size:12px;color:var(--gray-500)">信号类型:</span>
-              <select id="dpSignalSource" style="padding:4px 8px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px">
-                <option value="all" selected>📊 全部信号</option>
-                <option value="hard">🔴 Hard 硬承诺变更</option>
-                <option value="flexible">🟡 Flexible 柔性变更</option>
-                <option value="forecast">🔵 Forecast 预测变更</option>
+            <div class="card-title">⏱️ 委外级联承诺变更信号 <span class="tag">Process-Level Signal</span></div>
+            <div style="display:flex;gap:6px;align-items:center;font-size:11px">
+              <span style="color:var(--gray-400)">信号筛选:</span>
+              <select id="dpSignalSource" style="padding:2px 6px;border:1px solid var(--gray-300);border-radius:4px;font-size:11px">
+                <option value="all">全部信号</option>
+                <option value="hard">🔴 Hard变更</option>
+                <option value="flexible">🟡 Flexible变更</option>
+                <option value="forecast">🔵 Forecast调整</option>
                 <option value="order">📋 订单变更</option>
-                <option value="wafer">⚪ Wafer Bank信号</option>
+                <option value="wafer">⚪ Wafer Bank</option>
               </select>
             </div>
           </div>
-          <div class="table-wrapper"><table id="dpSignalTable"><thead><tr><th>信号编号</th><th>物料</th><th>信号来源</th><th>变更前</th><th>变更后</th><th>置信度</th><th>影响量</th><th>有效期</th><th>状态</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+          <div class="table-wrapper"><table id="dpSignalTable"><thead><tr><th>信号编号</th><th>物料</th><th>影响制程</th><th>信号来源</th><th>变更前</th><th>变更后</th><th>置信度</th><th>等效晶圆(片)</th><th>有效期</th><th>状态</th><th>操作</th></tr></thead><tbody></tbody></table></div>
         </div>
       </div>
 
-      <!-- ==================== Tab 3: Rolling Consensus（滚动共识） ==================== -->
+      <!-- ==================== Tab 3: Rolling Consensus（晶圆约束滚动共识） ==================== -->
       <div class="tab-content" id="tab-dp-consensus">
         <div class="result-summary" id="dpConsensusCards"></div>
-        <div style="margin-bottom:10px;padding:8px 12px;background:#f0f7ff;border-radius:6px;font-size:12px;color:var(--gray-600)">
-          🤝 <strong>18周滚动共识</strong>：统计预测 → 客户承诺评审 → 供应能力评审 → 审批发布，按产品族级别汇聚共识
+        <div style="margin-bottom:8px;padding:6px 10px;background:#f0f7ff;border-radius:6px;font-size:11px;color:var(--gray-600)">
+          🤝 <strong>IC设计18周滚动共识</strong>：FT成品需求共识 → 经AB/CP/BP委外级联 → 晶圆采购约束 → 按Wafer缺口反向调整
         </div>
         <div class="grid-2">
           <div class="card">
-            <div class="card-title">📊 共识版本对比 <span class="tag">Version Comparison</span></div>
+            <div class="card-title">📊 各委外层级共识对比 <span class="tag">Process-Level Consensus</span></div>
             <div class="chart-container chart-container-sm"><canvas id="dpConsensusChart"></canvas></div>
           </div>
           <div class="card">
-            <div class="card-title">🤝 共识工作流 <span class="tag">Consensus Workflow</span></div>
-            <div class="table-wrapper" style="max-height:240px"><table id="dpWorkflowTable"><thead><tr><th>阶段</th><th>负责人</th><th>统计预测(颗)</th><th>客户承诺调整</th><th>供应确认</th><th>最终共识</th><th>状态</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+            <div class="card-title">📋 共识工作流 <span class="tag">FT→Wafer Workflow</span></div>
+            <div class="table-wrapper" style="max-height:260px"><table id="dpWorkflowTable"><thead><tr><th>阶段</th><th>负责人</th><th>FT成品(颗)</th><th>经委外级联</th><th>等效Wafer(片)</th><th>Wafer约束</th><th>缺口</th><th>状态</th></tr></thead><tbody></tbody></table></div>
           </div>
         </div>
         <div class="card">
           <div class="card-header">
-            <div class="card-title">📋 18周滚动版本 <span class="tag">18-Week Rolling Version</span></div>
+            <div class="card-title">📋 18周滚动版本 <span class="tag">18-Week Rolling w/ Wafer Constraint</span></div>
             <div style="display:flex;gap:6px;align-items:center;font-size:11px">
-              <span style="color:var(--gray-500)">当前滚动窗口:</span>
+              <span style="color:var(--gray-400)">当前滚动:</span>
               <span id="dpRollingWindowLabel" style="font-weight:600">W26-W43 (2026)</span>
+              <span style="color:var(--gray-400);margin-left:8px">| 可用晶圆约束:</span>
+              <span id="dpWaferConstraintLabel" style="font-weight:600;color:var(--primary)">—</span>
             </div>
           </div>
-          <div class="table-wrapper"><table id="dpVersionTable"><thead><tr><th>版本ID</th><th>版本名称</th><th>产品族</th><th>滚动窗口</th><th>晶圆当量</th><th>创建人</th><th>状态</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+          <div class="table-wrapper"><table id="dpVersionTable"><thead><tr><th>版本ID</th><th>名称</th><th>产品族</th><th>滚动窗口</th><th>FT共识(颗)</th><th>经委外级联等效Wafer(片)</th><th>晶圆约束</th><th>状态</th><th>操作</th></tr></thead><tbody></tbody></table></div>
         </div>
       </div>
 
-      <!-- ==================== Tab 4: Customer Commitment（客户承诺） ==================== -->
+      <!-- ==================== Tab 4: Customer Commitment（委外产能博弈） ==================== -->
       <div class="tab-content" id="tab-dp-promotion">
         <div class="result-summary" id="dpPromoCards"></div>
-        <div style="margin-bottom:10px;padding:8px 12px;background:#f0f7ff;border-radius:6px;font-size:12px;color:var(--gray-600)">
-          📋 <strong>客户承诺与产能分配</strong>：管理客户订单Pipeline，Hard/Flexible/Forecast三级承诺，产能不足时按优先级分配
+        <div style="margin-bottom:8px;padding:6px 10px;background:#f0f7ff;border-radius:6px;font-size:11px;color:var(--gray-600)">
+          📋 <strong>IC设计客户承诺与委外产能博弈</strong>：客户Hard/Flexible/Forecast承诺 → 经委外级联折算等效晶圆 → 与晶圆产能约束进行分配
         </div>
         <div class="grid-2">
           <div class="card">
-            <div class="card-title">📊 客户承诺分级 <span class="tag">Commitment Tiers</span></div>
+            <div class="card-title">📊 客户承诺分级 <span class="tag">Commitment vs Wafer</span></div>
             <div class="chart-container chart-container-sm"><canvas id="dpPromoChart"></canvas></div>
           </div>
           <div class="card">
-            <div class="card-title">📈 承诺Pipeline <span class="tag">Commitment Pipeline</span></div>
-            <div class="table-wrapper" style="max-height:240px"><table id="dpPromoUpliftTable"><thead><tr><th>客户</th><th>物料</th><th>Hard承诺</th><th>Flexible承诺</th><th>Forecast</th><th>合计</th><th>已分配产能</th><th>缺口</th><th>优先级</th></tr></thead><tbody></tbody></table></div>
+            <div class="card-title">📈 承诺Pipeline &amp; 晶圆消耗 <span class="tag">Commitment → Wafer Consumption</span></div>
+            <div class="table-wrapper" style="max-height:240px"><table id="dpPromoUpliftTable"><thead><tr><th>客户</th><th>物料</th><th>Hard(颗)</th><th>Flexible(颗)</th><th>Forecast(颗)</th><th>合计</th><th>等效Wafer(片)</th><th>已分配晶圆</th><th>缺口(片)</th><th>优先级</th></tr></thead><tbody></tbody></table></div>
           </div>
         </div>
         <div class="card">
@@ -1125,81 +1122,78 @@ tbody tr:hover td{background:var(--primary-bg)}
             <div class="card-title">📋 客户承诺列表 <span class="tag">Customer Commitment List</span></div>
             <button class="btn btn-sm btn-primary" onclick="openDpNewPromoModal()">➕ 新建承诺</button>
           </div>
-          <div class="table-wrapper"><table id="dpPromoTable"><thead><tr><th>承诺ID</th><th>客户</th><th>物料</th><th>承诺等级</th><th>数量</th><th>需求周</th><th>OTIF(%)</th><th>状态</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+          <div class="table-wrapper"><table id="dpPromoTable"><thead><tr><th>承诺ID</th><th>客户</th><th>物料</th><th>承诺等级</th><th>数量</th><th>等效Wafer(片)</th><th>需求周</th><th>OTIF(%)</th><th>状态</th><th>操作</th></tr></thead><tbody></tbody></table></div>
         </div>
       </div>
 
-      <!-- ==================== Tab 5: NPI Lifecycle（半导体NPI生命周期） ==================== -->
+      <!-- ==================== Tab 5: NPI Lifecycle（半导体NPI生命周期委外版） ==================== -->
       <div class="tab-content" id="tab-dp-npi">
         <div class="result-summary" id="dpNpiCards"></div>
-        <div style="margin-bottom:10px;padding:8px 12px;background:#f0f7ff;border-radius:6px;font-size:12px;color:var(--gray-600)">
-          🔄 <strong>半导体NPI生命周期</strong>：良率学习曲线(Yield Learning)、S-Curve爬坡、制程节点迁移、EOL管理，自动关联BOM与主数据
+        <div style="margin-bottom:8px;padding:6px 10px;background:#f0f7ff;border-radius:6px;font-size:11px;color:var(--gray-600)">
+          🔄 <strong>IC设计NPI委外周期</strong>：新芯片产品导入 → 经AB/CP/BP委外良率爬坡 → 各制程节点良率学习曲线 → Wafer晶圆需求估算
         </div>
         <div class="grid-2">
           <div class="card">
-            <div class="card-title">🔄 生命周期曲线 <span class="tag">Lifecycle Curve</span></div>
+            <div class="card-title">🔄 生命周期曲线(含委外良率) <span class="tag">Lifecycle w/ Outsourced Yield</span></div>
             <div class="chart-container chart-container-sm"><canvas id="dpNpiChart"></canvas></div>
           </div>
           <div class="card">
-            <div class="card-title">📋 新品导入计划 <span class="tag">NPI Plan</span></div>
-            <div class="table-wrapper" style="max-height:240px"><table id="dpNpiPlanTable"><thead><tr><th>产品</th><th>制程节点</th><th>导入日期</th><th>爬坡曲线</th><th>目标良率</th><th>当前良率</th><th>峰值月需求</th><th>当前阶段</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+            <div class="card-title">📋 NPI导入计划 <span class="tag">NPI w/ Process Nodes</span></div>
+            <div class="table-wrapper" style="max-height:240px"><table id="dpNpiPlanTable"><thead><tr><th>产品</th><th>制程节点</th><th>导入日期</th><th>爬坡曲线</th><th>目标良率</th><th>当前良率</th><th>委外供应商</th><th>峰值Wafer/月</th><th>当前阶段</th><th>操作</th></tr></thead><tbody></tbody></table></div>
           </div>
         </div>
         <div class="card">
           <div class="card-header">
-            <div class="card-title">📈 良率学习曲线 <span class="tag">Yield Learning Curve</span></div>
+            <div class="card-title">📈 各委外制程良率学习曲线 <span class="tag">Per-Process Yield Learning</span></div>
             <button class="btn btn-sm btn-primary" onclick="openDpNewNpiModal()">➕ 新建产品</button>
           </div>
-          <div class="table-wrapper"><table id="dpNpiDemandTable"><thead><tr><th>产品</th><th>导入期良率</th><th>爬坡期良率</th><th>成熟期良率</th><th>衰退期良率</th><th>Wafer当量需求</th><th>成品需求</th><th>晶圆片数</th><th>当前期预测</th></tr></thead><tbody></tbody></table></div>
+          <div class="table-wrapper"><table id="dpNpiDemandTable"><thead><tr><th>产品</th><th>FT成品%</th><th>AB封装%</th><th>CP测试%</th><th>BP凸块%</th><th>Wafer采购%</th><th>成品需求(颗)</th><th>等效Wafer(片)</th><th>当前期预测(颗)</th></tr></thead><tbody></tbody></table></div>
         </div>
       </div>
 
-      <!-- ==================== Tab 6: Demand Analytics（半导体需求分析） ==================== -->
+      <!-- ==================== Tab 6: Demand Analytics（委外维度需求分析） ==================== -->
       <div class="tab-content" id="tab-dp-analytics">
         <div class="result-summary" id="dpAnalyticsCards"></div>
-        <div style="margin-bottom:10px;padding:8px 12px;background:#f0f7ff;border-radius:6px;font-size:12px;color:var(--gray-600)">
-          📈 <strong>半导体需求分析</strong>：按制程层级/客户维度分割、承诺等级准确性追踪、良率与产能影响分析、What-If情景模拟
+        <div style="margin-bottom:8px;padding:6px 10px;background:#f0f7ff;border-radius:6px;font-size:11px;color:var(--gray-600)">
+          📈 <strong>IC设计委外维度需求分析</strong>：按FT/AB/CP/BP/Wafer制程层级分割 → 委外供应商维度需求分布 → 晶圆约束异常 → What-If情景
         </div>
         <div class="grid-2">
           <div class="card">
-            <div class="card-title">📊 制程层级需求分割 <span class="tag">Process Level Segmentation</span></div>
+            <div class="card-title">📊 各委外制程需求分割 <span class="tag">Process-Level Segmentation</span></div>
             <div class="chart-container chart-container-sm"><canvas id="dpAnalyticsSegmentChart"></canvas></div>
           </div>
           <div class="card">
-            <div class="card-title">🎯 承诺准确度KPI <span class="tag">Commitment Accuracy KPI</span></div>
-            <div class="table-wrapper" style="max-height:240px"><table id="dpAnalyticsKpiTable"><thead><tr><th>产品族</th><th>MAPE(%)</th><th>MAE</th><th>硬承诺兑现率</th><th>柔性→硬转化率</th><th>Forecast→Hard</th><th>样本量</th><th>评估</th></tr></thead><tbody></tbody></table></div>
+            <div class="card-title">🎯 委外承诺准确度KPI <span class="tag">Supplier Commitment KPI</span></div>
+            <div class="table-wrapper" style="max-height:240px"><table id="dpAnalyticsKpiTable"><thead><tr><th>制程</th><th>委外供应商</th><th>MAPE(%)</th><th>MAE</th><th>硬承诺兑现率</th><th>柔性转化率</th><th>晶圆当量占比</th><th>评估</th></tr></thead><tbody></tbody></table></div>
           </div>
         </div>
         <div class="card">
           <div class="card-header">
-            <div class="card-title">⚠️ 需求异常与良率影响 <span class="tag">Anomaly &amp; Yield Impact</span></div>
+            <div class="card-title">⚠️ 委外级联异常与晶圆影响 <span class="tag">Process Cascade Anomaly</span></div>
             <button class="btn btn-sm btn-primary" onclick="runDpExceptionAnalysis()">🔍 运行异常检测</button>
-            <span style="font-size:11px;color:var(--gray-400);margin-left:8px">检测良率波动/客户AIO/产能约束异常</span>
           </div>
-          <div class="table-wrapper"><table id="dpAnomalyTable"><thead><tr><th>物料</th><th>异常类型</th><th>实际值</th><th>预测值</th><th>偏差</th><th>偏差率(%)</th><th>检测日期</th><th>严重程度</th><th>建议措施</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+          <div class="table-wrapper"><table id="dpAnomalyTable"><thead><tr><th>物料</th><th>异常类型</th><th>影响制程</th><th>实际值</th><th>预测值</th><th>偏差率</th><th>等效晶圆影响(片)</th><th>严重度</th><th>建议措施</th><th>操作</th></tr></thead><tbody></tbody></table></div>
         </div>
         <div class="card">
           <div class="card-header">
-            <div class="card-title">📊 What-If 情景分析 <span class="tag">What-If Analysis</span></div>
-            <div style="display:flex;gap:8px;align-items:center">
-              <span style="font-size:12px;color:var(--gray-500)">情景：</span>
-              <select id="dpWhatIfScenario" style="padding:4px 8px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px">
-                <option value="base">📊 基准预测</option>
-                <option value="yield_up">✅ 良率提升+5%</option>
-                <option value="yield_down">⚠️ 良率下降-5%</option>
-                <option value="customer_up">📈 客户增单+15%</option>
-                <option value="customer_down">📉 客户减单-10%</option>
-                <option value="capacity">🏭 产能约束</option>
+            <div class="card-title">📊 What-If 委外级联情景分析 <span class="tag">Process Cascade What-If</span></div>
+            <div style="display:flex;gap:6px;align-items:center;font-size:11px">
+              <span style="color:var(--gray-400)">情景：</span>
+              <select id="dpWhatIfScenario" style="padding:2px 6px;border:1px solid var(--gray-300);border-radius:4px;font-size:11px">
+                <option value="base">基准</option>
+                <option value="yield_up">良率+5%</option>
+                <option value="yield_down">良率-5%</option>
+                <option value="customer_up">客户增单+15%</option>
+                <option value="customer_down">客户减单-10%</option>
+                <option value="wafer_limit">晶圆产能-15%</option>
               </select>
-              <button class="btn btn-sm btn-outline" onclick="runDpWhatIf()">📊 运行情景分析</button>
+              <button class="btn btn-sm btn-outline" onclick="runDpWhatIf()">📊 运行情景</button>
             </div>
           </div>
-          <div class="table-wrapper"><table id="dpWhatIfTable"><thead><tr><th>物料</th><th>制程</th><th>基准预测</th><th>情景调整后</th><th>晶圆当量变化</th><th>影响程度</th><th>建议措施</th></tr></thead><tbody></tbody></table></div>
+          <div class="table-wrapper"><table id="dpWhatIfTable"><thead><tr><th>物料</th><th>制程</th><th>委外供应商</th><th>基准预测</th><th>情景调整</th><th>晶圆当量变化(片)</th><th>影响</th><th>建议</th></tr></thead><tbody></tbody></table></div>
         </div>
       </div>
-    </div>
-
-    <!-- ==================== Supply Planning（供应链计划）= 半导体IC设计委外模式 ==================== -->
+    </div><!-- ==================== Supply Planning（供应链计划）= 半导体IC设计委外模式 ==================== -->
     <div class="section" id="section-supplyplan">
       <div class="tabs" id="supplyPlanTabs">
         <div class="tab active" data-tab="sp-network" onclick="switchSupplyPlanTab('sp-network')">📊 晶圆供应&amp;委外网络</div>
@@ -6481,8 +6475,7 @@ function calcWaferEq(propagation){
 function switchDemandPlanTab(tab){
   document.querySelectorAll('#demandPlanTabs .tab').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('#section-demandplan .tab-content').forEach(t=>t.classList.remove('active'));
-  const tabEl=document.querySelector('#demandPlanTabs .tab[data-tab="'+tab+'"]');
-  if(tabEl) tabEl.classList.add('active');
+  document.querySelector('#demandPlanTabs .tab[data-tab="'+tab+'"]').classList.add('active');
   document.getElementById('tab-'+tab).classList.add('active');
   if(tab==='dp-statistical') renderDpStatistical();
   if(tab==='dp-sensing') renderDpSensing();
@@ -6491,13 +6484,26 @@ function switchDemandPlanTab(tab){
   if(tab==='dp-npi') renderDpNpi();
   if(tab==='dp-analytics') renderDpAnalytics();
 }
-
 function updateDemandPlan(){
-  renderDpStatistical(); renderDpSensing(); renderDpConsensus();
-  renderDpPromotion(); renderDpNpi(); renderDpAnalytics();
+  renderDpStatistical();renderDpSensing();renderDpConsensus();
+  renderDpPromotion();renderDpNpi();renderDpAnalytics();
 }
 
-// ==================== Forecasting Helpers ====================
+// ==================== Forecasting Helpers（母公司制程链感知） ====================
+const DP_PROCS = ['FT','AB','CP','BP','Wafer'];
+const DP_PROC_LABELS = {FT:'FT成品(ASE/PTI)',AB:'AB封装(京元/矽格)',CP:'CP测试(SPIL/Amkor)',BP:'BP凸块(京元/硅品)',Wafer:'Wafer晶圆(TSMC/SMIC)'};
+const DP_PROC_UNITS = {FT:'颗',AB:'颗',CP:'片',BP:'片',Wafer:'片'};
+function dpWaferEq(ftQty){
+  const prop = propagateDemand(ftQty);
+  return prop.Wafer || 0;
+}
+function dpProcessIcon(proc){
+  return {FT:'✅',AB:'📦',CP:'💠',BP:'💠',Wafer:'⚪'}[proc]||'❓';
+}
+function dpProcessColor(proc){
+  return {FT:'#dbeafe',AB:'#d1fae5',CP:'#fef3c7',BP:'#f3e8ff',Wafer:'#fce7f3'}[proc]||'#f0f0f0';
+}
+
 function dpHoltWinters(data,alpha,beta,gamma,seasonLen,horizon){
   if(!data||data.length<seasonLen) return {forecast:Array(horizon).fill(data.length?data[data.length-1]:0),smoothed:[],mape:0,mae:0,rmse:0,bias:0,components:{}};
   const smoothed=[];const seasonal=[];
@@ -6566,7 +6572,7 @@ function dpAutoSelectModel(data,seasonLen,horizon){
   return {model:'sma',result:bestSma,params:{window:bestWin}};
 }
 
-// ==================== Tab 1: Statistical Forecasting（半导体统计预测） ====================
+// ==================== Tab 1: Statistical Forecasting（IC设计委外全链路预测） ====================
 function renderDpStatistical(){
   if(!demandPlanData.forecasts.length){
     const mats=appData.materials.length?appData.materials:[
@@ -6576,13 +6582,12 @@ function renderDpStatistical(){
       {code:'IC-1000-BP',name:'BP凸块',processCode:'BP',unit:'片'},
       {code:'IC-1000-Wafer',name:'Wafer晶圆',processCode:'Wafer',unit:'片'}
     ];
+    const supplierMap={FT:'ASE/PTI',AB:'京元/矽格',CP:'SPIL/Amkor',BP:'京元/硅品',Wafer:'TSMC/SMIC'};
     const level=document.getElementById('dpProcessLevel')?.value||'all';
     const filtered=level==='all'?mats:mats.filter(m=>m.processCode===level);
     const horizon=parseInt(document.getElementById('dpForecastHorizon')?.value||18);
     const seasonLen=parseInt(document.getElementById('dpSeasonLength')?.value||52);
-    const yieldFactor=document.getElementById('dpYieldFactor')?.value==='apply';
-    const yieldAuto=document.getElementById('dpYieldAuto')?.checked!==false;
-    // 生成各层级典型历史数据（52周）
+    const yieldFactor=document.getElementById('dpYieldAuto')?.checked!==false;
     const baseDemands={FT:8000,AB:8000,CP:70,BP:70,Wafer:70};
     const volatilities={FT:0.2,AB:0.18,CP:0.12,BP:0.12,Wafer:0.1};
     filtered.slice(0,8).forEach((m,i)=>{
@@ -6590,7 +6595,6 @@ function renderDpStatistical(){
       const base=baseDemands[proc]||5000;
       const vol=volatilities[proc]||0.15;
       const data=Array.from({length:52},(_,w)=>{
-        // 半导体季节模式：消费电子旺季Q4, Q1相对平稳
         const seasonFactor=1+0.2*Math.sin((w+26)*Math.PI/26)+0.1*Math.sin((w+13)*Math.PI/13);
         return Math.max(100,Math.round(base*seasonFactor*(1+vol*(Math.random()-0.5))));
       });
@@ -6613,18 +6617,16 @@ function renderDpStatistical(){
         if(autoOpt){const p=dpAutoOptimize(cleanData,Math.min(seasonLen,26),horizon);alpha=p.alpha;beta=p.beta;gamma=p.gamma;}
         result=dpHoltWinters(cleanData,alpha,beta,gamma,Math.min(seasonLen,26),horizon);
         modelName='holt-winters';
-      }else if(modelSelect==='sma'){
-        result=dpSma(cleanData,Math.min(cleanData.length,12),horizon);
-        modelName='sma';
+      }else if(modelSelect==='sma'){result=dpSma(cleanData,Math.min(cleanData.length,12),horizon);modelName='sma';
       }else{result=dpCroston(cleanData,horizon);modelName='croston';}
-      // 多层需求传导
       const totalForecast=Math.round(result.forecast.reduce((s,v)=>s+v,0));
       const prop=yieldFactor?propagateDemand(totalForecast):{};
-      const waferEq=prop.Wafer||0;
-      const yieldProd=prop.FT?Math.round((prop.FT/prop.Wafer||0)*100):SEMI_YIELD[proc]*100||98;
+      const waferEq=prop.Wafer||totalForecast>0?Math.round(totalForecast/120/(SEMI_YIELD[proc]||0.95)):0;
+      const yieldProd=yieldFactor?SEMI_YIELD[proc]*100||98:100;
       demandPlanData.forecasts.push({
-        material:m.code,materialName:m.name||m.code,process:proc,model:modelName,
-        horizon:18,seasonLen,history:cleanData,smoothed:result.smoothed||[],
+        material:m.code,materialName:m.name||m.code,process:proc,
+        supplier:supplierMap[proc]||'—',model:modelName,
+        horizon,seasonLen,history:cleanData,smoothed:result.smoothed||[],
         futureMonths:Array.from({length:horizon},(_,h)=>'W'+(h+27)),
         forecast:result.forecast,mape:result.mape,mae:result.mae,
         rmse:result.rmse||0,bias:result.bias||0,totalForecast,
@@ -6633,21 +6635,19 @@ function renderDpStatistical(){
       });
     });
     const sel=document.getElementById('dpVersionSelect');
-    if(sel)sel.innerHTML='<option value="baseline">基线预测V1</option>';
-    // 晶圆当量汇总
+    if(sel)sel.innerHTML='<option value="baseline">基线V1</option>';
     const totalWe=demandPlanData.forecasts.reduce((s,f)=>s+(f.waferEquivalent||0),0);
     const we=document.getElementById('dpWaferEquivalent');
     if(we)we.textContent=totalWe.toLocaleString()+' 片';
   }
-
   const fc=demandPlanData.forecasts;
   const totalFc=fc.reduce((s,f)=>s+f.totalForecast,0);
   const waferTotal=fc.reduce((s,f)=>s+(f.waferEquivalent||0),0);
   const avgMape=fc.length?fc.reduce((s,f)=>s+(f.mape||0),0)/fc.length:0;
   document.getElementById('dpStatCards').innerHTML=
-    '<div class="summary-card blue"><div class="lbl">📊 物料数</div><div class="num" style="color:var(--primary)">'+fc.length+'</div><div class="sub-text">按制程层级分组</div></div>'+
-    '<div class="summary-card '+(avgMape<15?'green':'yellow')+'"><div class="lbl">🎯 平均MAPE</div><div class="num" style="color:'+(avgMape<15?'var(--success)':'var(--warning)')+'">'+(avgMape?avgMape.toFixed(1)+'%':'—')+'</div><div class="sub-text">预测准确度</div></div>'+
-    '<div class="summary-card green"><div class="lbl">⚪ 晶圆当量</div><div class="num" style="color:var(--success)">'+waferTotal.toLocaleString()+'</div><div class="sub-text">18周滚动总需求(片)</div></div>';
+    '<div class="summary-card blue"><div class="lbl">📊 制程层级数</div><div class="num" style="color:var(--primary)">'+fc.length+'</div><div class="sub-text">FT/AB/CP/BP/Wafer</div></div>'+
+    '<div class="summary-card '+(avgMape<15?'green':'yellow')+'"><div class="lbl">🎯 平均MAPE</div><div class="num" style="color:'+(avgMape<15?'var(--success)':'var(--warning)')+'">'+(avgMape?avgMape.toFixed(1)+'%':'—')+'</div><div class="sub-text">委外全链路预测准确度</div></div>'+
+    '<div class="summary-card green"><div class="lbl">⚪ 等效Wafer总需求</div><div class="num" style="color:var(--success)">'+waferTotal.toLocaleString()+'</div><div class="sub-text">经AB/CP/BP委外级联折算(片)</div></div>';
 
   if(fc.length){
     const labels=[];for(let i=0;i<fc[0].history.length;i++)labels.push('W'+(i+1));
@@ -6668,22 +6668,21 @@ function renderDpStatistical(){
       });
     }
   }
-
   let html='';fc.forEach(f=>{
     const rec=f.mape<10?'🌟 优秀':f.mape<20?'✅ 良好':f.mape<30?'⚠️ 一般':'🔴 需改进';
-    const procColor={'FT':'#dbeafe','AB':'#d1fae5','CP':'#fef3c7','BP':'#f3e8ff','Wafer':'#fce7f3'}[f.process]||'#f0f0f0';
-    const procTxt={'FT':'FT成品','AB':'AB封装','CP':'CP测试','BP':'BP凸块','Wafer':'晶圆'}[f.process]||f.process;
-    html+='<tr><td>'+f.material+'</td><td><span class="tag" style="background:'+procColor+';color:#333">'+procTxt+'</span></td><td>'+f.model+'</td><td style="'+(f.mape<15?'color:var(--success)':'color:var(--danger)')+'">'+(f.mape?f.mape.toFixed(1)+'%':'—')+'</td><td>'+(f.mae?f.mae.toFixed(1):'—')+'</td><td>'+(f.rmse?f.rmse.toFixed(1):'—')+'</td><td>'+(f.bias!==undefined?f.bias.toFixed(1):'—')+'</td><td>'+Math.round(f.totalForecast).toLocaleString()+'</td><td>'+(f.yieldRate?f.yieldRate.toFixed(1)+'%':'—')+'</td><td style="font-weight:600;color:var(--primary)">'+(f.waferEquivalent?f.waferEquivalent.toLocaleString():'—')+'</td><td>'+rec+'</td></tr>';
+    const procTxt={'FT':'成品','AB':'封装','CP':'测试','BP':'凸块','Wafer':'晶圆'}[f.process]||f.process;
+    const supTxt=f.process==='FT'?'ASE/PTI委外':f.process==='AB'?'京元/矽格委外':f.process==='CP'?'SPIL/Amkor委外':f.process==='BP'?'京元/硅品委外':'TSMC/SMIC采购';
+    html+='<tr><td>'+f.material+'</td><td><span class="tag" style="background:'+dpProcessColor(f.process)+'">'+procTxt+'</span></td><td style="font-size:11px">'+supTxt+'</td><td>'+f.model+'</td><td style="'+(f.mape<15?'color:var(--success)':'color:var(--danger)')+'">'+(f.mape?f.mape.toFixed(1)+'%':'—')+'</td><td>'+(f.mae?f.mae.toFixed(1):'—')+'</td><td>'+(f.rmse?f.rmse.toFixed(1):'—')+'</td><td>'+Math.round(f.totalForecast).toLocaleString()+'</td><td>'+(f.yieldRate?f.yieldRate.toFixed(1)+'%':'—')+'</td><td style="font-weight:600;color:var(--primary)">'+(f.waferEquivalent?f.waferEquivalent.toLocaleString():'—')+'</td><td>'+rec+'</td></tr>';
   });
   document.getElementById('dpAccuracyTable').querySelector('tbody').innerHTML=html;
 
   html='';fc.slice(0,6).forEach(f=>{
+    const sup=f.supplier||'—';
     f.history.slice(-18).forEach((v,i)=>{
       const pred=f.smoothed[i]||0;const errPct=Math.abs(v-pred)/Math.max(v,1)*100;
       const prop=f.propagation?f.propagation[f.process]||0:0;
       const yieldRate=f.yieldRate||SEMI_YIELD[f.process]*100;
-      const std=Math.sqrt(f.mae||100);const z=1.645;
-      html+='<tr><td>W'+(f.history.length-18+i+1)+'</td><td>'+f.material+'</td><td>'+f.process+'</td><td>'+v.toLocaleString()+'</td><td>'+Math.round(pred).toLocaleString()+'</td><td>'+(errPct?errPct.toFixed(1)+'%':'0%')+'</td><td>'+prop.toLocaleString()+'</td><td>'+(yieldRate?yieldRate.toFixed(1):'—')+'</td><td>'+(Math.round(pred-z*std).toLocaleString())+' - '+Math.round(pred+z*std).toLocaleString()+'</td></tr>';
+      html+='<tr><td>W'+(f.history.length-18+i+1)+'</td><td>'+f.material+'</td><td>'+f.process+'</td><td>'+sup+'</td><td>'+v.toLocaleString()+'</td><td>'+Math.round(pred).toLocaleString()+'</td><td>'+(errPct?errPct.toFixed(1)+'%':'0%')+'</td><td>'+(prop?prop.toLocaleString():'—')+'</td><td>'+(yieldRate?yieldRate.toFixed(1):'—')+'</td></tr>';
     });
   });
   document.getElementById('dpHistoryTable').querySelector('tbody').innerHTML=html;
@@ -6692,15 +6691,15 @@ function renderDpStatistical(){
 function runDpForecast(){
   demandPlanData.forecasts=[];renderDpStatistical();
   const waferTotal=demandPlanData.forecasts.reduce((s,f)=>s+(f.waferEquivalent||0),0);
-  showToast('🔮 半导体预测完成！总晶圆当量：'+waferTotal.toLocaleString()+' 片','success');
+  showToast('🔮 IC设计全链路预测完成！等效晶圆总需求：'+waferTotal.toLocaleString()+' 片','success');
 }
 function runDpModelComparison(){
   if(!demandPlanData.forecasts.length) runDpForecast();
   const seasonLen=parseInt(document.getElementById('dpSeasonLength')?.value||52);
   const horizon=parseInt(document.getElementById('dpForecastHorizon')?.value||18);
   const mats=demandPlanData.forecasts.map(f=>f.material);
-  let html='<h3>📊 多模型对比</h3><div style="margin:10px 0;font-size:13px;color:var(--gray-500)">按物料比较Holt-Winters/SMA/Croston的MAPE与拟合度（含良率因子）</div>';
-  html+='<div class="table-wrapper"><table><thead><tr><th>物料</th><th>制程</th><th>Holt-Winters MAPE</th><th>α/β/γ</th><th>SMA MAPE</th><th>SMA窗口</th><th>Croston</th><th>零值比</th><th>推荐模型</th></tr></thead><tbody>';
+  let html='<h3>📊 多模型对比（含委外良率因子）</h3>';
+  html+='<div class="table-wrapper"><table><thead><tr><th>物料</th><th>制程</th><th>委外供应商</th><th>Holt-Winters</th><th>α/β/γ</th><th>SMA MAPE</th><th>窗口</th><th>零值比</th><th>推荐</th></tr></thead><tbody>';
   mats.forEach(m=>{
     const f=demandPlanData.forecasts.find(fc=>fc.material===m);
     const data=f?.history||[];if(!data.length)return;
@@ -6709,12 +6708,11 @@ function runDpModelComparison(){
     let bestSma={mape:Infinity},bestWin=3;
     for(const w of[3,4,6,12]){if(data.length>=w){const r=dpSma(data,w,horizon);if(r.mape<bestSma.mape){bestSma=r;bestWin=w;}}}
     const zeros=data.filter(v=>v===0).length/data.length;
-    let croston='—';if(zeros>0.2){const cr=dpCroston(data,horizon);croston=cr.params?'适用':'—';}
+    const sup=f.supplier||'—';
     const best=(hw.mape||999)<=((bestSma.mape||999))?'Holt-Winters':'SMA';
-    const procTxt={'FT':'成品','AB':'封装','CP':'测试','BP':'凸块','Wafer':'晶圆'}[f?.process||'']||'';
-    html+='<tr><td>'+m+'</td><td>'+procTxt+'</td><td style="color:'+(hw.mape<15?'var(--success)':'var(--danger)')+'">'+(hw.mape?hw.mape.toFixed(1)+'%':'—')+'</td><td>'+opt.alpha+'/'+opt.beta+'/'+opt.gamma+'</td><td>'+(bestSma.mape<999?bestSma.mape.toFixed(1)+'%':'—')+'</td><td>'+bestWin+'</td><td>'+croston+'</td><td>'+(zeros*100).toFixed(0)+'%</td><td style="font-weight:600;color:var(--primary)">✅ '+best+'</td></tr>';
+    html+='<tr><td>'+m+'</td><td><span class="tag" style="background:'+dpProcessColor(f.process)+'">'+DP_PROC_LABELS[f.process].split('(')[0]+'</span></td><td>'+sup+'</td><td>'+(hw.mape?hw.mape.toFixed(1)+'%':'—')+'</td><td>'+opt.alpha+'/'+opt.beta+'/'+opt.gamma+'</td><td>'+(bestSma.mape<999?bestSma.mape.toFixed(1)+'%':'—')+'</td><td>'+bestWin+'</td><td>'+(zeros*100).toFixed(0)+'%</td><td style="font-weight:600;color:var(--primary)">✅ '+best+'</td></tr>';
   });
-  html+='</tbody></table></div><div style="margin-top:12px;display:flex;gap:8px"><button class="btn btn-sm btn-primary" onclick="closeModal()">关闭</button></div>';
+  html+='</tbody></table></div><div style="margin-top:12px"><button class="btn btn-sm btn-primary" onclick="closeModal()">关闭</button></div>';
   openModal(html);showToast('📊 多模型对比完成','success');
 }
 function saveDpForecastVersion(){
@@ -6726,44 +6724,47 @@ function saveDpForecastVersion(){
     forecasts:JSON.parse(JSON.stringify(demandPlanData.forecasts))
   });
   const sel=document.getElementById('dpVersionSelect');
-  if(sel)sel.innerHTML=demandPlanData.forecastVersions.map((v,i)=>'<option value="v'+(i+1)+'">'+v.name+'</option>').join('')+'<option value="baseline">基线预测V1</option>';
+  if(sel)sel.innerHTML=demandPlanData.forecastVersions.map((v,i)=>'<option value="v'+(i+1)+'">'+v.name+'</option>').join('')+'<option value="baseline">基线V1</option>';
   showToast('💾 版本 '+vName+' 已保存','success');
 }
 
-// ==================== Tab 2: Commitment Sensing（承诺感知） ====================
+// ==================== Tab 2: Commitment Sensing（委外级联承诺感知） ====================
 function renderDpSensing(){
   if(!demandPlanData.sensingSignals.length){
     const mats=appData.materials.length?appData.materials.slice(0,5).map(m=>({code:m.code,name:m.name})):[
       {code:'IC-1000-FT',name:'FT成品芯片'},{code:'IC-1000-AB',name:'AB封装芯片'},{code:'IC-1000-CP',name:'CP测试晶圆'}];
     const customers=['华为海思','展讯通信','中兴微电子','汇顶科技','韦尔半导体'];
     const sources=['Hard承诺变更','Flexible变更','Forecast调整','订单Pull-in','订单Push-out','Wafer Bank水位'];
+    const procCycle=['FT','AB','CP','BP','Wafer'];
     mats.forEach((m,i)=>{
+      const proc=procCycle[i%procCycle.length];
       const baseline=Math.round(5000+Math.random()*20000);
       const pctAdjust=(Math.random()>0.5?1:-1)*Math.round(Math.random()*10+2);
       const adjustQt=Math.round(baseline*pctAdjust/100);
-      const beforeVal=i%2===0?baseline:baseline-Math.abs(adjustQt);
-      const afterVal=beforeVal+adjustQt;
+      const waferImpact=Math.abs(Math.round(adjustQt/120/(SEMI_YIELD[proc]||0.95)));
       demandPlanData.sensingSignals.push({
-        id:'SIG-'+String(i+1).padStart(3,'0'),material:m.code,customer:customers[i%customers.length],
-        source:sources[i%sources.length],beforeVal,afterVal,changeVal:adjustQt,
-        confidence:Math.round(65+Math.random()*30),recommendAdjust:pctAdjust,
-        validUntil:'2026-0'+(7+Math.floor(i/2))+'-'+(10+Math.floor(Math.random()*15)),
+        id:'SIG-'+String(i+1).padStart(3,'0'),material:m.code,process:proc,
+        customer:customers[i%customers.length],
+        source:sources[i%sources.length],beforeVal:i%2===0?baseline:baseline-Math.abs(adjustQt),
+        afterVal:baseline+adjustQt,changeVal:adjustQt,
+        confidence:Math.round(65+Math.random()*30),
+        waferImpact,validUntil:'2026-0'+(7+Math.floor(i/2))+'-'+(10+Math.floor(Math.random()*15)),
         status:i%3===0?'活跃':'已应用',level:['Hard','Flexible','Forecast'][i%3]
       });
       demandPlanData.sensingResults.push({
-        material:m.code,baseline,source:sources[i%sources.length],
-        adjustQt,adjustedVal:baseline+adjustQt,adjustPct:pctAdjust,
+        material:m.code,process:proc,baseline,source:sources[i%sources.length],
+        adjustQt,adjustedVal:baseline+adjustQt,waferImpact,
         type:adjustQt>0?'正信号':'负信号',signalType:sources[i%sources.length]
       });
     });
   }
   const totalSig=demandPlanData.sensingSignals.length;
   const activeSig=demandPlanData.sensingSignals.filter(s=>s.status==='活跃').length;
-  const totalAdjust=demandPlanData.sensingResults.reduce((s,r)=>s+r.adjustQt,0);
+  const totalWaferImpact=demandPlanData.sensingSignals.reduce((s,sig)=>s+(sig.waferImpact||0),0);
   document.getElementById('dpSensingCards').innerHTML=
-    '<div class="summary-card blue"><div class="lbl">📡 承诺信号</div><div class="num" style="color:var(--primary)">'+totalSig+'</div><div class="sub-text">含Hard/Flexible/Forecast变更</div></div>'+
-    '<div class="summary-card '+(activeSig>0?'yellow':'green')+'"><div class="lbl">🟢 待处理信号</div><div class="num" style="color:'+(activeSig>0?'var(--warning)':'var(--success)')+'">'+activeSig+'</div><div class="sub-text">需关注</div></div>'+
-    '<div class="summary-card green"><div class="lbl">📊 总调整量</div><div class="num" style="color:var(--success)">'+(totalAdjust>0?'+':'')+totalAdjust.toLocaleString()+'</div><div class="sub-text">承诺感知调整合计</div></div>';
+    '<div class="summary-card blue"><div class="lbl">📡 委外级联信号</div><div class="num" style="color:var(--primary)">'+totalSig+'</div><div class="sub-text">含Hard/Flexible/Forecast</div></div>'+
+    '<div class="summary-card '+(activeSig>0?'yellow':'green')+'"><div class="lbl">🟢 待处理</div><div class="num" style="color:'+(activeSig>0?'var(--warning)':'var(--success)')+'">'+activeSig+'</div><div class="sub-text">需关注</div></div>'+
+    '<div class="summary-card green"><div class="lbl">⚪ 晶圆影响合计</div><div class="num" style="color:var(--success)">'+(totalWaferImpact>0?'+':'')+totalWaferImpact.toLocaleString()+'</div><div class="sub-text">等效晶圆(片)</div></div>';
 
   const levels=['Hard','Flexible','Forecast'];
   const levelCount=levels.map(l=>demandPlanData.sensingSignals.filter(s=>s.level===l).length);
@@ -6771,13 +6772,13 @@ function renderDpSensing(){
   const ctx=document.getElementById('dpSensingChart');
   if(ctx){
     window.dpSensingChartInstance=new Chart(ctx.getContext('2d'),{
-      type:'bar',data:{labels:levels.map(l=>l==='Hard'?'🔴硬承诺':l==='Flexible'?'🟡柔性':'🔵预测'),
-        datasets:[{label:'信号数量',data:levelCount,backgroundColor:['#ef4444','#f59e0b','#3b82f6']}]},
+      type:'bar',data:{labels:levels.map(l=>l==='Hard'?'🔴硬承诺(需分配Wafer)':l==='Flexible'?'🟡柔性':'🔵预测'),
+        datasets:[{label:'信号数',data:levelCount,backgroundColor:['#ef4444','#f59e0b','#3b82f6']}]},
       options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}}
     });
   }
   let html='';demandPlanData.sensingResults.forEach(r=>{
-    html+='<tr><td>'+r.material+'</td><td>'+r.baseline.toLocaleString()+'</td><td>'+r.signalType+'</td><td>'+(r.adjustQt>0?'+':'')+r.adjustQt.toLocaleString()+'</td><td style="font-weight:600;color:'+(r.adjustPct>0?'var(--success)':'var(--danger)')+'">'+r.adjustedVal.toLocaleString()+'</td><td>'+(r.adjustPct>0?'+':'')+r.adjustPct+'%</td><td>'+r.source+'</td></tr>';
+    html+='<tr><td>'+r.material+'</td><td>'+r.baseline.toLocaleString()+'</td><td>'+r.signalType+'</td><td>'+(r.adjustQt>0?'+':'')+r.adjustQt.toLocaleString()+'</td><td>'+r.adjustedVal.toLocaleString()+'</td><td style="color:var(--primary);font-weight:600">'+(r.waferImpact?r.waferImpact.toLocaleString():'—')+'</td><td>'+r.source+'</td></tr>';
   });
   document.getElementById('dpSensingAdjustTable').querySelector('tbody').innerHTML=html;
 
@@ -6786,111 +6787,118 @@ function renderDpSensing(){
     demandPlanData.sensingSignals.filter(s=>(srcFilter==='hard'&&s.level==='Hard')||(srcFilter==='flexible'&&s.level==='Flexible')||(srcFilter==='forecast'&&s.level==='Forecast')||(srcFilter==='order'&&(s.source.includes('订单')||s.source.includes('Pull')||s.source.includes('Push')))||(srcFilter==='wafer'&&s.source.includes('Wafer')));
   html='';filtered.forEach((s,i)=>{
     const levColor=s.level==='Hard'?'var(--danger)':s.level==='Flexible'?'var(--warning)':'var(--info)';
-    const confColor=s.confidence>80?'var(--success)':s.confidence>60?'var(--warning)':'var(--danger)';
     const idx=demandPlanData.sensingSignals.indexOf(s);
-    html+='<tr><td>'+s.id+'</td><td>'+s.material+'</td><td>'+s.source+'</td><td>'+(s.beforeVal?s.beforeVal.toLocaleString():'—')+'</td><td>'+(s.afterVal?s.afterVal.toLocaleString():'—')+'</td><td><span style="color:'+confColor+';font-weight:600">'+s.confidence+'%</span></td><td style="color:'+(s.changeVal>0?'var(--success)':'var(--danger)')+'">'+(s.changeVal>0?'+':'')+s.changeVal.toLocaleString()+'</td><td>'+s.validUntil+'</td><td style="color:'+levColor+';font-weight:600"><span class="tag" style="background:'+(s.status==='活跃'?'#d1fae5;color:#065f46':'#fef3c7;color:#92400e')+'">'+s.level+' - '+s.status+'</span></td><td><button class="btn btn-sm btn-primary" onclick="applyDpSignal('+idx+')">📡 应用</button></td></tr>';
+    html+='<tr><td>'+s.id+'</td><td>'+s.material+'</td><td><span class="tag" style="background:'+dpProcessColor(s.process)+'">'+dpProcessIcon(s.process)+s.process+'</span></td><td>'+s.source+'</td><td>'+(s.beforeVal?s.beforeVal.toLocaleString():'—')+'</td><td>'+(s.afterVal?s.afterVal.toLocaleString():'—')+'</td><td><span style="font-weight:600">'+s.confidence+'%</span></td><td style="font-weight:600;color:var(--primary)">'+(s.waferImpact?s.waferImpact.toLocaleString():'—')+'</td><td>'+s.validUntil+'</td><td style="color:'+levColor+';font-weight:600">'+s.level+' - '+s.status+'</td><td><button class="btn btn-sm btn-primary" onclick="applyDpSignal('+idx+')">📡 应用</button></td></tr>';
   });
   document.getElementById('dpSignalTable').querySelector('tbody').innerHTML=html;
 }
 function runDpSensing(){
   demandPlanData.sensingSignals=[];demandPlanData.sensingResults=[];
-  renderDpSensing();showToast('📡 承诺感知完成，已处理客户承诺变更信号','success');
+  renderDpSensing();showToast('📡 委外级联承诺感知完成','success');
 }
 function openDpSignalConfig(){
-  const html='<h3>⚙️ 半导体承诺感知配置</h3><div style="margin:12px 0;padding:12px;background:var(--gray-50);border-radius:6px;font-size:13px"><strong>SAP IBP 半导体承诺感知配置项：</strong><br><br>1️⃣ <strong>承诺等级权重：</strong><br>• 🔴 Hard（硬承诺）：权重60%，自动应用<br>• 🟡 Flexible（柔性）：权重25%，需人工确认<br>• 🔵 Forecast（预测）：权重15%，仅参考<br><br>2️⃣ <strong>Wafer Bank水位阈值：</strong><br>• 水位<30%：🔴 紧缺告警，建议增产<br>• 水位30-60%：🟡 正常<br>• 水位>60%：🟢 充裕<br><br>3️⃣ <strong>订单变更信号处理：</strong><br>• Pull-in（提前）：影响置信度≥75%自动调整<br>• Push-out（推迟）：需供应评审后调整<br>• Cancel（取消）：立即通知+去除预测<br><br>4️⃣ <strong>信号有效期：</strong><br>• Hard承诺变更：7天有效<br>• Flexible变更：14天有效<br>• Forecast调整：21天有效</div><div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-sm btn-primary" onclick="closeModal();showToast(\'✅ 承诺感知配置已更新\',\'success\')">应用配置</button><button class="btn btn-sm btn-outline" onclick="closeModal()">关闭</button></div>';
+  const html='<h3>⚙️ IC设计承诺感知配置</h3><div style="margin:12px 0;padding:12px;background:var(--gray-50);border-radius:6px;font-size:13px"><strong>委外级联承诺配置：</strong><br><br>1️⃣ <strong>Hard→Wafer折算：</strong> FT硬承诺经AB/CP/BP/Wafer全链折算<br>• 1颗FT成品 = 1/120片/(0.95*0.97*0.96*0.99) ≈ 等效0.0095片Wafer<br><br>2️⃣ <strong>Flexible信号权重：</strong> 柔性承诺30天内可转为Hard，需预留10%Wafer缓冲区<br><br>3️⃣ <strong>Wafer Bank水位：</strong><br>• <30%：🔴 紧缺，建议增产<br>• 30-60%：🟡 正常<br>• >60%：🟢 充裕<br><br>4️⃣ <strong>信号有效期：</strong> Hard7天/Flexible14天/Forecast21天</div><div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-sm btn-primary" onclick="closeModal();showToast('✅ 承诺感知配置已更新','success')">应用配置</button><button class="btn btn-sm btn-outline" onclick="closeModal()">关闭</button></div>';
   openModal(html);
 }
 function applyDpSignal(idx){
   const s=demandPlanData.sensingSignals[idx];
   if(!s)return;
-  showToast('📡 信号 '+s.id+' 已应用（'+s.level+' '+s.source+'），影响量 '+s.changeVal.toLocaleString(),'success');
+  showToast('📡 信号 '+s.id+' 已应用（'+s.process+' '+s.level+'），影响晶圆 '+s.waferImpact.toLocaleString()+' 片','success');
   s.status='已应用';renderDpSensing();
 }
 
-// ==================== Tab 3: Rolling Consensus（滚动共识） ====================
+// ==================== Tab 3: Rolling Consensus（晶圆约束18周滚动共识） ====================
 function renderDpConsensus(){
   if(!demandPlanData.workflowStages.length){
+    const waferConstraint=demandPlanData.forecasts.reduce((s,f)=>s+(f.waferEquivalent||0),0)||12500;
     demandPlanData.workflowStages=[
-      {stage:'统计预测',owner:'统计分析师',statFc:'180,000',bizAdj:'—',supplyConfirm:'—',consensus:'—',status:'✅ 已完成'},
-      {stage:'客户承诺评审',owner:'客户经理',statFc:'180,000',bizAdj:'+15,000',supplyConfirm:'—',consensus:'—',status:'⏳ 进行中'},
-      {stage:'供应能力评审',owner:'供应链计划',statFc:'180,000',bizAdj:'+15,000',supplyConfirm:'170,000',consensus:'—',status:'📋 待开始'},
-      {stage:'审批发布',owner:'需求计划总监',statFc:'180,000',bizAdj:'+15,000',supplyConfirm:'170,000',consensus:'—',status:'📋 待开始'}
+      {stage:'FT统计预测',owner:'统计分析',ftFc:'180,000颗',cascade:'→AB/CP/BP',waferFc:String(Math.round(waferConstraint*0.95)),waferLimit:String(Math.round(waferConstraint*0.9)),gap:'—',status:'✅ 已完成'},
+      {stage:'客户承诺评审',owner:'客户经理',ftFc:'195,000颗',cascade:'→委外级联',waferFc:String(Math.round(waferConstraint*1.02)),waferLimit:String(Math.round(waferConstraint*0.9)),gap:String(Math.round(waferConstraint*0.12)),status:'⏳ 进行中'},
+      {stage:'供应能力评审',owner:'供应链',ftFc:'185,000颗',cascade:'→Wafer约束',waferFc:String(Math.round(waferConstraint*0.97)),waferLimit:String(Math.round(waferConstraint*0.9)),gap:String(Math.round(waferConstraint*0.07)),status:'📋 待开始'},
+      {stage:'审批发布',owner:'需求总监',ftFc:'180,000颗',cascade:'→最终共识',waferFc:String(Math.round(waferConstraint*0.95)),waferLimit:String(Math.round(waferConstraint*0.9)),gap:'0',status:'📋 待开始'}
     ];
     demandPlanData.consensusVersions=[
-      {id:'VER-001',name:'基线V1',productFamily:'IC-1000系列',rollingWindow:'W26-W43',waferEq:'12,500',creator:'Planer',status:'已发布'},
-      {id:'VER-002',name:'客户调整V2',productFamily:'IC-1000系列',rollingWindow:'W26-W43',waferEq:'13,200',creator:'客户经理',status:'审批中'}
+      {id:'VER-001',name:'基线V1',family:'IC-1000系列',window:'W26-W43',ftFc:'180,000',waferEq:String(Math.round(waferConstraint*0.98)),waferLimit:String(Math.round(waferConstraint*0.9)),status:'已发布'},
+      {id:'VER-002',name:'客户调整V2',family:'IC-1000系列',window:'W26-W43',ftFc:'195,000',waferEq:String(Math.round(waferConstraint*1.05)),waferLimit:String(Math.round(waferConstraint*0.9)),status:'审批中'}
     ];
-    if(document.getElementById('dpRollingWindowLabel')){
-      document.getElementById('dpRollingWindowLabel').textContent='W26-W43 (2026)';
-    }
+    if(document.getElementById('dpRollingWindowLabel'))document.getElementById('dpRollingWindowLabel').textContent='W26-W43 (2026)';
+    if(document.getElementById('dpWaferConstraintLabel'))document.getElementById('dpWaferConstraintLabel').textContent=Math.round(waferConstraint*0.9).toLocaleString()+' 片';
   }
-  const totalStages=demandPlanData.workflowStages.length;
-  const completed=demandPlanData.workflowStages.filter(s=>s.status.includes('完成')).length;
-  const totalVer=demandPlanData.consensusVersions.length;
+  const waferConstraint=parseInt(demandPlanData.workflowStages[0]?.waferLimit)||11000;
   document.getElementById('dpConsensusCards').innerHTML=
-    '<div class="summary-card blue"><div class="lbl">📋 工作流阶段</div><div class="num" style="color:var(--primary)">'+totalStages+'</div><div class="sub-text">共'+completed+'阶段已完成</div></div>'+
-    '<div class="summary-card green"><div class="lbl">📦 滚动版本</div><div class="num" style="color:var(--success)">'+totalVer+'</div><div class="sub-text">18周滚动窗口</div></div>'+
-    '<div class="summary-card yellow"><div class="lbl">⏳ 待审批</div><div class="num" style="color:var(--warning)">'+(totalVer-demandedPlanData.consensusVersions.filter(v=>v.status==='已发布').length)+'</div><div class="sub-text">需共识审批</div></div>';
+    '<div class="summary-card blue"><div class="lbl">📋 工作流阶段</div><div class="num" style="color:var(--primary)">'+demandPlanData.workflowStages.length+'</div><div class="sub-text">FT→Wafer共识流</div></div>'+
+    '<div class="summary-card green"><div class="lbl">📦 滚动版本</div><div class="num" style="color:var(--success)">'+demandPlanData.consensusVersions.length+'</div><div class="sub-text">18周滚动(含Wafer约束)</div></div>'+
+    '<div class="summary-card red"><div class="lbl">⚪ Wafer约束线</div><div class="num" style="color:var(--danger)">'+waferConstraint.toLocaleString()+'</div><div class="sub-text">晶圆可用量(片)/18周</div></div>';
 
-  const stageLabels=demandPlanData.workflowStages.map(s=>s.stage);
-  const stageVals=[180000,195000,170000,170000];
+  const stageLabels=['FT统计预测','客户承诺评审','供应能力评审','审批发布'];
+  const waferVals=demandPlanData.workflowStages.map(s=>parseInt(s.waferFc)||0);
   if(window.dpConsensusChartInstance){window.dpConsensusChartInstance.destroy();}
   const ctx=document.getElementById('dpConsensusChart');
   if(ctx){
     window.dpConsensusChartInstance=new Chart(ctx.getContext('2d'),{
-      type:'line',data:{labels:stageLabels,
-        datasets:[{label:'需求数量(颗)',data:stageVals,borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.1)',fill:true,tension:.3,pointRadius:6,pointBackgroundColor:['#2563eb','#10b981','#f59e0b','#8b5cf6']}]},
+      type:'bar',data:{labels:stageLabels,
+        datasets:[
+          {label:'等效Wafer需求(片)',data:waferVals,backgroundColor:'rgba(37,99,235,.6)',borderRadius:3},
+          {label:'Wafer约束线',data:Array(4).fill(waferConstraint),type:'line',borderColor:'#ef4444',borderDash:[6,3],pointRadius:4,pointBackgroundColor:'#ef4444',fill:false}
+        ]},
       options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true,ticks:{callback:v=>v.toLocaleString()}}}}
     });
   }
-  let html='';demandPlanData.workflowStages.forEach((s,i)=>{
+  let html='';demandPlanData.workflowStages.forEach(s=>{
+    const gapVal=parseInt(s.gap)||0;
+    const gapColor=gapVal>0?'var(--danger)':'var(--success)';
     const stColor=s.status.includes('完成')?'var(--success)':s.status.includes('进行')?'var(--primary)':'var(--gray-400)';
-    html+='<tr><td style="font-weight:600">'+s.stage+'</td><td>'+s.owner+'</td><td>'+s.statFc+'</td><td>'+(s.bizAdj||'—')+'</td><td>'+(s.supplyConfirm||'—')+'</td><td>'+(s.consensus||'—')+'</td><td><span style="color:'+stColor+';font-weight:600">'+s.status+'</span></td><td>'+(s.status.includes('完成')?'✅':i===1?'<button class="btn btn-sm btn-primary" onclick="submitDpBizAdjust()">✏️ 调整</button>':i===2?'<button class="btn btn-sm btn-primary" onclick="runDpConsensusReview()">📋 评审</button>':i===3?'<button class="btn btn-sm btn-success" onclick="approveDpConsensus()">✅ 审批</button>':'—')+'</td></tr>';
+    html+='<tr><td style="font-weight:600">'+s.stage+'</td><td>'+s.owner+'</td><td>'+s.ftFc+'</td><td>'+s.cascade+'</td><td style="font-weight:600;color:var(--primary)">'+s.waferFc+'</td><td style="font-weight:600">'+s.waferLimit+'</td><td style="color:'+gapColor+';font-weight:600">'+(gapVal>0?'+'+gapVal:'0')+'</td><td><span style="color:'+stColor+';font-weight:600">'+s.status+'</span></td></tr>';
   });
   document.getElementById('dpWorkflowTable').querySelector('tbody').innerHTML=html;
 
   html='';demandPlanData.consensusVersions.forEach((v,i)=>{
     const stColor=v.status==='已发布'?'var(--success)':v.status==='审批中'?'var(--warning)':'var(--gray-400)';
-    html+='<tr><td>'+v.id+'</td><td>'+v.name+'</td><td>'+v.productFamily+'</td><td>'+v.rollingWindow+'</td><td style="font-weight:600;color:var(--primary)">'+v.waferEq+'</td><td>'+v.creator+'</td><td><span style="color:'+stColor+';font-weight:600">'+v.status+'</span></td><td>'+(v.status==='审批中'?'<button class="btn btn-sm btn-success" onclick="approveDpVersion('+i+')">✅ 发布</button>':'<span style="color:var(--gray-400)">—</span>')+'</td></tr>';
+    const waferOver=parseInt(v.waferEq)>parseInt(v.waferLimit);
+    html+='<tr><td>'+v.id+'</td><td>'+v.name+'</td><td>'+v.family+'</td><td>'+v.window+'</td><td>'+v.ftFc+'</td><td style="font-weight:600;color:var(--primary)">'+v.waferEq+'</td><td style="font-weight:600;color:'+(waferOver?'var(--danger)':'var(--success)')+'">'+v.waferLimit+'</td><td style="color:'+stColor+';font-weight:600">'+v.status+'</td><td>'+(v.status==='审批中'?'<button class="btn btn-sm btn-success" onclick="approveDpVersion('+i+')">✅ 发布</button>':'—')+'</td></tr>';
   });
   document.getElementById('dpVersionTable').querySelector('tbody').innerHTML=html;
 }
 function submitDpBizAdjust(){
-  const amt=prompt('输入客户承诺调整量（正数上调，负数下调）：','+15000');
+  const amt=prompt('输入FT成品调整量（正数上调，负数下调）：','+15000');
   if(!amt)return;
   if(demandPlanData.workflowStages[1]){
-    demandPlanData.workflowStages[1].bizAdj=(parseInt(amt)>0?'+':'')+amt;
+    const waferImpact=Math.round(Math.abs(parseInt(amt))/120/0.85);
+    demandPlanData.workflowStages[1].ftFc=(190000+parseInt(amt)).toLocaleString()+'颗';
+    demandPlanData.workflowStages[1].waferFc=String(Math.round(parseInt(demandPlanData.workflowStages[0].waferFc)+waferImpact*(parseInt(amt)>0?1:-1)));
     demandPlanData.workflowStages[1].status='✅ 已完成';
     demandPlanData.workflowStages[2].status='📋 待评审';
   }
-  renderDpConsensus();showToast('✏️ 客户承诺调整已提交：'+amt,'success');
+  renderDpConsensus();showToast('✏️ FT调整已提交，影响等效Wafer '+Math.abs(waferImpact)+' 片','success');
 }
 function runDpConsensusReview(){
   if(demandPlanData.workflowStages[2]){
-    demandPlanData.workflowStages[2].supplyConfirm='170,000';
-    demandPlanData.workflowStages[2].consensus='170,000';
+    demandPlanData.workflowStages[2].waferFc=demandPlanData.workflowStages[1].waferFc;
+    demandPlanData.workflowStages[2].gap='—';
     demandPlanData.workflowStages[2].status='✅ 已完成';
     demandPlanData.workflowStages[3].status='📋 待审批';
   }
-  renderDpConsensus();showToast('📋 供应能力评审完成，待审批发布','success');
+  renderDpConsensus();showToast('📋 晶圆约束评审完成，待审批发布','success');
 }
 function approveDpConsensus(){
   if(demandPlanData.workflowStages[3]){
-    demandPlanData.workflowStages[3].consensus='170,000';
+    demandPlanData.workflowStages[3].waferFc=demandPlanData.workflowStages[2].waferFc;
     demandPlanData.workflowStages[3].status='✅ 已完成';
   }
-  renderDpConsensus();showToast('✅ 18周滚动共识已审批发布','success');
+  renderDpConsensus();showToast('✅ 18周滚动共识(含晶圆约束)已审批发布','success');
 }
 function openDpNewVersionModal(){
-  const html='<h3>➕ 新建18周滚动版本</h3><div style="margin:12px 0"><label style="font-size:13px;font-weight:600">版本名称：</label><input type="text" id="newVerName" value="滚动V'+((demandPlanData.consensusVersions.length||0)+1)+'" style="width:100%;padding:8px;margin:6px 0;border:1px solid var(--gray-300);border-radius:6px"></div><div style="margin:12px 0"><label style="font-size:13px;font-weight:600">产品族：</label><select id="newVerFamily" style="width:100%;padding:8px;margin:6px 0;border:1px solid var(--gray-300);border-radius:6px"><option value="IC-1000系列">IC-1000系列</option><option value="IC-2000系列">IC-2000系列</option><option value="IC-3000系列">IC-3000系列</option></select></div><div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-sm btn-primary" onclick="saveDpNewVersion()">💾 保存</button><button class="btn btn-sm btn-outline" onclick="closeModal()">取消</button></div>';
+  const html='<h3>➕ 新建18周滚动版本</h3><div style="margin:12px 0"><label style="font-size:13px;font-weight:600">名称：</label><input type="text" id="newVerName" value="滚动V'+((demandPlanData.consensusVersions.length||0)+1)+'" style="width:100%;padding:8px;margin:6px 0;border:1px solid var(--gray-300);border-radius:6px"></div><div style="margin:12px 0"><label style="font-size:13px;font-weight:600">产品族：</label><select id="newVerFamily" style="width:100%;padding:8px;border:1px solid var(--gray-300);border-radius:6px"><option value="IC-1000系列">IC-1000系列</option><option value="IC-2000系列">IC-2000系列</option></select></div><div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-sm btn-primary" onclick="saveDpNewVersion()">💾 保存</button><button class="btn btn-sm btn-outline" onclick="closeModal()">取消</button></div>';
   openModal(html);
 }
 function saveDpNewVersion(){
   const name=document.getElementById('newVerName')?.value||('V'+(demandPlanData.consensusVersions.length+1));
   const family=document.getElementById('newVerFamily')?.value||'IC-1000系列';
+  const waferConstraint=parseInt(demandPlanData.workflowStages[0]?.waferLimit)||11000;
   demandPlanData.consensusVersions.push({
     id:'VER-'+String(demandPlanData.consensusVersions.length+1).padStart(3,'0'),name,
-    productFamily:family,rollingWindow:'W27-W44',waferEq:'—',creator:'Planer',status:'草稿'
+    family,window:'W27-W44',ftFc:'190,000',waferEq:Math.round(waferConstraint*1.02).toString(),
+    waferLimit:waferConstraint.toString(),status:'草稿'
   });
   closeModal();renderDpConsensus();showToast('💾 滚动版本 '+name+' 已创建','success');
 }
@@ -6899,37 +6907,41 @@ function approveDpVersion(idx){
   renderDpConsensus();showToast('✅ 版本已发布','success');
 }
 
-// ==================== Tab 4: Customer Commitment（客户承诺） ====================
+// ==================== Tab 4: Customer Commitment（晶圆博弈客户承诺） ====================
 function renderDpPromotion(){
   if(!demandPlanData.customerCommitments.length){
     const customers=['华为海思','展讯通信','中兴微电子','汇顶科技','韦尔半导体'];
     const mats=appData.materials.length?appData.materials.slice(0,5).map(m=>m.code):['IC-1000-FT','IC-1000-AB','IC-1000-CP','IC-1000-BP','IC-1000-Wafer'];
+    const totalWafer=demandPlanData.forecasts.reduce((s,f)=>s+(f.waferEquivalent||0),0)||12000;
     customers.forEach((cust,i)=>{
       const hard=Math.round(2000+Math.random()*8000);
       const flexible=Math.round(1000+Math.random()*4000);
       const forecast=Math.round(500+Math.random()*3000);
-      const allocated=Math.round((hard+flexible)*0.85);
+      const waferNeed=Math.round(dpWaferEq(hard+flexible));
+      const allocWafer=Math.round(waferNeed*0.85);
       demandPlanData.customerCommitments.push({
         id:'CCOM-'+String(i+1).padStart(3,'0'),customer:cust,
         material:mats[i%mats.length],
-        hard:hard,flexible:flexible,forecast:forecast,total:hard+flexible+forecast,
-        allocated:allocated,gap:Math.max(0,(hard+flexible)-allocated),
+        hard,flexible,forecast,total:hard+flexible+forecast,
+        waferEquivalent:waferNeed,allocatedWafer:allocWafer,
+        gap:Math.max(0,waferNeed-allocWafer),
         priority:i%3===0?'A':i%3===1?'B':'C',
         otif:Math.round(85+Math.random()*15),status:i%2===0?'已确认':'待确认'
       });
       demandPlanData.commitmentPipeline.push({
         customer:cust,material:mats[i%mats.length],
-        week:'W'+(27+i),hard,flexible,forecast,total:hard+flexible+forecast
+        week:'W'+(27+i),hard,flexible,forecast,
+        waferEq:Math.round(dpWaferEq(hard))
       });
     });
   }
   const hardTotal=demandPlanData.customerCommitments.reduce((s,c)=>s+c.hard,0);
   const flexTotal=demandPlanData.customerCommitments.reduce((s,c)=>s+c.flexible,0);
-  const totalCom=demandPlanData.customerCommitments.reduce((s,c)=>s+c.total,0);
+  const totalWaferEq=demandPlanData.customerCommitments.reduce((s,c)=>s+(c.waferEquivalent||0),0);
   document.getElementById('dpPromoCards').innerHTML=
-    '<div class="summary-card blue"><div class="lbl">📋 客户数</div><div class="num" style="color:var(--primary)">'+demandPlanData.customerCommitments.length+'</div><div class="sub-text">含承诺Pipeline</div></div>'+
-    '<div class="summary-card red"><div class="lbl">🔴 Hard总承诺</div><div class="num" style="color:var(--danger)">'+hardTotal.toLocaleString()+'</div><div class="sub-text">硬性承诺</div></div>'+
-    '<div class="summary-card yellow"><div class="lbl">🟡 Flexible总承诺</div><div class="num" style="color:var(--warning)">'+flexTotal.toLocaleString()+'</div><div class="sub-text">柔性承诺</div></div>';
+    '<div class="summary-card blue"><div class="lbl">📋 客户数</div><div class="num" style="color:var(--primary)">'+demandPlanData.customerCommitments.length+'</div><div class="sub-text">含委外级联折算</div></div>'+
+    '<div class="summary-card red"><div class="lbl">🔴 Hard总承诺(颗)</div><div class="num" style="color:var(--danger)">'+hardTotal.toLocaleString()+'</div><div class="sub-text">硬性产量承诺</div></div>'+
+    '<div class="summary-card green"><div class="lbl">⚪ 等效Wafer总需求</div><div class="num" style="color:var(--success)">'+totalWaferEq.toLocaleString()+'</div><div class="sub-text">经AB/CP/BP委外折算(片)</div></div>';
 
   if(window.dpPromoChartInstance){window.dpPromoChartInstance.destroy();}
   const ctx=document.getElementById('dpPromoChart');
@@ -6937,13 +6949,13 @@ function renderDpPromotion(){
     const cnames=demandPlanData.customerCommitments.map(c=>c.customer);
     const hards=demandPlanData.customerCommitments.map(c=>c.hard);
     const flexs=demandPlanData.customerCommitments.map(c=>c.flexible);
-    const fcasts=demandPlanData.customerCommitments.map(c=>c.forecast);
+    const wafers=demandPlanData.customerCommitments.map(c=>c.waferEquivalent||0);
     window.dpPromoChartInstance=new Chart(ctx.getContext('2d'),{
       type:'bar',data:{labels:cnames,
         datasets:[
-          {label:'🔴 Hard',data:hards,backgroundColor:'rgba(239,68,68,.7)',borderRadius:3},
-          {label:'🟡 Flexible',data:flexs,backgroundColor:'rgba(245,158,11,.7)',borderRadius:3},
-          {label:'🔵 Forecast',data:fcasts,backgroundColor:'rgba(59,130,246,.7)',borderRadius:3}
+          {label:'🔴 Hard(颗)',data:hards,backgroundColor:'rgba(239,68,68,.7)',borderRadius:3},
+          {label:'🟡 Flexible(颗)',data:flexs,backgroundColor:'rgba(245,158,11,.7)',borderRadius:3},
+          {label:'⚪ 等效Wafer(片)',data:wafers,backgroundColor:'rgba(99,102,241,.5)',borderRadius:3}
         ]},
       options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true,ticks:{callback:v=>v.toLocaleString()}}}}
     });
@@ -6951,22 +6963,20 @@ function renderDpPromotion(){
   let html='';demandPlanData.customerCommitments.forEach(c=>{
     const priColor=c.priority==='A'?'var(--danger)':c.priority==='B'?'var(--warning)':'var(--info)';
     const gapColor=c.gap>0?'var(--danger)':'var(--success)';
-    html+='<tr><td style="font-weight:600">'+c.customer+'</td><td>'+c.material+'</td><td style="font-weight:600;color:var(--danger)">'+c.hard.toLocaleString()+'</td><td style="color:var(--warning)">'+c.flexible.toLocaleString()+'</td><td style="color:var(--info)">'+c.forecast.toLocaleString()+'</td><td style="font-weight:600">'+c.total.toLocaleString()+'</td><td>'+c.allocated.toLocaleString()+'</td><td style="color:'+gapColor+';font-weight:600">'+c.gap.toLocaleString()+'</td><td><span style="color:'+priColor+';font-weight:600">'+c.priority+'</span></td></tr>';
+    html+='<tr><td style="font-weight:600">'+c.customer+'</td><td>'+c.material+'</td><td style="font-weight:600;color:var(--danger)">'+c.hard.toLocaleString()+'</td><td style="color:var(--warning)">'+c.flexible.toLocaleString()+'</td><td style="color:var(--info)">'+c.forecast.toLocaleString()+'</td><td style="font-weight:600">'+c.total.toLocaleString()+'</td><td style="font-weight:600;color:var(--primary)">'+(c.waferEquivalent||0).toLocaleString()+'</td><td>'+((c.allocatedWafer||0).toLocaleString())+'</td><td style="color:'+gapColor+';font-weight:600">'+(c.gap||0).toLocaleString()+'</td><td><span style="color:'+priColor+';font-weight:600">'+c.priority+'</span></td></tr>';
   });
   document.getElementById('dpPromoUpliftTable').querySelector('tbody').innerHTML=html;
 
   html='';demandPlanData.customerCommitments.forEach((c,i)=>{
     const stColor=c.status==='已确认'?'var(--success)':'var(--warning)';
-    html+='<tr><td>'+c.id+'</td><td>'+c.customer+'</td><td>'+c.material+'</td><td><span style="color:'+(c.hard>0?'var(--danger)':'var(--gray-400)')+'">Hard</span></td><td>'+c.total.toLocaleString()+'</td><td>W'+(26+i)+'</td><td style="font-weight:600">'+c.otif+'%</td><td><span style="color:'+stColor+';font-weight:600">'+c.status+'</span></td><td><button class="btn btn-sm btn-outline" onclick="editDpPromo('+i+')">✏️</button></td></tr>';
+    html+='<tr><td>'+c.id+'</td><td>'+c.customer+'</td><td>'+c.material+'</td><td><span style="color:'+(c.hard>0?'var(--danger)':'var(--gray-400)')+'">Hard</span></td><td>'+c.total.toLocaleString()+'</td><td style="font-weight:600;color:var(--primary)">'+(c.waferEquivalent||0).toLocaleString()+'</td><td>W'+(26+i)+'</td><td style="font-weight:600">'+c.otif+'%</td><td style="color:'+stColor+';font-weight:600">'+c.status+'</td><td><button class="btn btn-sm btn-outline" onclick="editDpPromo('+i+')">✏️</button></td></tr>';
   });
   document.getElementById('dpPromoTable').querySelector('tbody').innerHTML=html;
 }
 function openDpNewPromoModal(){
   const mats=appData.materials.length?appData.materials.map(m=>m.code):['IC-1000-FT'];
   const custs=['华为海思','展讯通信','中兴微电子','汇顶科技','韦尔半导体'];
-  const custOpts=custs.map(c=>'<option value="'+c+'">'+c+'</option>').join('');
-  const matOpts=mats.map(m=>'<option value="'+m+'">'+m+'</option>').join('');
-  const html='<h3>➕ 新建客户承诺</h3><div class="grid-2" style="margin:10px 0;gap:10px"><div><label style="font-size:12px">客户</label><select id="newPromoMat" style="width:100%;padding:6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px">'+custOpts+'</select></div><div><label style="font-size:12px">物料</label><select id="newPromoMat2" style="width:100%;padding:6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px">'+matOpts+'</select></div></div><div class="grid-2" style="margin:10px 0;gap:10px"><div><label style="font-size:12px">Hard数量</label><input type="number" id="newPromoHard" value="5000" min="0" style="width:100%;padding:6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px"></div><div><label style="font-size:12px">Flexible数量</label><input type="number" id="newPromoFlex" value="2000" min="0" style="width:100%;padding:6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px"></div></div><div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-sm btn-primary" onclick="saveDpNewPromo()">💾 保存</button><button class="btn btn-sm btn-outline" onclick="closeModal()">取消</button></div>';
+  const html='<h3>➕ 新建客户承诺</h3><div class="grid-2" style="margin:10px 0;gap:10px"><div><label style="font-size:12px">客户</label><select id="newPromoMat" style="width:100%;padding:6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px">'+custs.map(c=>'<option value="'+c+'">'+c+'</option>').join('')+'</select></div><div><label style="font-size:12px">物料</label><select id="newPromoMat2" style="width:100%;padding:6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px">'+mats.map(m=>'<option value="'+m+'">'+m+'</option>').join('')+'</select></div></div><div class="grid-2" style="margin:10px 0;gap:10px"><div><label style="font-size:12px">Hard(颗)</label><input type="number" id="newPromoHard" value="5000" min="0" style="width:100%;padding:6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px"></div><div><label style="font-size:12px">Flexible(颗)</label><input type="number" id="newPromoFlex" value="2000" min="0" style="width:100%;padding:6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px"></div></div><div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-sm btn-primary" onclick="saveDpNewPromo()">💾 保存</button><button class="btn btn-sm btn-outline" onclick="closeModal()">取消</button></div>';
   openModal(html);
 }
 function saveDpNewPromo(){
@@ -6974,28 +6984,24 @@ function saveDpNewPromo(){
   const mat=document.getElementById('newPromoMat2')?.value||'IC-1000-FT';
   const hard=parseInt(document.getElementById('newPromoHard')?.value)||0;
   const flex=parseInt(document.getElementById('newPromoFlex')?.value)||0;
+  const waferNeed=Math.round(dpWaferEq(hard+flex));
   demandPlanData.customerCommitments.push({
     id:'CCOM-'+String(demandPlanData.customerCommitments.length+1).padStart(3,'0'),
     customer:cust,material:mat,hard,flexible:flex,forecast:0,
-    total:hard+flex,allocated:Math.round((hard+flex)*0.85),
-    gap:Math.round((hard+flex)*0.15),
+    total:hard+flex,waferEquivalent:waferNeed,
+    allocatedWafer:Math.round(waferNeed*0.85),gap:Math.round(waferNeed*0.15),
     priority:hard>5000?'A':'B',otif:95,status:'待确认'
   });
-  closeModal();renderDpPromotion();showToast('✅ 客户承诺已创建','success');
+  closeModal();renderDpPromotion();showToast('✅ 新建承诺已添加（等效Wafer：'+waferNeed+'片）','success');
 }
 function editDpPromo(idx){
   const c=demandPlanData.customerCommitments[idx];
   if(!c)return;
-  const html='<h3>✏️ 编辑客户承诺</h3><div style="margin:12px 0;padding:12px;background:var(--gray-50);border-radius:6px;font-size:13px"><strong>承诺ID：</strong>'+c.id+'<br><strong>客户：</strong>'+c.customer+'<br><strong>物料：</strong>'+c.material+'<br><strong>Hard：</strong>'+c.hard.toLocaleString()+' | <strong>Flexible：</strong>'+c.flexible.toLocaleString()+' | <strong>Forecast：</strong>'+c.forecast.toLocaleString()+'<br><strong>OTIF：</strong>'+c.otif+'%</div><div style="margin:12px 0"><label style="font-size:13px;font-weight:600">修改状态：</label><select id="editPromoStatus" style="width:100%;padding:8px;border:1px solid var(--gray-300);border-radius:6px"><option value="待确认">待确认</option><option value="已确认" '+(c.status==='已确认'?'selected':'')+'>已确认</option><option value="已交付">已交付</option></select></div><div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-sm btn-primary" onclick="saveEditDpPromo('+idx+')">💾 保存</button><button class="btn btn-sm btn-outline" onclick="closeModal()">取消</button></div>';
+  const html='<h3>✏️ 编辑承诺</h3><div style="margin:12px 0;padding:12px;background:var(--gray-50);border-radius:6px;font-size:13px"><strong>客户：</strong>'+c.customer+' | <strong>Hard：</strong>'+c.hard.toLocaleString()+'<br><strong>Flexible：</strong>'+c.flexible.toLocaleString()+' | <strong>等效Wafer：</strong>'+(c.waferEquivalent||0).toLocaleString()+'片<br><strong>已分配晶圆：</strong>'+(c.allocatedWafer||0).toLocaleString()+'片 | <strong>缺口：</strong>'+(c.gap||0).toLocaleString()+'片</div><div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-sm btn-primary" onclick="closeModal()">关闭</button></div>';
   openModal(html);
 }
-function saveEditDpPromo(idx){
-  const newStatus=document.getElementById('editPromoStatus')?.value;
-  if(demandPlanData.customerCommitments[idx])demandPlanData.customerCommitments[idx].status=newStatus;
-  closeModal();renderDpPromotion();showToast('✅ 承诺已更新','success');
-}
 
-// ==================== Tab 5: NPI Lifecycle（半导体NPI生命周期） ====================
+// ==================== Tab 5: NPI Lifecycle（委外版NPI生命周期） ====================
 function renderDpNpi(){
   if(!demandPlanData.npiProducts.length){
     const newProducts=[
@@ -7004,43 +7010,50 @@ function renderDpNpi(){
       {product:'IC-2000-ISP',node:'5nm',start:'2026-09-01',curve:'快速爬坡',targetYield:0.88,peak:10000},
       {product:'IC-2000-PMU',node:'12nm',start:'2026-06-15',curve:'线性增长',targetYield:0.78,peak:5000}
     ];
-    const stages=['导入期','导入期','成长期','导入期'];
     newProducts.forEach((np,i)=>{
       const currentYield=np.targetYield*(0.4+Math.random()*0.3);
+      // 各委外制程良率（按产品类型）
+      const procYields={
+        FT: Math.min(99, Math.round(currentYield*100*0.95)),
+        AB: Math.min(97, Math.round(currentYield*100*0.88)),
+        CP: Math.min(98, Math.round(currentYield*100*0.92)),
+        BP: Math.min(96, Math.round(currentYield*100*0.85)),
+        Wafer: Math.min(99, Math.round(currentYield*100*0.98))
+      };
+      const gatedYield=procYields.FT*procYields.AB/100*procYields.CP/100*procYields.BP/100*procYields.Wafer/100;
       demandPlanData.npiProducts.push({
-        product:np.product,processNode:np.node,type:'新品导入',
+        product:np.product,processNode:np.node,
         startDate:np.start,endDate:'2028-01-01',rampMonths:4+Math.floor(Math.random()*4),
         curve:np.curve,peakDemand:np.peak,targetYield:np.targetYield*100,
-        currentYield:Math.round(currentYield*100),currentStage:stages[i]
+        currentYield:Math.round(currentYield*100),
+        supplier:np.node==='5nm'?'TSMC':np.node==='7nm'?'TSMC/SMIC':np.node==='12nm'?'SMIC':'UMC',
+        ftYield:procYields.FT,abYield:procYields.AB,cpYield:procYields.CP,
+        bpYield:procYields.BP,waferYield:procYields.Wafer,
+        peakWafer:Math.ceil(np.peak/(gatedYield/100)),
+        currentStage:['导入期','导入期','成长期','导入期'][i]
       });
-      const intro=Math.round(np.peak*0.2),grow=Math.round(np.peak*0.6),
-        mature=np.peak,decline=Math.round(np.peak*0.3),phaseOut=Math.round(np.peak*0.1);
-      const introYield=Math.round(currentYield*100*0.7);
-      const rampYield=Math.round(currentYield*100*0.9);
-      const matureYield=Math.round(np.targetYield*100);
-      const declineYield=Math.round(np.targetYield*100*0.95);
-      const waferNeed=np.peak>0?Math.ceil(np.peak/(currentYield||0.5)/120):0;
+      const intro=Math.round(np.peak*0.2),grow=Math.round(np.peak*0.6),mature=np.peak,decline=Math.round(np.peak*0.3);
+      const gatedYieldStage=intro>0?Math.round(intro/(gatedYield/100)/120):0;
       demandPlanData.lifecycleStages.push({
-        product:np.product,introYield:Math.max(40,introYield),rampYield:Math.max(60,rampYield),
-        matureYield:Math.max(75,matureYield),declineYield:Math.max(70,declineYield),
-        waferDemand:np.peak,finishedDemand:Math.round(np.peak*0.85),
-        waferQty:waferNeed,currentFc:intro
+        product:np.product,ftYield:procYields.FT,abYield:procYields.AB,
+        cpYield:procYields.CP,bpYield:procYields.BP,waferYield:procYields.Wafer,
+        finishedDemand:intro,waferQty:gatedYieldStage,currentFc:intro
       });
     });
   }
   const totalNpi=demandPlanData.npiProducts.length;
   const introCount=demandPlanData.npiProducts.filter(p=>p.currentStage==='导入期').length;
   document.getElementById('dpNpiCards').innerHTML=
-    '<div class="summary-card blue"><div class="lbl">🔄 NPI产品</div><div class="num" style="color:var(--primary)">'+totalNpi+'</div><div class="sub-text">含不同制程节点</div></div>'+
-    '<div class="summary-card yellow"><div class="lbl">🌱 导入期</div><div class="num" style="color:var(--warning)">'+introCount+'</div><div class="sub-text">需关注良率爬坡</div></div>'+
-    '<div class="summary-card green"><div class="lbl">🎯 平均目标良率</div><div class="num" style="color:var(--success)">'+(demandPlanData.npiProducts.length?Math.round(demandPlanData.npiProducts.reduce((s,p)=>s+p.targetYield,0)/demandPlanData.npiProducts.length):0)+'%</div><div class="sub-text">良率学习目标</div></div>';
+    '<div class="summary-card blue"><div class="lbl">🔄 NPI产品</div><div class="num" style="color:var(--primary)">'+totalNpi+'</div><div class="sub-text">含委外良率学习</div></div>'+
+    '<div class="summary-card yellow"><div class="lbl">🌱 导入期</div><div class="num" style="color:var(--warning)">'+introCount+'</div><div class="sub-text">需关注委外良率</div></div>'+
+    '<div class="summary-card green"><div class="lbl">🏭 委外晶圆代工</div><div class="num" style="color:var(--success)">'+(demandPlanData.npiProducts.length?Math.round(demandPlanData.npiProducts.reduce((s,p)=>s+p.peakWafer,0)/demandPlanData.npiProducts.length)+'片/月':'—')+'</div><div class="sub-text">峰值Wafer需求</div></div>';
 
-  const stageNames=['导入期','成长期','成熟期','衰退期','退市期'];
+  const stageNames=['导入期','成长期','成熟期','衰退期'];
   if(window.dpNpiChartInstance){window.dpNpiChartInstance.destroy();}
   const ctx=document.getElementById('dpNpiChart');
   if(ctx&&demandPlanData.lifecycleStages.length){
     const datasets=demandPlanData.lifecycleStages.slice(0,4).map((l,i)=>{
-      const data=[l.waferDemand*0.2,l.waferDemand*0.6,l.waferDemand,l.waferDemand*0.3,l.waferDemand*0.1];
+      const data=[l.waferQty*1.5||500,l.waferQty*3||1000,l.waferQty*5||1500,l.waferQty*2||600];
       return {label:l.product,data,borderColor:['#2563eb','#10b981','#f59e0b','#ef4444'][i%4],fill:false,tension:.3,pointRadius:3};
     });
     window.dpNpiChartInstance=new Chart(ctx.getContext('2d'),{
@@ -7049,94 +7062,113 @@ function renderDpNpi(){
     });
   }
   let html='';demandPlanData.npiProducts.forEach((p,i)=>{
-    const stageColor=p.currentStage==='导入期'?'var(--warning)':p.currentStage==='成长期'?'var(--success)':p.currentStage==='成熟期'?'var(--primary)':p.currentStage==='衰退期'?'var(--danger)':'var(--gray-400)';
+    const stageColor=p.currentStage==='导入期'?'var(--warning)':p.currentStage==='成长期'?'var(--success)':p.currentStage==='成熟期'?'var(--primary)':'var(--danger)';
     const yieldColor=p.currentYield>=p.targetYield*0.8?'var(--success)':p.currentYield>=p.targetYield*0.6?'var(--warning)':'var(--danger)';
-    html+='<tr><td>'+p.product+'</td><td><span class="tag" style="background:#f3e8ff;color:#6b21a8">'+p.processNode+'</span></td><td>'+p.startDate+'</td><td>'+p.curve+'</td><td style="font-weight:600;color:var(--primary)">'+p.targetYield+'%</td><td style="color:'+yieldColor+';font-weight:600">'+p.currentYield+'%</td><td>'+p.peakDemand.toLocaleString()+'</td><td><span style="color:'+stageColor+';font-weight:600">'+p.currentStage+'</span></td><td><button class="btn btn-sm btn-outline" onclick="editDpNpi('+i+')">✏️</button></td></tr>';
+    html+='<tr><td>'+p.product+'</td><td><span class="tag" style="background:#f3e8ff;color:#6b21a8">'+p.processNode+'</span></td><td>'+p.startDate+'</td><td>'+p.curve+'</td><td style="font-weight:600;color:var(--primary)">'+p.targetYield+'%</td><td style="color:'+yieldColor+';font-weight:600">'+p.currentYield+'%</td><td style="font-size:11px">'+(p.supplier||'—')+'</td><td style="color:var(--primary)">'+(p.peakWafer||'—').toLocaleString()+'</td><td><span style="color:'+stageColor+';font-weight:600">'+p.currentStage+'</span></td><td><button class="btn btn-sm btn-outline" onclick="editDpNpi('+i+')">✏️</button></td></tr>';
   });
   document.getElementById('dpNpiPlanTable').querySelector('tbody').innerHTML=html;
 
   html='';demandPlanData.lifecycleStages.forEach(l=>{
-    html+='<tr><td style="font-weight:600">'+l.product+'</td><td>'+l.introYield+'%</td><td>'+l.rampYield+'%</td><td>'+l.matureYield+'%</td><td>'+l.declineYield+'%</td><td style="font-weight:600">'+l.waferDemand.toLocaleString()+'</td><td>'+l.finishedDemand.toLocaleString()+'</td><td style="color:var(--primary);font-weight:600">'+l.waferQty.toLocaleString()+'</td><td style="font-weight:600;color:var(--success)">'+l.currentFc.toLocaleString()+'</td></tr>';
+    html+='<tr><td style="font-weight:600">'+l.product+'</td><td>'+l.ftYield+'%</td><td>'+l.abYield+'%</td><td>'+l.cpYield+'%</td><td>'+l.bpYield+'%</td><td>'+l.waferYield+'%</td><td>'+l.finishedDemand.toLocaleString()+'</td><td style="color:var(--primary);font-weight:600">'+l.waferQty.toLocaleString()+'</td><td style="font-weight:600;color:var(--success)">'+l.currentFc.toLocaleString()+'</td></tr>';
   });
   document.getElementById('dpNpiDemandTable').querySelector('tbody').innerHTML=html;
 }
 function openDpNewNpiModal(){
-  const html='<h3>➕ 新建半导体NPI产品</h3><div class="grid-2" style="margin:10px 0;gap:10px"><div><label style="font-size:12px">产品名称</label><input type="text" id="newNpiProduct" value="IC-3000-AI" style="width:100%;padding:6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px"></div><div><label style="font-size:12px">制程节点</label><select id="newNpiNode" style="width:100%;padding:6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px"><option value="5nm">5nm</option><option value="7nm">7nm</option><option value="12nm">12nm</option><option value="28nm">28nm</option></select></div></div><div class="grid-2" style="margin:10px 0;gap:10px"><div><label style="font-size:12px">导入日期</label><input type="date" id="newNpiStart" value="2026-08-01" style="width:100%;padding:6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px"></div><div><label style="font-size:12px">目标良率(%)</label><input type="number" id="newNpiYield" value="85" min="50" max="99" style="width:100%;padding:6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px"></div></div><div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-sm btn-primary" onclick="saveDpNewNpi()">💾 保存</button><button class="btn btn-sm btn-outline" onclick="closeModal()">取消</button></div>';
+  const html='<h3>➕ 新建IC设计NPI产品</h3><div class="grid-2" style="margin:10px 0;gap:10px"><div><label style="font-size:12px">产品名</label><input type="text" id="newNpiProduct" value="IC-3000-AI" style="width:100%;padding:6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px"></div><div><label style="font-size:12px">制程节点</label><select id="newNpiNode" style="width:100%;padding:6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px"><option value="5nm">5nm(TSMC)</option><option value="7nm">7nm(TSMC/SMIC)</option><option value="12nm">12nm(SMIC)</option><option value="28nm">28nm(UMC)</option></select></div></div><div class="grid-2" style="margin:10px 0;gap:10px"><div><label style="font-size:12px">导入日期</label><input type="date" id="newNpiStart" value="2026-08-01" style="width:100%;padding:6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px"></div><div><label style="font-size:12px">目标良率(%)</label><input type="number" id="newNpiYield" value="85" min="50" max="99" style="width:100%;padding:6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px"></div></div><div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-sm btn-primary" onclick="saveDpNewNpi()">💾 保存</button><button class="btn btn-sm btn-outline" onclick="closeModal()">取消</button></div>';
   openModal(html);
 }
 function saveDpNewNpi(){
   const product=document.getElementById('newNpiProduct')?.value||'IC-3000-AI';
-  const node=document.getElementById('newNpiNode')?.value||'7nm';
+  const nodeInput=document.getElementById('newNpiNode')?.value||'7nm';
+  const node=nodeInput.split('(')[0];
+  const supplier=nodeInput.includes('(')?nodeInput.split('(')[1].replace(')',''):'TSMC';
   const start=document.getElementById('newNpiStart')?.value||'2026-08-01';
   const targetYield=parseInt(document.getElementById('newNpiYield')?.value)||85;
+  const currentY=Math.round(targetYield*0.45);
   demandPlanData.npiProducts.push({
-    product,processNode:node,type:'新品导入',startDate:start,endDate:'2028-01-01',
-    rampMonths:4,curve:'S-Curve',peakDemand:5000,targetYield,currentYield:Math.round(targetYield*0.45),currentStage:'导入期'
+    product,processNode:node,startDate:start,endDate:'2028-01-01',
+    rampMonths:4,curve:'S-Curve',peakDemand:5000,targetYield,
+    currentYield:currentY,supplier,
+    ftYield:Math.round(currentY*0.95),abYield:Math.round(currentY*0.88),
+    cpYield:Math.round(currentY*0.92),bpYield:Math.round(currentY*0.85),
+    waferYield:Math.round(currentY*0.98),
+    peakWafer:Math.ceil(5000/(currentY/100*0.95*0.88*0.92*0.85*0.98/10000)),
+    currentStage:'导入期'
   });
   demandPlanData.lifecycleStages.push({
-    product,introYield:Math.round(targetYield*0.5),rampYield:Math.round(targetYield*0.75),
-    matureYield:targetYield,declineYield:Math.round(targetYield*0.9),
-    waferDemand:5000,finishedDemand:4250,waferQty:Math.ceil(5000/(targetYield/100)/120),currentFc:1000
+    product,ftYield:Math.round(currentY*0.95),abYield:Math.round(currentY*0.88),
+    cpYield:Math.round(currentY*0.92),bpYield:Math.round(currentY*0.85),
+    waferYield:Math.round(currentY*0.98),
+    finishedDemand:1000,waferQty:Math.ceil(1000/(currentY/100*0.95*0.88*0.92*0.85*0.98/100)/120),currentFc:1000
   });
-  closeModal();renderDpNpi();showToast('✅ 新产品已加入NPI生命周期','success');
+  closeModal();renderDpNpi();showToast('✅ 新产品 '+product+' 已加入NPI生命周期（委外代工：'+supplier+'）','success');
 }
 function editDpNpi(idx){
   const p=demandPlanData.npiProducts[idx];
   if(!p)return;
-  const html='<h3>✏️ 编辑NPI产品</h3><div style="margin:12px 0;padding:12px;background:var(--gray-50);border-radius:6px;font-size:13px"><strong>产品：</strong>'+p.product+' | <strong>节点：</strong>'+p.processNode+'<br><strong>导入：</strong>'+p.startDate+' | <strong>曲线：</strong>'+p.curve+'<br><strong>目标良率：</strong>'+p.targetYield+'% | <strong>当前良率：</strong>'+p.currentYield+'%<br><strong>当前阶段：</strong>'+p.currentStage+'</div><div style="margin:12px 0"><label style="font-size:13px;font-weight:600">修改阶段：</label><select id="editNpiStage" style="width:100%;padding:8px;border:1px solid var(--gray-300);border-radius:6px"><option value="导入期">导入期</option><option value="成长期">成长期</option><option value="成熟期">成熟期</option><option value="衰退期">衰退期</option><option value="退市期">退市期</option></select></div><div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-sm btn-primary" onclick="saveEditDpNpi('+idx+')">💾 保存</button><button class="btn btn-sm btn-outline" onclick="closeModal()">取消</button></div>';
+  const html='<h3>✏️ 编辑NPI产品</h3><div style="margin:12px 0;padding:12px;background:var(--gray-50);border-radius:6px;font-size:13px"><strong>产品：</strong>'+p.product+' | <strong>节点：</strong>'+p.processNode+'<br><strong>导入日：</strong>'+p.startDate+' | <strong>委外供应商：</strong>'+(p.supplier||'—')+'<br><strong>目标良率：</strong>'+p.targetYield+'% | <strong>当前良率：</strong>'+p.currentYield+'%<br><strong>委外级联良率：</strong>FT'+p.ftYield+'%→AB'+p.abYield+'%→CP'+p.cpYield+'%→BP'+p.bpYield+'%→Wafer'+p.waferYield+'%<br><strong>峰值Wafer/月：</strong>'+(p.peakWafer||'—')+'<br><strong>当前阶段：</strong>'+p.currentStage+'</div><div style="margin:12px 0"><label style="font-size:13px;font-weight:600">修改阶段：</label><select id="editNpiStage" style="width:100%;padding:8px;border:1px solid var(--gray-300);border-radius:6px"><option value="导入期">导入期</option><option value="成长期">成长期</option><option value="成熟期">成熟期</option><option value="衰退期">衰退期</option></select></div><div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-sm btn-primary" onclick="saveEditDpNpi('+idx+')">💾 保存</button><button class="btn btn-sm btn-outline" onclick="closeModal()">取消</button></div>';
   openModal(html);
 }
 function saveEditDpNpi(idx){
   const newStage=document.getElementById('editNpiStage')?.value;
   if(demandPlanData.npiProducts[idx]){
     demandPlanData.npiProducts[idx].currentStage=newStage;
-    // 良率随阶段推进改善（Yield Learning）
-    const yieldMap={'导入期':0.45,'成长期':0.7,'成熟期':0.95,'衰退期':0.9,'退市期':0.85};
+    const yieldMap={'导入期':0.45,'成长期':0.7,'成熟期':0.95,'衰退期':0.9};
     const target=demandPlanData.npiProducts[idx].targetYield;
     demandPlanData.npiProducts[idx].currentYield=Math.round(target*(yieldMap[newStage]||0.5));
+    demandPlanData.npiProducts[idx].ftYield=Math.round(target*(yieldMap[newStage]||0.5)*0.95);
+    demandPlanData.npiProducts[idx].abYield=Math.round(target*(yieldMap[newStage]||0.5)*0.88);
+    demandPlanData.npiProducts[idx].cpYield=Math.round(target*(yieldMap[newStage]||0.5)*0.92);
+    demandPlanData.npiProducts[idx].bpYield=Math.round(target*(yieldMap[newStage]||0.5)*0.85);
+    demandPlanData.npiProducts[idx].waferYield=Math.round(target*(yieldMap[newStage]||0.5)*0.98);
   }
-  closeModal();renderDpNpi();showToast('✅ 生命周期已更新，良率学习曲线已调整','success');
+  closeModal();renderDpNpi();showToast('✅ 生命周期已更新，委外良率学习曲线已调整','success');
 }
 
-// ==================== Tab 6: Demand Analytics（半导体需求分析） ====================
+// ==================== Tab 6: Demand Analytics（委外维度需求分析） ====================
 function renderDpAnalytics(){
   if(!demandPlanData.segmentData.length){
     const processLevels=['FT成品','AB封装','CP测试','BP凸块','Wafer晶圆'];
+    const processSuppliers=['ASE/PTI','京元/矽格','SPIL/Amkor','京元/硅品','TSMC/SMIC'];
+    const totalWafer=demandPlanData.forecasts.reduce((s,f)=>s+(f.waferEquivalent||0),0)||12000;
     processLevels.forEach((pl,i)=>{
       const vol=Math.round(500000+Math.random()*1500000);
       const mape=5+Math.random()*20;
+      const waferShare=Math.round((vol/Math.max(totalWafer,1))*100);
       demandPlanData.segmentData.push({segment:pl,volume:vol,ratio:0});
       demandPlanData.kpiRecords.push({
-        family:pl,mape:mape.toFixed(1),mae:Math.round(vol*mape/100),
+        family:pl,supplier:processSuppliers[i]||'—',mape:mape.toFixed(1),
+        mae:Math.round(vol*mape/100),
         hardAccuracy:(75+Math.random()*20).toFixed(1),
         flexConvert:(40+Math.random()*35).toFixed(1),
-        forecastHard:(20+Math.random()*30).toFixed(1),
-        samples:Math.round(30+Math.random()*70),
+        waferShare:waferShare+'%',
         assessment:mape<10?'🌟 优秀':mape<20?'✅ 良好':mape<30?'⚠️ 一般':'🔴 需改进'
       });
     });
     const total=demandPlanData.segmentData.reduce((s,d)=>s+d.volume,0);
     demandPlanData.segmentData.forEach(d=>d.ratio=Math.round(d.volume/total*100));
-    // 半导体异常
     const mats=appData.materials.length?appData.materials.slice(0,5).map(m=>m.code):['IC-1000-FT','IC-1000-AB','IC-1000-CP'];
-    const types=['良率波动','需求激增','客户AIO','Push-out','产能约束'];
+    const types=['良率波动','需求激增','委外交货延期','Push-out','晶圆产能约束'];
+    const procImpact=['FT','AB','CP','BP','Wafer'];
     mats.forEach((m,i)=>{
       const actual=Math.round(2000+Math.random()*18000);
       const forecast=Math.round(actual*(0.6+Math.random()*0.4));
+      const waferImpact=Math.abs(Math.round((actual-forecast)/120/0.85));
       demandPlanData.anomalies.push({
-        material:m,type:types[i%types.length],actual,forecast,
-        diff:actual-forecast,diffRate:Math.abs(actual-forecast)/Math.max(actual,1)*100,
+        material:m,type:types[i%types.length],process:procImpact[i%procImpact.length],
+        actual,forecast,diff:actual-forecast,
+        diffRate:Math.abs(actual-forecast)/Math.max(actual,1)*100,
+        waferImpact,
         date:'2026-0'+(7+Math.floor(i/2))+'-'+(10+Math.floor(Math.random()*15)),
         severity:Math.random()>0.6?'高':Math.random()>0.3?'中':'低',
-        suggestion:types[i%types.length]==='良率波动'?'检查产线良率数据，调整预测参数':types[i%types.length]==='需求激增'?'检查客户是否有新订单或紧急增单':types[i%types.length]==='客户AIO'?'与客户确认All-in-One订单真实性':types[i%types.length]==='Push-out'?'确认推迟后的交期并更新供应计划':'检查产能瓶颈及约束条件',
+        suggestion:types[i%types.length]==='良率波动'?'检查FT/AB/CP各委外良率数据':types[i%types.length]==='需求激增'?'确认客户增单，同步增加Wafer投片':types[i%types.length]==='委外交货延期'?'核实委外供应商OTD，调整供应计划':types[i%types.length]==='Push-out'?'更新交付计划并释放Wafer产能':'与TSMC/SMIC确认晶圆产能分配',
         status:'待处理'
       });
     });
-    // What-If
     demandPlanData.whatIfResults=(demandPlanData.forecasts||[]).slice(0,5).map(f=>({
-      material:f.material,process:f.process,base:Math.round(f.totalForecast),
-      scenarioVal:Math.round(f.totalForecast),waferChange:0,
-      impact:'—',action:'—'
+      material:f.material,process:f.process,supplier:f.supplier||'—',
+      base:Math.round(f.totalForecast),scenarioVal:Math.round(f.totalForecast),
+      waferChange:0,impact:'—',action:'—'
     }));
   }
 
@@ -7144,8 +7176,8 @@ function renderDpAnalytics(){
   const avgMape=demandPlanData.kpiRecords.length?demandPlanData.kpiRecords.reduce((s,k)=>s+parseFloat(k.mape),0)/demandPlanData.kpiRecords.length:0;
   const highAnom=demandPlanData.anomalies.filter(a=>a.severity==='高').length;
   document.getElementById('dpAnalyticsCards').innerHTML=
-    '<div class="summary-card blue"><div class="lbl">📊 制程层级</div><div class="num" style="color:var(--primary)">'+demandPlanData.segmentData.length+'</div><div class="sub-text">总需求 '+totalSegVol.toLocaleString()+'</div></div>'+
-    '<div class="summary-card '+(avgMape<15?'green':'yellow')+'"><div class="lbl">🎯 综合MAPE</div><div class="num" style="color:'+(avgMape<15?'var(--success)':'var(--warning)')+'">'+avgMape.toFixed(1)+'%</div><div class="sub-text">含良率因子</div></div>'+
+    '<div class="summary-card blue"><div class="lbl">📊 委外制程层级</div><div class="num" style="color:var(--primary)">'+demandPlanData.segmentData.length+'</div><div class="sub-text">FT→AB→CP→BP→Wafer</div></div>'+
+    '<div class="summary-card '+(avgMape<15?'green':'yellow')+'"><div class="lbl">🎯 综合MAPE</div><div class="num" style="color:'+(avgMape<15?'var(--success)':'var(--warning)')+'">'+avgMape.toFixed(1)+'%</div><div class="sub-text">含委外良率因子</div></div>'+
     '<div class="summary-card '+(highAnom>0?'red':'green')+'"><div class="lbl">⚠️ 严重异常</div><div class="num" style="color:'+(highAnom>0?'var(--danger)':'var(--success)')+'">'+highAnom+'/'+demandPlanData.anomalies.length+'</div><div class="sub-text">需立即处理</div></div>';
 
   if(window.dpSegChartInstance){window.dpSegChartInstance.destroy();}
@@ -7161,26 +7193,26 @@ function renderDpAnalytics(){
   }
   let html='';demandPlanData.kpiRecords.forEach(k=>{
     const assessColor=k.assessment.includes('优秀')?'var(--success)':k.assessment.includes('良好')?'var(--success)':k.assessment.includes('一般')?'var(--warning)':'var(--danger)';
-    html+='<tr><td style="font-weight:600">'+k.family+'</td><td style="color:'+(parseFloat(k.mape)<15?'var(--success)':'var(--danger)')+'">'+k.mape+'%</td><td>'+k.mae.toLocaleString()+'</td><td style="font-weight:600;color:'+(parseFloat(k.hardAccuracy)>85?'var(--success)':'var(--warning)')+'">'+k.hardAccuracy+'%</td><td>'+k.flexConvert+'%</td><td>'+k.forecastHard+'%</td><td>'+k.samples+'</td><td style="color:'+assessColor+';font-weight:600">'+k.assessment+'</td></tr>';
+    html+='<tr><td style="font-weight:600">'+k.family+'</td><td style="font-size:11px">'+(k.supplier||'—')+'</td><td style="color:'+(parseFloat(k.mape)<15?'var(--success)':'var(--danger)')+'">'+k.mape+'%</td><td>'+k.mae.toLocaleString()+'</td><td style="font-weight:600;color:'+(parseFloat(k.hardAccuracy)>85?'var(--success)':'var(--warning)')+'">'+k.hardAccuracy+'%</td><td>'+k.flexConvert+'%</td><td>'+k.waferShare+'</td><td style="color:'+assessColor+';font-weight:600">'+k.assessment+'</td></tr>';
   });
   document.getElementById('dpAnalyticsKpiTable').querySelector('tbody').innerHTML=html;
 
   html='';demandPlanData.anomalies.forEach((a,i)=>{
     const sevColor=a.severity==='高'?'var(--danger)':a.severity==='中'?'var(--warning)':'var(--info)';
-    html+='<tr><td>'+a.material+'</td><td><span class="tag" style="background:#fef3c7;color:#92400e">'+a.type+'</span></td><td>'+a.actual.toLocaleString()+'</td><td>'+a.forecast.toLocaleString()+'</td><td>'+(a.diff>0?'+':'')+a.diff.toLocaleString()+'</td><td style="color:'+sevColor+';font-weight:600">'+a.diffRate.toFixed(1)+'%</td><td>'+a.date+'</td><td><span style="color:'+sevColor+';font-weight:600">'+a.severity+'</span></td><td style="font-size:12px;color:var(--gray-500)">'+a.suggestion+'</td><td><button class="btn btn-sm btn-primary" onclick="resolveDpAnomaly('+i+')">✅ 处理</button></td></tr>';
+    html+='<tr><td>'+a.material+'</td><td><span class="tag" style="background:#fef3c7;color:#92400e">'+a.type+'</span></td><td><span class="tag" style="background:'+dpProcessColor(a.process)+'">'+a.process+'</span></td><td>'+a.actual.toLocaleString()+'</td><td>'+a.forecast.toLocaleString()+'</td><td style="color:'+sevColor+';font-weight:600">'+a.diffRate.toFixed(1)+'%</td><td style="color:var(--primary);font-weight:600">'+(a.waferImpact?a.waferImpact.toLocaleString():'—')+'</td><td><span style="color:'+sevColor+';font-weight:600">'+a.severity+'</span></td><td style="font-size:12px;color:var(--gray-500)">'+a.suggestion+'</td><td><button class="btn btn-sm btn-primary" onclick="resolveDpAnomaly('+i+')">✅ 处理</button></td></tr>';
   });
   document.getElementById('dpAnomalyTable').querySelector('tbody').innerHTML=html;
 
   html='';demandPlanData.whatIfResults.forEach(w=>{
     const impactColor=w.impact==='高'?'var(--danger)':w.impact==='中'?'var(--warning)':'var(--success)';
-    html+='<tr><td>'+w.material+'</td><td>'+w.process+'</td><td>'+w.base.toLocaleString()+'</td><td style="font-weight:600;color:var(--primary)">'+w.scenarioVal.toLocaleString()+'</td><td>'+(w.waferChange>0?'+':'')+w.waferChange.toLocaleString()+'</td><td style="color:'+impactColor+';font-weight:600">'+w.impact+'</td><td style="font-size:12px;color:var(--gray-500)">'+w.action+'</td></tr>';
+    html+='<tr><td>'+w.material+'</td><td>'+w.process+'</td><td style="font-size:11px">'+(w.supplier||'—')+'</td><td>'+w.base.toLocaleString()+'</td><td style="font-weight:600;color:var(--primary)">'+w.scenarioVal.toLocaleString()+'</td><td>'+(w.waferChange>0?'+':'')+w.waferChange.toLocaleString()+'</td><td style="color:'+impactColor+';font-weight:600">'+w.impact+'</td><td style="font-size:12px;color:var(--gray-500)">'+w.action+'</td></tr>';
   });
   document.getElementById('dpWhatIfTable').querySelector('tbody').innerHTML=html;
 }
 function runDpExceptionAnalysis(){
   demandPlanData.anomalies=[];demandPlanData.segmentData=[];demandPlanData.kpiRecords=[];
   demandPlanData.whatIfResults=[];
-  renderDpAnalytics();showToast('🔍 异常检测完成，已识别半导体需求异常信号','success');
+  renderDpAnalytics();showToast('🔍 委外级联异常检测完成','success');
 }
 function resolveDpAnomaly(idx){
   if(demandPlanData.anomalies[idx]){demandPlanData.anomalies[idx].status='已处理';demandPlanData.anomalies.splice(idx,1);}
@@ -7188,21 +7220,21 @@ function resolveDpAnomaly(idx){
 }
 function runDpWhatIf(){
   const scenario=document.getElementById('dpWhatIfScenario')?.value||'base';
-  const multipliers={base:1,yield_up:1.05,yield_down:0.95,customer_up:1.15,customer_down:0.9,capacity:0.88};
-  const descs={base:'基准预测',yield_up:'良率提升+5%',yield_down:'良率下降-5%',customer_up:'客户增单+15%',customer_down:'客户减单-10%',capacity:'产能约束(-12%)'};
+  const multipliers={base:1,yield_up:1.05,yield_down:0.95,customer_up:1.15,customer_down:0.9,wafer_limit:0.85};
+  const descs={base:'基准',yield_up:'良率+5%',yield_down:'良率-5%',customer_up:'客户增单+15%',customer_down:'客户减单-10%',wafer_limit:'晶圆产能-15%'};
   demandPlanData.whatIfResults=(demandPlanData.forecasts||[]).slice(0,8).map(f=>{
     const baseTotal=f.totalForecast||0;
     const scenarioTotal=Math.round(baseTotal*multipliers[scenario]);
     const waferChange=Math.round((scenarioTotal-baseTotal)/120*(f.yieldRate?f.yieldRate/100:0.85));
     const diffPct=Math.abs(scenarioTotal-baseTotal)/Math.max(baseTotal,1)*100;
     return {
-      material:f.material,process:f.process,base:baseTotal,
-      scenarioVal:scenarioTotal,waferChange,
+      material:f.material,process:f.process,supplier:f.supplier||'—',
+      base:baseTotal,scenarioVal:scenarioTotal,waferChange,
       impact:diffPct>20?'高':diffPct>10?'中':'低',
-      action:scenario==='yield_up'?'优化工艺参数，提升良率':scenario==='yield_down'?'排查产线异常，增加投料':scenario==='customer_up'?'同步增加Wafer投片计划':scenario==='customer_down'?'调整供应计划，减少投片':scenario==='capacity'?'按客户优先级分配产能':'维持现状'
+      action:scenario==='yield_up'?'优化委外工艺参数，提升各制程良率':scenario==='yield_down'?'排查委外线异常，增加投料':scenario==='customer_up'?'同步增加Wafer投片计划，通知TSMC/SMIC':scenario==='customer_down'?'调整供应计划，减少Wafer采购':scenario==='wafer_limit'?'按客户优先级分配晶圆产能':'维持现有委外计划'
     };
   });
-  renderDpAnalytics();showToast('📊 半导体情景分析完成：'+descs[scenario],'success');
+  renderDpAnalytics();showToast('📊 IC设计委外级联情景分析完成：'+descs[scenario],'success');
 }
 
 document.addEventListener('DOMContentLoaded', init);
