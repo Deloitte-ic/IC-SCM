@@ -7238,32 +7238,64 @@ function saveDpForecastVersion(){
 // ==================== Tab 2: Commitment Sensing（委外级联承诺感知） ====================
 function renderDpSensing(){
   if(!demandPlanData.sensingSignals.length){
-    const mats=appData.materials.length?appData.materials.slice(0,5).map(m=>({code:m.code,name:m.name})):[
-      {code:'IC-1000-FT',name:'FT成品芯片'},{code:'IC-1000-AB',name:'AB封装芯片'},{code:'IC-1000-CP',name:'CP测试晶圆'}];
-    const customers=['华为海思','展讯通信','中兴微电子','汇顶科技','韦尔半导体'];
-    const sources=['Hard承诺变更','Flexible变更','Forecast调整','订单Pull-in','订单Push-out','Wafer Bank水位'];
-    const procCycle=['FT','AB','CP','BP','Wafer'];
-    mats.forEach((m,i)=>{
-      const proc=procCycle[i%procCycle.length];
-      const baseline=Math.round(5000+Math.random()*20000);
-      const pctAdjust=(Math.random()>0.5?1:-1)*Math.round(Math.random()*10+2);
-      const adjustQt=Math.round(baseline*pctAdjust/100);
-      const waferImpact=Math.abs(Math.round(adjustQt/120/(SEMI_YIELD[proc]||0.95)));
-      demandPlanData.sensingSignals.push({
-        id:'SIG-'+String(i+1).padStart(3,'0'),material:m.code,process:proc,
-        customer:customers[i%customers.length],
-        source:sources[i%sources.length],beforeVal:i%2===0?baseline:baseline-Math.abs(adjustQt),
-        afterVal:baseline+adjustQt,changeVal:adjustQt,
-        confidence:Math.round(65+Math.random()*30),
-        waferImpact,validUntil:'2026-0'+(7+Math.floor(i/2))+'-'+(10+Math.floor(Math.random()*15)),
-        status:i%3===0?'活跃':'已应用',level:['Hard','Flexible','Forecast'][i%3]
+    const hasRealDemands = appData.demands.length > 0;
+    const hasRealCusts = appData.customers.length > 0;
+    
+    if(hasRealDemands){
+      // 从实际需求数据生成承诺信号
+      const customers = hasRealCusts ? appData.customers.map(c => c.name || c.code) : ['华为海思','展讯通信'];
+      const procs = ['FT','AB','CP','BP','Wafer'];
+      const sources = ['Hard承诺变更','Flexible变更','Forecast调整','订单Pull-in','Wafer Bank水位'];
+      appData.demands.slice(0,8).forEach((d,i)=>{
+        const mat = appData.materials.find(m => m.code === d.material);
+        const proc = mat?.processCode || 'FT';
+        const baseline = d.quantity || 5000;
+        const pctAdj = (Math.random()>0.5?1:-1)*Math.round(Math.random()*8+2);
+        const adjustQt = Math.round(baseline*pctAdj/100);
+        const waferImpact = Math.abs(Math.round(adjustQt/120/(SEMI_YIELD[proc]||0.95)));
+        demandPlanData.sensingSignals.push({
+          id:'SIG-'+String(i+1).padStart(3,'0'), material:d.material, process:proc,
+          customer:d.customer||(customers[i%customers.length]||'客户'),
+          source:sources[i%sources.length],
+          beforeVal:baseline, afterVal:baseline+adjustQt, changeVal:adjustQt,
+          confidence:Math.round(70+Math.random()*25),
+          waferImpact, validUntil:'2026-0'+(7+Math.floor(i/2))+'-'+(10+Math.floor(Math.random()*15)),
+          status:i%3===0?'活跃':'已应用', level:['Hard','Flexible','Forecast'][i%3]
+        });
+        demandPlanData.sensingResults.push({
+          material:d.material, process:proc, baseline, source:sources[i%sources.length],
+          adjustQt, adjustedVal:baseline+adjustQt, waferImpact,
+          type:adjustQt>0?'正信号':'负信号', signalType:sources[i%sources.length]
+        });
       });
-      demandPlanData.sensingResults.push({
-        material:m.code,process:proc,baseline,source:sources[i%sources.length],
-        adjustQt,adjustedVal:baseline+adjustQt,waferImpact,
-        type:adjustQt>0?'正信号':'负信号',signalType:sources[i%sources.length]
+    } else {
+      // 无实际数据时使用示例
+      const mats=[{code:'IC-1000-FT',name:'FT成品芯片'},{code:'IC-1000-AB',name:'AB封装芯片'},{code:'IC-1000-CP',name:'CP测试晶圆'}];
+      const customers=['华为海思','展讯通信','中兴微电子','汇顶科技','韦尔半导体'];
+      const sources=['Hard承诺变更','Flexible变更','Forecast调整','订单Pull-in','订单Push-out','Wafer Bank水位'];
+      const procCycle=['FT','AB','CP','BP','Wafer'];
+      mats.forEach((m,i)=>{
+        const proc=procCycle[i%procCycle.length];
+        const baseline=Math.round(5000+Math.random()*20000);
+        const pctAdjust=(Math.random()>0.5?1:-1)*Math.round(Math.random()*10+2);
+        const adjustQt=Math.round(baseline*pctAdjust/100);
+        const waferImpact=Math.abs(Math.round(adjustQt/120/(SEMI_YIELD[proc]||0.95)));
+        demandPlanData.sensingSignals.push({
+          id:'SIG-'+String(i+1).padStart(3,'0'),material:m.code,process:proc,
+          customer:customers[i%customers.length],
+          source:sources[i%sources.length],beforeVal:i%2===0?baseline:baseline-Math.abs(adjustQt),
+          afterVal:baseline+adjustQt,changeVal:adjustQt,
+          confidence:Math.round(65+Math.random()*30),
+          waferImpact,validUntil:'2026-0'+(7+Math.floor(i/2))+'-'+(10+Math.floor(Math.random()*15)),
+          status:i%3===0?'活跃':'已应用',level:['Hard','Flexible','Forecast'][i%3]
+        });
+        demandPlanData.sensingResults.push({
+          material:m.code,process:proc,baseline,source:sources[i%sources.length],
+          adjustQt,adjustedVal:baseline+adjustQt,waferImpact,
+          type:adjustQt>0?'正信号':'负信号',signalType:sources[i%sources.length]
+        });
       });
-    });
+    }
   }
   const totalSig=demandPlanData.sensingSignals.length;
   const activeSig=demandPlanData.sensingSignals.filter(s=>s.status==='活跃').length;
@@ -7417,30 +7449,61 @@ function approveDpVersion(idx){
 // ==================== Tab 4: Customer Commitment（晶圆博弈客户承诺） ====================
 function renderDpPromotion(){
   if(!demandPlanData.customerCommitments.length){
-    const customers=['华为海思','展讯通信','中兴微电子','汇顶科技','韦尔半导体'];
+    const hasRealDemands = appData.demands.length > 0;
+    const hasRealCusts = appData.customers.length > 0;
     const mats=appData.materials.length?appData.materials.slice(0,5).map(m=>m.code):['IC-1000-FT','IC-1000-AB','IC-1000-CP','IC-1000-BP','IC-1000-Wafer'];
-    const totalWafer=demandPlanData.forecasts.reduce((s,f)=>s+(f.waferEquivalent||0),0)||12000;
-    customers.forEach((cust,i)=>{
-      const hard=Math.round(2000+Math.random()*8000);
-      const flexible=Math.round(1000+Math.random()*4000);
-      const forecast=Math.round(500+Math.random()*3000);
-      const waferNeed=Math.round(dpWaferEq(hard+flexible));
-      const allocWafer=Math.round(waferNeed*0.85);
-      demandPlanData.customerCommitments.push({
-        id:'CCOM-'+String(i+1).padStart(3,'0'),customer:cust,
-        material:mats[i%mats.length],
-        hard,flexible,forecast,total:hard+flexible+forecast,
-        waferEquivalent:waferNeed,allocatedWafer:allocWafer,
-        gap:Math.max(0,waferNeed-allocWafer),
-        priority:i%3===0?'A':i%3===1?'B':'C',
-        otif:Math.round(85+Math.random()*15),status:i%2===0?'已确认':'待确认'
+    
+    if(hasRealDemands && hasRealCusts){
+      // 从实际客户和需求分组构建承诺
+      const custNames = appData.customers.map(c => c.name || c.code);
+      custNames.forEach((cust, i)=>{
+        const custDemands = appData.demands.filter(d => d.customer === cust);
+        const totalDemand = custDemands.reduce((s,d) => s+(d.quantity||0), 0);
+        const hard = totalDemand > 0 ? Math.round(totalDemand * 0.6) : Math.round(2000+Math.random()*8000);
+        const flexible = totalDemand > 0 ? Math.round(totalDemand * 0.25) : Math.round(1000+Math.random()*4000);
+        const forecast = totalDemand > 0 ? totalDemand - hard - flexible : Math.round(500+Math.random()*3000);
+        const waferNeed = Math.round(dpWaferEq(hard+flexible));
+        const allocWafer = Math.round(waferNeed*0.85);
+        demandPlanData.customerCommitments.push({
+          id:'CCOM-'+String(i+1).padStart(3,'0'), customer:cust,
+          material: mats[i%mats.length],
+          hard, flexible, forecast, total:hard+flexible+forecast,
+          waferEquivalent:waferNeed, allocatedWafer:allocWafer,
+          gap:Math.max(0, waferNeed-allocWafer),
+          priority:i%3===0?'A':i%3===1?'B':'C',
+          otif:Math.round(85+Math.random()*15), status:i%2===0?'已确认':'待确认'
+        });
+        demandPlanData.commitmentPipeline.push({
+          customer:cust, material:mats[i%mats.length],
+          week:'W'+(27+i), hard, flexible, forecast,
+          waferEq:Math.round(dpWaferEq(hard))
+        });
       });
-      demandPlanData.commitmentPipeline.push({
-        customer:cust,material:mats[i%mats.length],
-        week:'W'+(27+i),hard,flexible,forecast,
-        waferEq:Math.round(dpWaferEq(hard))
+    } else {
+      // 无实际数据时使用示例
+      const customers=['华为海思','展讯通信','中兴微电子','汇顶科技','韦尔半导体'];
+      customers.forEach((cust,i)=>{
+        const hard=Math.round(2000+Math.random()*8000);
+        const flexible=Math.round(1000+Math.random()*4000);
+        const forecast=Math.round(500+Math.random()*3000);
+        const waferNeed=Math.round(dpWaferEq(hard+flexible));
+        const allocWafer=Math.round(waferNeed*0.85);
+        demandPlanData.customerCommitments.push({
+          id:'CCOM-'+String(i+1).padStart(3,'0'),customer:cust,
+          material:mats[i%mats.length],
+          hard,flexible,forecast,total:hard+flexible+forecast,
+          waferEquivalent:waferNeed,allocatedWafer:allocWafer,
+          gap:Math.max(0,waferNeed-allocWafer),
+          priority:i%3===0?'A':i%3===1?'B':'C',
+          otif:Math.round(85+Math.random()*15),status:i%2===0?'已确认':'待确认'
+        });
+        demandPlanData.commitmentPipeline.push({
+          customer:cust,material:mats[i%mats.length],
+          week:'W'+(27+i),hard,flexible,forecast,
+          waferEq:Math.round(dpWaferEq(hard))
+        });
       });
-    });
+    }
   }
   const hardTotal=demandPlanData.customerCommitments.reduce((s,c)=>s+c.hard,0);
   const flexTotal=demandPlanData.customerCommitments.reduce((s,c)=>s+c.flexible,0);
@@ -7635,29 +7698,77 @@ function saveEditDpNpi(idx){
 // ==================== Tab 6: Demand Analytics（委外维度需求分析） ====================
 function renderDpAnalytics(){
   if(!demandPlanData.segmentData.length){
+    const hasRealDemands = appData.demands.length > 0;
     const processLevels=['FT成品','AB封装','CP测试','BP凸块','Wafer晶圆'];
     const processSuppliers=['ASE/PTI','京元/矽格','SPIL/Amkor','京元/硅品','TSMC/SMIC'];
-    const totalWafer=demandPlanData.forecasts.reduce((s,f)=>s+(f.waferEquivalent||0),0)||12000;
-    processLevels.forEach((pl,i)=>{
-      const vol=Math.round(500000+Math.random()*1500000);
-      const mape=5+Math.random()*20;
-      const waferShare=Math.round((vol/Math.max(totalWafer,1))*100);
-      demandPlanData.segmentData.push({segment:pl,volume:vol,ratio:0});
-      demandPlanData.kpiRecords.push({
-        family:pl,supplier:processSuppliers[i]||'—',mape:mape.toFixed(1),
-        mae:Math.round(vol*mape/100),
-        hardAccuracy:(75+Math.random()*20).toFixed(1),
-        flexConvert:(40+Math.random()*35).toFixed(1),
-        waferShare:waferShare+'%',
-        assessment:mape<10?'🌟 优秀':mape<20?'✅ 良好':mape<30?'⚠️ 一般':'🔴 需改进'
+    
+    if(hasRealDemands){
+      // 从实际需求数据按制程分组
+      const procs = ['FT','AB','CP','BP','Wafer'];
+      procs.forEach((proc,i)=>{
+        const matsInProc = appData.materials.filter(m => m.processCode === proc);
+        const codesInProc = matsInProc.map(m => m.code);
+        const procDemands = codesInProc.length > 0 ? 
+          appData.demands.filter(d => codesInProc.includes(d.material)) : 
+          appData.demands.filter(d => { const m = appData.materials.find(mt=>mt.code===d.material); return m && m.processCode===proc; });
+        const vol = procDemands.reduce((s,d) => s+(d.quantity||0), 0);
+        const mape = 8+Math.random()*12;
+        demandPlanData.segmentData.push({segment:processLevels[i], volume:Math.max(vol, 1000), ratio:0});
+        const share = (vol/Math.max(appData.demands.reduce((s,d)=>s+(d.quantity||0),0),1)*100);
+        demandPlanData.kpiRecords.push({
+          family:processLevels[i], supplier:processSuppliers[i]||'—', mape:mape.toFixed(1),
+          mae:Math.round(vol*mape/100),
+          hardAccuracy:(75+Math.random()*20).toFixed(1),
+          flexConvert:(40+Math.random()*35).toFixed(1),
+          waferShare:share.toFixed(1)+'%',
+          assessment:mape<10?'🌟 优秀':mape<20?'✅ 良好':mape<30?'⚠️ 一般':'🔴 需改进'
+        });
       });
-    });
+    } else {
+      // 无实际数据时使用示例
+      const totalWafer=demandPlanData.forecasts.reduce((s,f)=>s+(f.waferEquivalent||0),0)||12000;
+      processLevels.forEach((pl,i)=>{
+        const vol=Math.round(500000+Math.random()*1500000);
+        const mape=5+Math.random()*20;
+        const waferShare=Math.round((vol/Math.max(totalWafer,1))*100);
+        demandPlanData.segmentData.push({segment:pl,volume:vol,ratio:0});
+        demandPlanData.kpiRecords.push({
+          family:pl,supplier:processSuppliers[i]||'—',mape:mape.toFixed(1),
+          mae:Math.round(vol*mape/100),
+          hardAccuracy:(75+Math.random()*20).toFixed(1),
+          flexConvert:(40+Math.random()*35).toFixed(1),
+          waferShare:waferShare+'%',
+          assessment:mape<10?'🌟 优秀':mape<20?'✅ 良好':mape<30?'⚠️ 一般':'🔴 需改进'
+        });
+      });
+    }
     const total=demandPlanData.segmentData.reduce((s,d)=>s+d.volume,0);
     demandPlanData.segmentData.forEach(d=>d.ratio=Math.round(d.volume/total*100));
     const mats=appData.materials.length?appData.materials.slice(0,5).map(m=>m.code):['IC-1000-FT','IC-1000-AB','IC-1000-CP'];
     const types=['良率波动','需求激增','委外交货延期','Push-out','晶圆产能约束'];
     const procImpact=['FT','AB','CP','BP','Wafer'];
-    mats.forEach((m,i)=>{
+    
+    if(hasRealDemands){
+      // 从实际需求数据检测异常
+      appData.demands.slice(0,5).forEach((d,i)=>{
+        const mat = appData.materials.find(m => m.code === d.material);
+        const proc = mat?.processCode || 'FT';
+        const actual = d.quantity || 0;
+        const forecast = Math.round(actual*(0.6+Math.random()*0.4));
+        const waferImpact = Math.abs(Math.round((actual-forecast)/120/0.85));
+        demandPlanData.anomalies.push({
+          material:d.material, type:types[i%types.length], process:proc,
+          actual, forecast, diff:actual-forecast,
+          diffRate:Math.abs(actual-forecast)/Math.max(actual,1)*100,
+          waferImpact, date:d.demandDate||'2026-06-15',
+          severity:Math.abs(actual-forecast)/Math.max(actual,1)>0.3?'高':Math.abs(actual-forecast)/Math.max(actual,1)>0.15?'中':'低',
+          suggestion:types[i%types.length]==='良率波动'?'检查FT/AB/CP各委外良率数据':types[i%types.length]==='需求激增'?'确认客户增单，同步增加Wafer投片':types[i%types.length]==='委外交货延期'?'核实委外供应商OTD，调整供应计划':types[i%types.length]==='Push-out'?'更新交付计划并释放Wafer产能':'与TSMC/SMIC确认晶圆产能分配',
+          status:'待处理'
+        });
+      });
+    } else {
+      const mats=appData.materials.length?appData.materials.slice(0,5).map(m=>m.code):['IC-1000-FT','IC-1000-AB','IC-1000-CP'];
+      mats.forEach((m,i)=>{
       const actual=Math.round(2000+Math.random()*18000);
       const forecast=Math.round(actual*(0.6+Math.random()*0.4));
       const waferImpact=Math.abs(Math.round((actual-forecast)/120/0.85));
@@ -7671,7 +7782,8 @@ function renderDpAnalytics(){
         suggestion:types[i%types.length]==='良率波动'?'检查FT/AB/CP各委外良率数据':types[i%types.length]==='需求激增'?'确认客户增单，同步增加Wafer投片':types[i%types.length]==='委外交货延期'?'核实委外供应商OTD，调整供应计划':types[i%types.length]==='Push-out'?'更新交付计划并释放Wafer产能':'与TSMC/SMIC确认晶圆产能分配',
         status:'待处理'
       });
-    });
+      });
+    }
     demandPlanData.whatIfResults=(demandPlanData.forecasts||[]).slice(0,5).map(f=>({
       material:f.material,process:f.process,supplier:f.supplier||'—',
       base:Math.round(f.totalForecast),scenarioVal:Math.round(f.totalForecast),
