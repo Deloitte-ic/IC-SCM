@@ -2273,6 +2273,9 @@ function parseMaterialSheet(data, sheetName) {
   const pIdx = h.findIndex(c=>/(制程|工艺|process)/i.test(c));
   const uIdx = h.findIndex(c=>/(单位|unit|计量)/i.test(c));
   const tIdx = h.findIndex(c=>/(采购|自制|生产|方式|type)/i.test(c));
+  const sIdx = h.findIndex(c=>/(供应商|委外|supplier|vendor|外协)/i.test(c));
+  const yIdx = h.findIndex(c=>/(良率|yield|合格率)/i.test(c));
+  const wIdx = h.findIndex(c=>/(晶圆|当量|wafer|factor|系数)/i.test(c));
   if(cIdx<0) return;
 
   for(let i=1; i<data.length; i++) {
@@ -2285,7 +2288,10 @@ function parseMaterialSheet(data, sheetName) {
       category: catIdx>=0 && r[catIdx] ? String(r[catIdx]).trim() : '通用',
       processCode: pIdx>=0 && r[pIdx] ? String(r[pIdx]).trim() : '',
       unit: uIdx>=0 && r[uIdx] ? String(r[uIdx]).trim() : 'EA',
-      type: tIdx>=0 && r[tIdx] ? String(r[tIdx]).trim() : '自制'
+      type: tIdx>=0 && r[tIdx] ? String(r[tIdx]).trim() : '自制',
+      supplier: sIdx>=0 && r[sIdx] ? String(r[sIdx]).trim() : '',
+      yieldRate: yIdx>=0 && r[yIdx] ? parseFloat(r[yIdx])||100 : 100,
+      waferFactor: wIdx>=0 && r[wIdx] ? parseInt(r[wIdx])||1 : 1
     };
     const idx=appData.materials.findIndex(m=>m.code===code);
     if(idx>=0) appData.materials[idx]=entry;
