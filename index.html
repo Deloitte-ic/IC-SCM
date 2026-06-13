@@ -2445,7 +2445,7 @@ function parseSupplierSheet(data, sheetName) {
       moq: moqIdx>=0 ? parseInt(r[moqIdx])||0 : 0,
       qualityLevel: qIdx>=0 && r[qIdx] ? String(r[qIdx]).trim() : 'A'
     };
-    const idx=appData.suppliers.findIndex(s=>s.code===code);
+    const idx=appData.suppliers.findIndex(s=>s.code===code && s.processCode===(pIdx>=0&&r[pIdx]?String(r[pIdx]).trim():'') && s.material===(mIdx>=0&&r[mIdx]?String(r[mIdx]).trim():''));
     if(idx>=0) appData.suppliers[idx]=entry;
     else appData.suppliers.push(entry);
   }
