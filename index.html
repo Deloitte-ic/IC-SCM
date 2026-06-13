@@ -273,6 +273,12 @@ tbody tr:hover td{background:var(--primary-bg)}
       </div>
     </div>
     <div class="nav-group">
+      <div class="nav-group-title">Demand</div>
+      <div class="nav-item" data-section="demandplan" onclick="switchSection('demandplan')">
+        <span class="nav-icon">📈</span><span class="nav-text">Demand（需求计划）</span>
+      </div>
+    </div>
+    <div class="nav-group">
       <div class="nav-group-title">供应链计划</div>
       <div class="nav-item" data-section="supplyplan" onclick="switchSection('supplyplan')">
         <span class="nav-icon">🌐</span><span class="nav-text">Supply Planning（供应链计划）</span>
@@ -923,6 +929,217 @@ tbody tr:hover td{background:var(--primary-bg)}
       </div>
     </div>
 
+    <!-- ==================== Demand（需求计划）= SAP IBP Demand Planning 全面对标 ==================== -->
+    <div class="section" id="section-demandplan">
+      <div class="tabs" id="demandPlanTabs">
+        <div class="tab active" data-tab="dp-statistical" onclick="switchDemandPlanTab('dp-statistical')">📊 Statistical Forecasting（统计预测）</div>
+        <div class="tab" data-tab="dp-sensing" onclick="switchDemandPlanTab('dp-sensing')">📡 Demand Sensing（需求感知）</div>
+        <div class="tab" data-tab="dp-consensus" onclick="switchDemandPlanTab('dp-consensus')">🤝 Consensus Forecasting（共识预测）</div>
+        <div class="tab" data-tab="dp-promotion" onclick="switchDemandPlanTab('dp-promotion')">🎯 Promotion Planning（促销计划）</div>
+        <div class="tab" data-tab="dp-npi" onclick="switchDemandPlanTab('dp-npi')">🔄 NPI Planning（新品生命周期）</div>
+        <div class="tab" data-tab="dp-analytics" onclick="switchDemandPlanTab('dp-analytics')">📈 Demand Analytics（需求分析）</div>
+      </div>
+
+      <!-- ==================== Tab 1: Statistical Forecasting（统计预测） ==================== -->
+      <div class="tab-content active" id="tab-dp-statistical">
+        <div class="result-summary" id="dpStatCards"></div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title">📈 统计预测结果 <span class="tag">Statistical Forecast</span></div>
+            <div class="chart-container chart-container-sm"><canvas id="dpStatChart"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-title">⚙️ 预测模型配置 <span class="tag">Model Configuration</span></div>
+            <div style="padding:10px;background:var(--gray-50);border-radius:6px">
+              <div class="grid-2" style="margin-bottom:10px">
+                <div class="form-group"><label style="font-size:12px">预测模型</label>
+                  <select id="dpModelSelect" style="width:100%;padding:5px 8px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px">
+                    <option value="auto">🤖 自动选型（推荐）</option>
+                    <option value="holt-winters" selected>📐 Holt-Winters</option>
+                    <option value="sma">📊 移动平均 SMA</option>
+                    <option value="croston">📉 Croston 间歇需求</option>
+                    <option value="arima">📊 ARIMA</option>
+                    <option value="ets">📈 ETS 指数平滑</option>
+                  </select>
+                </div>
+                <div class="form-group"><label style="font-size:12px">预测期数</label><input type="number" id="dpForecastHorizon" value="6" min="1" max="24" style="width:100%;padding:5px 8px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px"></div>
+              </div>
+              <div class="grid-2" style="margin-bottom:10px">
+                <div class="form-group"><label style="font-size:12px">季节周期(月)</label>
+                  <select id="dpSeasonLength" style="width:100%;padding:5px 8px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px">
+                    <option value="3">3个月</option>
+                    <option value="6" selected>6个月</option>
+                    <option value="12">12个月</option>
+                  </select>
+                </div>
+                <div class="form-group"><label style="font-size:12px">置信区间</label>
+                  <select id="dpConfidenceLevel" style="width:100%;padding:5px 8px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px">
+                    <option value="0.8">80%</option>
+                    <option value="0.9" selected>90%</option>
+                    <option value="0.95">95%</option>
+                  </select>
+                </div>
+              </div>
+              <div style="display:flex;gap:8px;margin-top:8px">
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="checkbox" id="dpAutoOptimize" checked> 自动参数优化</label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="checkbox" id="dpOutlierFilter" checked> 异常值修正</label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="checkbox" id="dpOneTimeFilter" checked> 扣一次性大单</label>
+              </div>
+              <div style="display:flex;gap:8px;margin-top:12px">
+                <button class="btn btn-sm btn-primary" onclick="runDpForecast()">🔮 运行预测</button>
+                <button class="btn btn-sm btn-outline" onclick="runDpModelComparison()">📊 多模型对比</button>
+                <button class="btn btn-sm btn-outline" onclick="saveDpForecastVersion()">💾 保存版本</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📋 预测准确度追踪 <span class="tag">Forecast Accuracy KPI</span></div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <span style="font-size:12px;color:var(--gray-500)">版本:</span>
+              <select id="dpVersionSelect" style="padding:4px 8px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px"></select>
+            </div>
+          </div>
+          <div class="table-wrapper"><table id="dpAccuracyTable"><thead><tr><th>物料</th><th>模型</th><th>历史MAPE</th><th>历史MAE</th><th>RMSE</th><th>偏差(Bias)</th><th>预测总量</th><th>最佳α/β/γ</th><th>推荐</th></tr></thead><tbody></tbody></table></div>
+        </div>
+        <div class="card">
+          <div class="card-title">📊 历史预测与实际对比 <span class="tag">History vs Forecast</span></div>
+          <div class="table-wrapper" style="max-height:200px"><table id="dpHistoryTable"><thead><tr><th>期间</th><th>物料</th><th>历史实际值</th><th>预测值</th><th>误差</th><th>误差率(%)</th><th>置信下限</th><th>置信上限</th></tr></thead><tbody></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- ==================== Tab 2: Demand Sensing（需求感知） ==================== -->
+      <div class="tab-content" id="tab-dp-sensing">
+        <div class="result-summary" id="dpSensingCards"></div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title">📡 需求感知信号 <span class="tag">Demand Sensing Signals</span></div>
+            <div class="chart-container chart-container-sm"><canvas id="dpSensingChart"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-title">📊 感知调整明细 <span class="tag">Sensing Adjustment</span></div>
+            <div class="table-wrapper" style="max-height:240px"><table id="dpSensingAdjustTable"><thead><tr><th>物料</th><th>基线预测</th><th>感知信号</th><th>调整量</th><th>调整后预测</th><th>调整幅度(%)</th><th>信号类型</th></tr></thead><tbody></tbody></table></div>
+            <div style="margin-top:8px;display:flex;gap:8px">
+              <button class="btn btn-sm btn-primary" onclick="runDpSensing()">📡 运行需求感知</button>
+              <button class="btn btn-sm btn-outline" onclick="openDpSignalConfig()">⚙️ 信号配置</button>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">⏱️ 近实时信号看板 <span class="tag">Real-time Signal Dashboard</span></div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <span style="font-size:12px;color:var(--gray-500)">数据源:</span>
+              <select id="dpSignalSource" style="padding:4px 8px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px">
+                <option value="pos">POS 零售数据</option>
+                <option value="sellout">Sell-out 出货数据</option>
+                <option value="web">Web 流量信号</option>
+                <option value="all" selected>综合信号</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-wrapper"><table id="dpSignalTable"><thead><tr><th>信号编号</th><th>物料</th><th>信号来源</th><th>信号值</th><th>置信度(%)</th><th>推荐调整(%)</th><th>有效期</th><th>状态</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- ==================== Tab 3: Consensus Forecasting（共识预测） ==================== -->
+      <div class="tab-content" id="tab-dp-consensus">
+        <div class="result-summary" id="dpConsensusCards"></div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title">📊 共识版本对比 <span class="tag">Version Comparison</span></div>
+            <div class="chart-container chart-container-sm"><canvas id="dpConsensusChart"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-title">🤝 共识工作流 <span class="tag">Consensus Workflow</span></div>
+            <div class="table-wrapper" style="max-height:240px"><table id="dpWorkflowTable"><thead><tr><th>阶段</th><th>负责人</th><th>统计预测</th><th>商业调整</th><th>最终共识</th><th>状态</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📋 版本管理 <span class="tag">Version Management</span></div>
+            <button class="btn btn-sm btn-primary" onclick="openDpNewVersionModal()">➕ 新建版本</button>
+          </div>
+          <div class="table-wrapper"><table id="dpVersionTable"><thead><tr><th>版本ID</th><th>版本名称</th><th>创建人</th><th>创建时间</th><th>基线版本</th><th>调整说明</th><th>状态</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- ==================== Tab 4: Promotion Planning（促销计划） ==================== -->
+      <div class="tab-content" id="tab-dp-promotion">
+        <div class="result-summary" id="dpPromoCards"></div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title">🎯 促销活动日历 <span class="tag">Promotion Calendar</span></div>
+            <div class="chart-container chart-container-sm"><canvas id="dpPromoChart"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-title">📈 促销Uplift分析 <span class="tag">Promotion Uplift</span></div>
+            <div class="table-wrapper" style="max-height:240px"><table id="dpPromoUpliftTable"><thead><tr><th>促销活动</th><th>物料</th><th>基线需求</th><th>预计Uplift(%)</th><th>Uplift量</th><th>促销后需求</th><th>促销费用</th><th>预计收入</th><th>ROI</th></tr></thead><tbody></tbody></table></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📋 促销活动列表 <span class="tag">Promotion Events</span></div>
+            <button class="btn btn-sm btn-primary" onclick="openDpNewPromoModal()">➕ 新建促销</button>
+          </div>
+          <div class="table-wrapper"><table id="dpPromoTable"><thead><tr><th>活动ID</th><th>活动名称</th><th>物料</th><th>开始日期</th><th>结束日期</th><th>折扣率(%)</th><th>目标销量</th><th>状态</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- ==================== Tab 5: NPI Planning（新品生命周期） ==================== -->
+      <div class="tab-content" id="tab-dp-npi">
+        <div class="result-summary" id="dpNpiCards"></div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title">🔄 产品生命周期曲线 <span class="tag">Lifecycle Curve</span></div>
+            <div class="chart-container chart-container-sm"><canvas id="dpNpiChart"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-title">📋 新品导入计划 <span class="tag">NPI Plan</span></div>
+            <div class="table-wrapper" style="max-height:240px"><table id="dpNpiPlanTable"><thead><tr><th>产品</th><th>类型</th><th>导入日期</th><th>退市日期</th><th>爬坡周期(月)</th><th>爬坡曲线</th><th>峰值月需求</th><th>当前阶段</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📈 生命周期阶段需求预测 <span class="tag">Lifecycle Demand Forecast</span></div>
+            <button class="btn btn-sm btn-primary" onclick="openDpNewNpiModal()">➕ 新建产品</button>
+          </div>
+          <div class="table-wrapper"><table id="dpNpiDemandTable"><thead><tr><th>产品</th><th>导入期</th><th>成长期</th><th>成熟期</th><th>衰退期</th><th>退市期</th><th>总生命周期量</th><th>当前期预测</th></tr></thead><tbody></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- ==================== Tab 6: Demand Analytics（需求分析） ==================== -->
+      <div class="tab-content" id="tab-dp-analytics">
+        <div class="result-summary" id="dpAnalyticsCards"></div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title">📊 需求分割分析 <span class="tag">Demand Segmentation</span></div>
+            <div class="chart-container chart-container-sm"><canvas id="dpAnalyticsSegmentChart"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-title">🎯 准确度KPI仪表板 <span class="tag">Forecast Accuracy KPI</span></div>
+            <div class="table-wrapper" style="max-height:240px"><table id="dpAnalyticsKpiTable"><thead><tr><th>产品族</th><th>MAPE(%)</th><th>MAE</th><th>RMSE</th><th>Bias(%)</th><th>追踪号(TS)</th><th>样本量</th><th>评估</th></tr></thead><tbody></tbody></table></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">⚠️ 需求异常管理 <span class="tag">Exception Management</span></div>
+            <button class="btn btn-sm btn-primary" onclick="runDpExceptionAnalysis()">🔍 运行异常检测</button>
+          </div>
+          <div class="table-wrapper"><table id="dpAnomalyTable"><thead><tr><th>物料</th><th>异常类型</th><th>实际值</th><th>预测值</th><th>偏差</th><th>偏差率(%)</th><th>检测日期</th><th>严重程度</th><th>建议措施</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+        </div>
+        <div class="card">
+          <div class="card-title">📊 What-If 情景分析 <span class="tag">What-If Analysis</span></div>
+          <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+            <div><span style="font-size:12px;color:var(--gray-500)">情景：</span><select id="dpWhatIfScenario" style="padding:4px 8px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px"><option value="base">基准预测</option><option value="optimistic">乐观(+10%)</option><option value="pessimistic">悲观(-10%)</option><option value="promo">含促销影响</option></select></div>
+            <button class="btn btn-sm btn-outline" onclick="runDpWhatIf()">📊 运行情景分析</button>
+          </div>
+          <div class="table-wrapper"><table id="dpWhatIfTable"><thead><tr><th>物料</th><th>基准预测</th><th>乐观情景</th><th>悲观情景</th><th>促销情景</th><th>建议采用</th><th>备注</th></tr></thead><tbody></tbody></table></div>
+        </div>
+      </div>
+    </div>
+
     <!-- ==================== Supply Planning（供应链计划）= SAP IBP Supply 全面对标 ==================== -->
     <div class="section" id="section-supplyplan">
       <div class="tabs" id="supplyPlanTabs">
@@ -1448,6 +1665,7 @@ function switchSection(id) {
     business:'📊 业务数据',
     demand:'🔮 Demand Planning',
     mrp:'⚙️ Supply（供应计划）',
+    demandplan:'📈 Demand（需求计划）',
     supplyplan:'🌐 Supply Planning（供应链计划）',
     balance:'⚖️ 供给平衡',
     collaboration:'🤝 S&OP（销售与运营计划）'
@@ -1458,6 +1676,7 @@ function switchSection(id) {
     business:'业务数据',
     demand:'Demand Planning',
     mrp:'Supply',
+    demandplan:'Demand',
     supplyplan:'Supply Planning',
     balance:'供给平衡',
     collaboration:'S&OP'
@@ -1470,6 +1689,7 @@ function switchSection(id) {
   if(id==='business') renderAllMasterdata();
   if(id==='demand') renderDemand();
   if(id==='mrp') { renderConfigTables(); refreshOrderSelect(); }
+  if(id==='demandplan') updateDemandPlan();
   if(id==='supplyplan') updateSupplyPlan();
   if(id==='balance') updateBalance();
   if(id==='collaboration') updateSOP();
@@ -5976,6 +6196,794 @@ function exportSpReport(section){
   }
   const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='SCM_SupplyPlan_'+section+'_'+(new Date().toISOString().split('T')[0])+'.csv';a.click();showToast('📥 报告已导出','success');
+}
+
+// ==================== Demand（需求计划）= SAP IBP Demand Planning 全面对标 ====================
+const demandPlanData={
+  forecasts:[],
+  forecastVersions:[],
+  accuracyRecords:[],
+  historyRecords:[],
+  sensingSignals:[],
+  sensingResults:[],
+  consensusVersions:[],
+  workflowStages:[],
+  promotions:[],
+  promoEvents:[],
+  npiProducts:[],
+  lifecycleStages:[],
+  segmentData:[],
+  kpiRecords:[],
+  anomalies:[],
+  whatIfResults:[],
+  saved:false
+};
+
+function switchDemandPlanTab(tab){
+  document.querySelectorAll('#demandPlanTabs .tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('#section-demandplan .tab-content').forEach(t=>t.classList.remove('active'));
+  const tabEl = document.querySelector('#demandPlanTabs .tab[data-tab="'+tab+'"]');
+  if(tabEl) tabEl.classList.add('active');
+  document.getElementById('tab-'+tab).classList.add('active');
+  if(tab==='dp-statistical') renderDpStatistical();
+  if(tab==='dp-sensing') renderDpSensing();
+  if(tab==='dp-consensus') renderDpConsensus();
+  if(tab==='dp-promotion') renderDpPromotion();
+  if(tab==='dp-npi') renderDpNpi();
+  if(tab==='dp-analytics') renderDpAnalytics();
+}
+
+function updateDemandPlan(){
+  renderDpStatistical(); renderDpSensing(); renderDpConsensus();
+  renderDpPromotion(); renderDpNpi(); renderDpAnalytics();
+}
+
+// ==================== Forecasting Helpers ====================
+function dpHoltWinters(data,alpha,beta,gamma,seasonLen,horizon){
+  if(!data||data.length<seasonLen*2) return {forecast:[],components:{}};
+  const smoothed=[];const trend=[];const seasonal=[];
+  const seasons=Math.floor(data.length/seasonLen);
+  // init seasonal
+  for(let i=0;i<seasonLen;i++){let s=0;for(let j=0;j<seasons;j++)s+=data[j*seasonLen+i]||0;seasonal[i]=s/seasons;}
+  const avgSeason=seasonal.reduce((a,b)=>a+b,0)/seasonLen;
+  for(let i=0;i<seasonLen;i++)seasonal[i]-=avgSeason;
+  // init level & trend
+  let level=0;for(let i=0;i<seasonLen;i++)level+=data[i]/seasonLen;
+  let trendVal=(data[seasonLen]-data[0])/seasonLen;
+  smoothed.push(level+trendVal+seasonal[0]);
+  // smooth
+  for(let t=1;t<data.length;t++){
+    const lastLevel=level;
+    level=alpha*(data[t]-seasonal[t%seasonLen])+(1-alpha)*(level+trendVal);
+    trendVal=beta*(level-lastLevel)+(1-beta)*trendVal;
+    if(t<seasonLen*seasons) seasonal[t%seasonLen]=gamma*(data[t]-level)+(1-gamma)*seasonal[t%seasonLen];
+    smoothed.push(level+trendVal+seasonal[t%seasonLen]);
+  }
+  // forecast
+  const forecast=[];
+  for(let h=1;h<=horizon;h++){
+    forecast.push(level+h*trendVal+seasonal[(data.length+h-1)%seasonLen]);
+  }
+  // calculate residuals
+  const residuals=[];for(let i=0;i<data.length;i++)residuals.push(data[i]-smoothed[i]);
+  const mape=data.reduce((s,v,i)=>s+Math.abs((v-smoothed[i])/Math.max(v,1))*100,0)/data.length;
+  const mae=residuals.reduce((s,r)=>s+Math.abs(r),0)/residuals.length;
+  const rmse=Math.sqrt(residuals.reduce((s,r)=>s+r*r,0)/residuals.length);
+  const bias=residuals.reduce((s,r)=>s+r,0)/residuals.length;
+  return {forecast,smoothed,mape,mae,rmse,bias,components:{alpha,beta,gamma,seasonLen}};
+}
+
+function dpSma(data,window,horizon){
+  if(!data||data.length<window) return {forecast:[]};
+  const smoothed=[];for(let i=0;i<data.length;i++){
+    const start=Math.max(0,i-window+1);const slice=data.slice(start,i+1);
+    smoothed.push(slice.reduce((s,v)=>s+v,0)/slice.length);
+  }
+  const lastAvg=data.slice(-window).reduce((s,v)=>s+v,0)/window;
+  const forecast=Array(horizon).fill(lastAvg);
+  const residuals=[];for(let i=0;i<data.length;i++)residuals.push(data[i]-smoothed[i]);
+  const mape=data.reduce((s,v,i)=>s+Math.abs((v-smoothed[i])/Math.max(v,1))*100,0)/data.length;
+  const mae=residuals.reduce((s,r)=>s+Math.abs(r),0)/residuals.length;
+  return {forecast,smoothed,mape,mae};
+}
+
+function dpCroston(data,horizon){
+  if(!data||data.length<2) return {forecast:[]};
+  let nzDemands=[],nzIntervals=[];
+  let lastNonZero=-1;
+  for(let i=0;i<data.length;i++){
+    if(data[i]>0){
+      nzDemands.push(data[i]);
+      if(lastNonZero>=0)nzIntervals.push(i-lastNonZero);
+      lastNonZero=i;
+    }
+  }
+  if(!nzDemands.length) return {forecast:[Array(horizon).fill(0)]};
+  const avgDemand=nzDemands.reduce((s,v)=>s+v,0)/nzDemands.length;
+  const avgInterval=nzIntervals.length?nzIntervals.reduce((s,v)=>s+v,0)/nzIntervals.length:1;
+  const crostonVal=avgDemand/avgInterval;
+  const forecast=Array(horizon).fill(crostonVal);
+  return {forecast,mape:0,mae:0,params:{avgDemand,avgInterval}};
+}
+
+function dpAutoOptimize(data,seasonLen,horizon){
+  let bestMape=Infinity,bestParams={};
+  const alphas=[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9];
+  const betas=[0.05,0.1,0.2,0.3,0.4];
+  const gammas=[0.05,0.1,0.2,0.3,0.4,0.5];
+  for(const a of alphas){for(const b of betas){for(const g of gammas){
+    const result=dpHoltWinters(data,a,b,g,seasonLen,horizon);
+    if(result.mape<bestMape){bestMape=result.mape;bestParams={alpha:a,beta:b,gamma:g};}
+  }}}
+  return bestParams;
+}
+
+function dpAutoSelectModel(data,seasonLen,horizon){
+  if(!data||data.length<4) return {model:'holt-winters',result:dpHoltWinters(data,0.3,0.1,0.1,seasonLen,horizon)};
+  // check for intermittent demand (很多零值)
+  const zeros=data.filter(v=>v===0).length;const zeroRatio=zeros/data.length;
+  if(zeroRatio>0.3) return {model:'croston',result:dpCroston(data,horizon)};
+  // try all models
+  const bestParams=dpAutoOptimize(data,seasonLen,horizon);
+  const hwResult=dpHoltWinters(data,bestParams.alpha,bestParams.beta,bestParams.gamma,seasonLen,horizon);
+  // try SMA with different windows
+  let bestSma={mape:Infinity};let bestWin=3;
+  for(const w of [3,4,6,12]){
+    if(data.length<w)continue;
+    const r=dpSma(data,w,horizon);
+    if(r.mape<bestSma.mape){bestSma=r;bestWin=w;}
+  }
+  // pick best
+  if(hwResult.mape<=bestSma.mape) return {model:'holt-winters',result:hwResult,params:bestParams};
+  return {model:'sma',result:bestSma,params:{window:bestWin}};
+}
+
+// ==================== Tab 1: Statistical Forecasting（统计预测） ====================
+function renderDpStatistical(){
+  if(!demandPlanData.forecasts.length){
+    const mats=appData.materials.length?appData.materials.slice(0,6).map(m=>m.code):['A-RAM-001','B-CPU-002','C-ADC-003','D-PMU-004','E-IO-005','F-PLL-006'];
+    const months=['2025-07','2025-08','2025-09','2025-10','2025-11','2025-12','2026-01','2026-02','2026-03','2026-04','2026-05','2026-06'];
+    const histData=[
+      [1200,1350,1100,1480,1550,1420,1380,1520,1650,1580,1720,1680],
+      [800,950,870,920,1050,980,1100,1150,1080,1200,1180,1250],
+      [450,520,480,490,560,540,580,620,590,610,650,630],
+      [2200,2400,2100,2350,2500,2450,2600,2550,2700,2650,2800,2780],
+      [650,720,680,710,780,760,800,830,790,850,840,870],
+      [350,380,340,370,410,390,420,440,410,430,460,450]
+    ];
+    mats.forEach((m,i)=>{
+      const data=histData[i]||histData[0];
+      const outlierFilter=document.getElementById('dpOutlierFilter')?.checked!==false;
+      let cleanData=[...data];
+      if(outlierFilter){
+        const sorted=[...data].sort((a,b)=>a-b);
+        const q1=sorted[Math.floor(sorted.length*0.25)],q3=sorted[Math.floor(sorted.length*0.75)];
+        const iqr=q3-q1,upper=q3+1.5*iqr,lower=q1-1.5*iqr;
+        const median=sorted[Math.floor(sorted.length/2)];
+        cleanData=data.map(v=>v>upper||v<lower?median:v);
+      }
+      const seasonLen=parseInt(document.getElementById('dpSeasonLength')?.value||6);
+      const horizon=parseInt(document.getElementById('dpForecastHorizon')?.value||6);
+      const modelSelect=document.getElementById('dpModelSelect')?.value||'auto';
+      let result,modelName;
+      if(modelSelect==='auto'){
+        const auto=dpAutoSelectModel(cleanData,seasonLen,horizon);
+        modelName=auto.model;result=auto.result;
+        if(auto.params&&!demandPlanData.forecastOptParams)demandPlanData.forecastOptParams=auto.params;
+      }else if(modelSelect==='holt-winters'){
+        const autoOpt=document.getElementById('dpAutoOptimize')?.checked;
+        let alpha=0.3,beta=0.1,gamma=0.1;
+        if(autoOpt){const p=dpAutoOptimize(cleanData,seasonLen,horizon);alpha=p.alpha;beta=p.beta;gamma=p.gamma;}
+        result=dpHoltWinters(cleanData,alpha,beta,gamma,seasonLen,horizon);
+        modelName='holt-winters';demandPlanData.forecastOptParams={alpha,beta,gamma};
+      }else if(modelSelect==='sma'){
+        result=dpSma(cleanData,Math.min(cleanData.length,6),horizon);
+        modelName='sma';
+      }else{
+        result=dpCroston(cleanData,horizon);
+        modelName='croston';
+      }
+      const totalForecast=result.forecast.reduce((s,v)=>s+v,0);
+      const step=12/data.length;
+      const futureMonths=Array.from({length:horizon},(_,i)=>{
+        const idx=months.length-12+Math.floor(i/step);return months[idx<0?0:idx]||'2026-'+String(i+7).padStart(2,'0');
+      });
+      demandPlanData.forecasts.push({
+        material:m,model:modelName,horizon,seasonLen,
+        history:cleanData,smoothed:result.smoothed||[],
+        futureMonths,forecast:result.forecast,
+        mape:result.mape,mae:result.mae,rmse:result.rmse||0,
+        bias:result.bias||0,totalForecast,
+        params:result.components||{}
+      });
+    });
+    // version select
+    const sel=document.getElementById('dpVersionSelect');
+    if(sel){sel.innerHTML='<option value="baseline">基线预测V1</option>';}
+  }
+
+  const fc=demandPlanData.forecasts;
+  const totalFc=fc.reduce((s,f)=>s+f.totalForecast,0);
+  const avgMape=fc.length?fc.reduce((s,f)=>s+(f.mape||0),0)/fc.length:0;
+  const avgMae=fc.length?fc.reduce((s,f)=>s+(f.mae||0),0)/fc.length:0;
+  document.getElementById('dpStatCards').innerHTML=
+    '<div class="summary-card blue"><div class="lbl">📊 物料数</div><div class="num" style="color:var(--primary)">'+fc.length+'</div><div class="sub-text">已预测物料</div></div>'+
+    '<div class="summary-card '+(avgMape<15?'green':'yellow')+'"><div class="lbl">🎯 平均MAPE</div><div class="num" style="color:'+(avgMape<15?'var(--success)':'var(--warning)')+'">'+(avgMape?avgMape.toFixed(1)+'%':'—')+'</div><div class="sub-text">预测准确度</div></div>'+
+    '<div class="summary-card green"><div class="lbl">📈 预测总需求</div><div class="num" style="color:var(--success)">'+totalFc.toLocaleString()+'</div><div class="sub-text">未来'+(fc[0]?fc[0].horizon:0)+'期</div></div>';
+
+  // Chart: forecast line
+  if(fc.length){
+    const labels=[];
+    const maxHistLen=Math.max(...fc.map(f=>f.history.length));
+    // use first material's timeline
+    if(fc[0]&&fc[0].futureMonths&&fc[0].futureMonths.length){
+      const lastDate=fc[0].history.length;
+      for(let i=Math.max(0,lastDate-12);i<lastDate;i++)labels.push('H'+i);
+      fc[0].futureMonths.forEach(m=>labels.push(m));
+    }
+    const colors=['#2563eb','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4'];
+    if(window.dpStatChartInstance){window.dpStatChartInstance.destroy();}
+    const ctx=document.getElementById('dpStatChart');
+    if(ctx){
+      const datasets=[];
+      fc.slice(0,4).forEach((f,fi)=>{
+        const fullData=[...f.history,...Array(f.forecast.length).fill(null)];
+        const fcData=Array(f.history.length).fill(null).concat(f.forecast);
+        datasets.push({
+          label:f.material+' (历史)',data:fullData,
+          borderColor:colors[fi%colors.length],backgroundColor:'transparent',
+          borderDash:[],pointRadius:2,tension:.3
+        });
+        datasets.push({
+          label:f.material+' (预测)',data:fcData,
+          borderColor:colors[fi%colors.length],backgroundColor:colors[fi%colors.length]+'20',
+          borderDash:[5,5],pointRadius:3,borderWidth:2
+        });
+      });
+      window.dpStatChartInstance=new Chart(ctx.getContext('2d'),{
+        type:'line',data:{labels:labels.slice(0,Math.min(labels.length,30)),datasets},
+        options:{responsive:true,maintainAspectRatio:false,
+          plugins:{legend:{position:'top',labels:{font:{size:10}}}},
+          scales:{y:{beginAtZero:true,ticks:{callback:v=>v.toLocaleString()}}}
+        }
+      });
+    }
+  }
+
+  // Accuracy table
+  let html='';fc.forEach(f=>{
+    const rec=f.mape<10?'🌟 优秀':f.mape<20?'✅ 良好':f.mape<30?'⚠️ 一般':'🔴 需改进';
+    const params=f.params?`${(f.params.alpha||'-')}/${(f.params.beta||'-')}/${(f.params.gamma||'-')}`:'—';
+    html+='<tr><td>'+f.material+'</td><td>'+f.model+'</td><td style="'+(f.mape<15?'color:var(--success)':'color:var(--danger)')+'">'+(f.mape?f.mape.toFixed(1)+'%':'—')+'</td><td>'+(f.mae?f.mae.toFixed(1):'—')+'</td><td>'+(f.rmse?f.rmse.toFixed(1):'—')+'</td><td>'+(f.bias!==undefined?f.bias.toFixed(1):'—')+'</td><td>'+Math.round(f.totalForecast).toLocaleString()+'</td><td>'+params+'</td><td>'+rec+'</td></tr>';
+  });
+  document.getElementById('dpAccuracyTable').querySelector('tbody').innerHTML=html;
+
+  // History vs forecast
+  html='';fc.slice(0,8).forEach(f=>{
+    const ci=0.9;
+    const z=1.645;
+    f.history.slice(-12).forEach((v,i)=>{
+      const pred=f.smoothed[i]||0;
+      const err=v-pred;const errPct=Math.abs(err)/Math.max(v,1)*100;
+      const std=Math.sqrt(f.mae||100);
+      html+='<tr><td>H'+(f.history.length-12+i+1)+'</td><td>'+f.material+'</td><td>'+v.toLocaleString()+'</td><td>'+Math.round(pred).toLocaleString()+'</td><td>'+(err>=0?'+':'')+Math.round(err).toLocaleString()+'</td><td>'+(errPct?errPct.toFixed(1)+'%':'0%')+'</td><td>'+(Math.round(pred-z*std).toLocaleString())+'</td><td>'+(Math.round(pred+z*std).toLocaleString())+'</td></tr>';
+    });
+    f.forecast.slice(0,6).forEach((v,i)=>{
+      const std=Math.sqrt(f.mae||100);
+      html+='<tr style="background:#f0f7ff"><td>'+((f.futureMonths&&f.futureMonths[i])||'F'+(i+1))+'</td><td>'+f.material+'</td><td>—</td><td>'+Math.round(v).toLocaleString()+'</td><td>—</td><td>—</td><td>'+Math.round(v-z*std).toLocaleString()+'</td><td>'+Math.round(v+z*std).toLocaleString()+'</td></tr>';
+    });
+  });
+  document.getElementById('dpHistoryTable').querySelector('tbody').innerHTML=html;
+}
+
+function runDpForecast(){
+  demandPlanData.forecasts=[];
+  renderDpStatistical();showToast('🔮 预测完成，自动参数优化已应用','success');
+}
+
+function runDpModelComparison(){
+  if(!demandPlanData.forecasts.length) runDpForecast();
+  const mats=demandPlanData.forecasts.map(f=>f.material);
+  const seasonLen=parseInt(document.getElementById('dpSeasonLength')?.value||6);
+  const horizon=parseInt(document.getElementById('dpForecastHorizon')?.value||6);
+  let html='<h3>📊 多模型对比分析</h3><div style="margin:10px 0;font-size:13px;color:var(--gray-500)">按物料比较 Holt-Winters / SMA / Croston 各模型的 MAPE 与拟合度</div>';
+  html+='<div class="table-wrapper"><table><thead><tr><th>物料</th><th>Holt-Winters MAPE</th><th>Holt-Winters α/β/γ</th><th>SMA MAPE</th><th>SMA窗口</th><th>Croston</th><th>推荐模型</th></tr></thead><tbody>';
+  mats.forEach(m=>{
+    const data=demandPlanData.forecasts.find(f=>f.material===m)?.history||[];
+    if(!data.length){html+='<tr><td>'+m+'</td><td colspan="6">无数据</td></tr>';return;}
+    const opt=dpAutoOptimize(data,seasonLen,horizon);
+    const hw=dpHoltWinters(data,opt.alpha,opt.beta,opt.gamma,seasonLen,horizon);
+    let bestSma={mape:Infinity},bestWin=3;
+    for(const w of[3,4,6,12]){if(data.length>=w){const r=dpSma(data,w,horizon);if(r.mape<bestSma.mape){bestSma=r;bestWin=w;}}}
+    const zeros=data.filter(v=>v===0).length/data.length;
+    let croston='—';if(zeros>0.2){const cr=dpCroston(data,horizon);croston=cr.mape?cr.mape.toFixed(1)+'%':'适用';}
+    const best=(hw.mape||999)<=((bestSma.mape||999))?'Holt-Winters':'SMA';
+    html+='<tr><td>'+m+'</td><td style="color:'+(hw.mape<15?'var(--success)':'var(--danger)')+'">'+(hw.mape?hw.mape.toFixed(1)+'%':'—')+'</td><td>'+opt.alpha+'/'+opt.beta+'/'+opt.gamma+'</td><td>'+(bestSma.mape<999?bestSma.mape.toFixed(1)+'%':'—')+'</td><td>'+bestWin+'</td><td>'+croston+'</td><td style="font-weight:600;color:var(--primary)">✅ '+best+'</td></tr>';
+  });
+  html+='</tbody></table></div><div style="margin-top:12px;display:flex;gap:8px"><button class="btn btn-sm btn-primary" onclick="closeModal()">关闭</button></div>';
+  openModal(html);showToast('📊 多模型对比完成','success');
+}
+
+function saveDpForecastVersion(){
+  const vName=prompt('请输入版本名称：','V'+((demandPlanData.forecastVersions.length||0)+1));
+  if(!vName)return;
+  demandPlanData.forecastVersions.push({
+    id:'FV-'+String(demandPlanData.forecastVersions.length+1).padStart(3,'0'),
+    name:vName,creator:'Planer',createdAt:new Date().toISOString().split('T')[0],
+    forecasts:JSON.parse(JSON.stringify(demandPlanData.forecasts))
+  });
+  const sel=document.getElementById('dpVersionSelect');
+  if(sel)sel.innerHTML=demandPlanData.forecastVersions.map((v,i)=>'<option value="v'+(i+1)+'">'+v.name+'</option>').join('')+'<option value="baseline">基线预测V1</option>';
+  showToast('💾 版本 '+vName+' 已保存','success');
+}
+
+// ==================== Tab 2: Demand Sensing（需求感知） ====================
+function renderDpSensing(){
+  if(!demandPlanData.sensingSignals.length){
+    const mats=appData.materials.length?appData.materials.slice(0,6).map(m=>({code:m.code,name:m.name})):[
+      {code:'A-RAM-001',name:'RAM芯片'},{code:'B-CPU-002',name:'CPU处理器'},{code:'C-ADC-003',name:'ADC转换器'}];
+    const sources=['POS零售','Sell-out出货','Web流量','渠道库存'];
+    mats.forEach((m,i)=>{
+      const baseline=Math.round(1000+Math.random()*4000);
+      const pctAdjust=(Math.random()>0.5?1:-1)*Math.round(Math.random()*15+3);
+      const adjustQt=Math.round(baseline*pctAdjust/100);
+      demandPlanData.sensingSignals.push({id:'SIG-'+String(i+1).padStart(3,'0'),material:m.code,source:sources[i%sources.length],sigVal:'+'+pctAdjust+'%',confidence:Math.round(60+Math.random()*35),recommendAdjust:pctAdjust,validUntil:'2026-0'+(1+Math.floor(Math.random()*3))+'-'+(20+Math.floor(Math.random()*8)),status:'活跃'});
+      demandPlanData.sensingResults.push({material:m.code,baseline,adjustQt,adjusted:baseline+adjustQt,adjustPct:pctAdjust,source:sources[i%sources.length],type:pctAdjust>0?'正信号':'负信号'});
+    });
+  }
+
+  const totalSig=demandPlanData.sensingSignals.length;
+  const activeSig=demandPlanData.sensingSignals.filter(s=>s.status==='活跃').length;
+  const totalAdjust=demandPlanData.sensingResults.reduce((s,r)=>s+r.adjustQt,0);
+  document.getElementById('dpSensingCards').innerHTML=
+    '<div class="summary-card blue"><div class="lbl">📡 感知信号总数</div><div class="num" style="color:var(--primary)">'+totalSig+'</div><div class="sub-text">含多数据源</div></div>'+
+    '<div class="summary-card '+(activeSig>0?'yellow':'green')+'"><div class="lbl">🟢 活跃信号</div><div class="num" style="color:'+(activeSig>0?'var(--warning)':'var(--success)')+'">'+activeSig+'</div><div class="sub-text">需关注</div></div>'+
+    '<div class="summary-card green"><div class="lbl">📊 总调整量</div><div class="num" style="color:var(--success)">'+(totalAdjust>0?'+':'')+totalAdjust.toLocaleString()+'</div><div class="sub-text">感知调整合计</div></div>';
+
+  const sources=[...new Set(demandPlanData.sensingResults.map(r=>r.source))];
+  const sourceAdjust=sources.map(s=>demandPlanData.sensingResults.filter(r=>r.source===s).reduce((sum,r)=>sum+r.adjustQt,0));
+  if(window.dpSensingChartInstance){window.dpSensingChartInstance.destroy();}
+  const ctx=document.getElementById('dpSensingChart');
+  if(ctx&&sources.length){
+    window.dpSensingChartInstance=new Chart(ctx.getContext('2d'),{
+      type:'bar',data:{labels:sources,datasets:[{label:'感知调整量',data:sourceAdjust,backgroundColor:['#2563eb','#10b981','#f59e0b','#8b5cf6']}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}
+    });
+  }
+
+  let html='';demandPlanData.sensingResults.forEach(r=>{
+    html+='<tr><td>'+r.material+'</td><td>'+r.baseline.toLocaleString()+'</td><td>'+r.source+'</td><td>'+(r.adjustQt>0?'+':'')+r.adjustQt.toLocaleString()+'</td><td style="font-weight:600;color:'+(r.adjustPct>0?'var(--success)':'var(--danger)')+'">'+r.adjusted.toLocaleString()+'</td><td>'+(r.adjustPct>0?'+':'')+r.adjustPct+'%</td><td><span class="tag" style="background:'+(r.type==='正信号'?'#d1fae5;color:#065f46':'#fef3c7;color:#92400e')+'">'+r.type+'</span></td></tr>';
+  });
+  document.getElementById('dpSensingAdjustTable').querySelector('tbody').innerHTML=html;
+
+  html='';demandPlanData.sensingSignals.forEach((s,i)=>{
+    const confColor=s.confidence>80?'var(--success)':s.confidence>60?'var(--warning)':'var(--danger)';
+    html+='<tr><td>'+s.id+'</td><td>'+s.material+'</td><td>'+s.source+'</td><td>'+s.sigVal+'</td><td><span style="color:'+confColor+';font-weight:600">'+s.confidence+'%</span></td><td>'+(s.recommendAdjust>0?'+':'')+s.recommendAdjust+'%</td><td>'+s.validUntil+'</td><td><span class="tag" style="background:'+(s.status==='活跃'?'#d1fae5;color:#065f46':'#fef3c7;color:#92400e')+'">'+s.status+'</span></td><td><button class="btn btn-sm btn-primary" onclick="applyDpSignal('+i+')">📡 应用</button></td></tr>';
+  });
+  document.getElementById('dpSignalTable').querySelector('tbody').innerHTML=html;
+}
+
+function runDpSensing(){
+  demandPlanData.sensingSignals=[];demandPlanData.sensingResults=[];
+  renderDpSensing();showToast('📡 需求感知运行完成，已应用多源信号调整','success');
+}
+
+function openDpSignalConfig(){
+  const html='<h3>⚙️ 需求感知信号配置</h3><div style="margin:12px 0"><div style="padding:12px;background:var(--gray-50);border-radius:6px;font-size:13px"><strong>SAP IBP Demand Sensing 配置项：</strong><br><br>1️⃣ <strong>数据源选择：</strong><br>• POS 零售数据：权重 40%<br>• Sell-out 出货数据：权重 30%<br>• Web 流量信号：权重 15%<br>• 渠道库存信号：权重 15%<br><br>2️⃣ <strong>信号处理规则：</strong><br>• 置信度≥80%：自动应用调整<br>• 置信度60-80%：需人工确认<br>• 置信度<60%：仅作为参考<br><br>3️⃣ <strong>调整上限：</strong><br>• 单次调整幅度不超过±20%<br>• 累积调整不超过±30%<br><br>4️⃣ <strong>时间窗口：</strong><br>• 短期感知窗口：4-8周<br>• 信号有效期：14天</div></div><div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-sm btn-primary" onclick="closeModal();showToast(\'✅ 信号配置已更新\',\'success\')">应用配置</button><button class="btn btn-sm btn-outline" onclick="closeModal()">关闭</button></div>';
+  openModal(html);
+}
+
+function applyDpSignal(idx){
+  const s=demandPlanData.sensingSignals[idx];
+  if(!s)return;
+  showToast('📡 信号 '+s.id+' 已应用，调整幅度 '+s.recommendAdjust+'%','success');
+  s.status='已应用';
+  renderDpSensing();
+}
+
+// ==================== Tab 3: Consensus Forecasting（共识预测） ====================
+function renderDpConsensus(){
+  if(!demandPlanData.workflowStages.length){
+    demandPlanData.workflowStages=[
+      {stage:'统计预测',owner:'统计分析师',statFc:'12,500',bizAdj:'—',consensus:'—',status:'✅ 已完成'},
+      {stage:'商业调整',owner:'产品经理',statFc:'12,500',bizAdj:'+1,200',consensus:'—',status:'⏳ 进行中'},
+      {stage:'共识评审',owner:'需求计划经理',statFc:'12,500',bizAdj:'+1,200',consensus:'—',status:'📋 待开始'},
+      {stage:'审批发布',owner:'总监',statFc:'12,500',bizAdj:'+1,200',consensus:'—',status:'📋 待开始'}
+    ];
+    demandPlanData.consensusVersions=[
+      {id:'VER-001',name:'基线V1',creator:'Planer',createdAt:'2026-06-01',baseVersion:'—',adjustDesc:'初始统计预测',status:'已发布'},
+      {id:'VER-002',name:'商业调整V2',creator:'产品经理',createdAt:'2026-06-08',baseVersion:'VER-001',adjustDesc:'根据渠道反馈上调10%',status:'审批中'}
+    ];
+  }
+
+  const totalStages=demandPlanData.workflowStages.length;
+  const completed=demandPlanData.workflowStages.filter(s=>s.status.includes('完成')).length;
+  const totalVer=demandPlanData.consensusVersions.length;
+  const published=demandPlanData.consensusVersions.filter(v=>v.status==='已发布').length;
+  document.getElementById('dpConsensusCards').innerHTML=
+    '<div class="summary-card blue"><div class="lbl">📋 工作流阶段</div><div class="num" style="color:var(--primary)">'+totalStages+'</div><div class="sub-text">共'+completed+'阶段已完成</div></div>'+
+    '<div class="summary-card green"><div class="lbl">📦 版本总数</div><div class="num" style="color:var(--success)">'+totalVer+'</div><div class="sub-text">已发布'+published+'版</div></div>'+
+    '<div class="summary-card yellow"><div class="lbl">⏳ 待审批</div><div class="num" style="color:var(--warning)">'+(totalVer-published)+'</div><div class="sub-text">需共识审批</div></div>';
+
+  const stageLabels=demandPlanData.workflowStages.map(s=>s.stage);
+  const stageVals=[12500,13700,13700,13700];
+  if(window.dpConsensusChartInstance){window.dpConsensusChartInstance.destroy();}
+  const ctx=document.getElementById('dpConsensusChart');
+  if(ctx){
+    window.dpConsensusChartInstance=new Chart(ctx.getContext('2d'),{
+      type:'line',data:{labels:stageLabels,
+        datasets:[{label:'需求数量',data:stageVals,borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.1)',fill:true,tension:.3,pointRadius:6,pointBackgroundColor:['#2563eb','#10b981','#f59e0b','#8b5cf6']}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true,ticks:{callback:v=>v.toLocaleString()}}}}
+    });
+  }
+
+  let html='';demandPlanData.workflowStages.forEach((s,i)=>{
+    const stColor=s.status.includes('完成')?'var(--success)':s.status.includes('进行')?'var(--primary)':'var(--gray-400)';
+    html+='<tr><td style="font-weight:600">'+s.stage+'</td><td>'+s.owner+'</td><td>'+s.statFc+'</td><td>'+(s.bizAdj||'—')+'</td><td>'+(s.consensus||'—')+'</td><td><span style="color:'+stColor+';font-weight:600">'+s.status+'</span></td><td>'+(s.status.includes('完成')?'✅':i===1?'<button class="btn btn-sm btn-primary" onclick="submitDpBizAdjust()">✏️ 调整</button>':i===2?'<button class="btn btn-sm btn-primary" onclick="runDpConsensusReview()">📋 评审</button>':i===3?'<button class="btn btn-sm btn-success" onclick="approveDpConsensus()">✅ 审批</button>':'—')+'</td></tr>';
+  });
+  document.getElementById('dpWorkflowTable').querySelector('tbody').innerHTML=html;
+
+  html='';demandPlanData.consensusVersions.forEach((v,i)=>{
+    const stColor=v.status==='已发布'?'var(--success)':v.status==='审批中'?'var(--warning)':'var(--gray-400)';
+    html+='<tr><td>'+v.id+'</td><td>'+v.name+'</td><td>'+v.creator+'</td><td>'+v.createdAt+'</td><td>'+v.baseVersion+'</td><td>'+v.adjustDesc+'</td><td><span style="color:'+stColor+';font-weight:600">'+v.status+'</span></td><td>'+(v.status==='审批中'?'<button class="btn btn-sm btn-success" onclick="approveDpVersion('+i+')">✅ 发布</button>':'<span style="color:var(--gray-400)">—</span>')+'</td></tr>';
+  });
+  document.getElementById('dpVersionTable').querySelector('tbody').innerHTML=html;
+}
+
+function submitDpBizAdjust(){
+  const amt=prompt('输入商业调整量（正数上调，负数下调）：','+1200');
+  if(!amt)return;
+  if(demandPlanData.workflowStages[1]){
+    demandPlanData.workflowStages[1].bizAdj=(parseInt(amt)>0?'+':'')+amt;
+    demandPlanData.workflowStages[1].status='✅ 已完成';
+    demandPlanData.workflowStages[2].status='📋 待评审';
+  }
+  renderDpConsensus();showToast('✏️ 商业调整已提交：'+amt,'success');
+}
+
+function runDpConsensusReview(){
+  if(demandPlanData.workflowStages[2]){
+    demandPlanData.workflowStages[2].consensus='13,700';
+    demandPlanData.workflowStages[2].status='✅ 已完成';
+    demandPlanData.workflowStages[3].status='📋 待审批';
+  }
+  renderDpConsensus();showToast('📋 共识评审完成，待高管审批','success');
+}
+
+function approveDpConsensus(){
+  if(demandPlanData.workflowStages[3]){
+    demandPlanData.workflowStages[3].consensus='13,700';
+    demandPlanData.workflowStages[3].status='✅ 已完成';
+  }
+  renderDpConsensus();showToast('✅ 共识预测已审批发布','success');
+}
+
+function openDpNewVersionModal(){
+  const html='<h3>➕ 新建版本</h3><div style="margin:12px 0"><label style="font-size:13px;font-weight:600">版本名称：</label><input type="text" id="newVerName" value="商业调整V'+((demandPlanData.consensusVersions.length||0)+1)+'" style="width:100%;padding:8px;margin:6px 0;border:1px solid var(--gray-300);border-radius:6px"></div><div style="margin:12px 0"><label style="font-size:13px;font-weight:600">调整说明：</label><textarea id="newVerDesc" style="width:100%;padding:8px;margin:6px 0;border:1px solid var(--gray-300);border-radius:6px;min-height:60px" placeholder="描述该版本的调整内容和原因"></textarea></div><div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-sm btn-primary" onclick="saveDpNewVersion()">💾 保存</button><button class="btn btn-sm btn-outline" onclick="closeModal()">取消</button></div>';
+  openModal(html);
+}
+
+function saveDpNewVersion(){
+  const name=document.getElementById('newVerName')?.value||('V'+(demandPlanData.consensusVersions.length+1));
+  const desc=document.getElementById('newVerDesc')?.value||'';
+  demandPlanData.consensusVersions.push({
+    id:'VER-'+String(demandPlanData.consensusVersions.length+1).padStart(3,'0'),
+    name,creator:'Planer',createdAt:new Date().toISOString().split('T')[0],
+    baseVersion:demandPlanData.consensusVersions.length?demandPlanData.consensusVersions[demandPlanData.consensusVersions.length-1].id:'—',
+    adjustDesc:desc||'手动创建',status:'草稿'
+  });
+  closeModal();renderDpConsensus();showToast('💾 版本 '+name+' 已创建','success');
+}
+
+function approveDpVersion(idx){
+  if(demandPlanData.consensusVersions[idx])demandPlanData.consensusVersions[idx].status='已发布';
+  renderDpConsensus();showToast('✅ 版本已发布','success');
+}
+
+// ==================== Tab 4: Promotion Planning（促销计划） ====================
+function renderDpPromotion(){
+  if(!demandPlanData.promotions.length){
+    const mats=appData.materials.length?appData.materials.slice(0,5).map(m=>m.code):['A-RAM-001','B-CPU-002','C-ADC-003','D-PMU-004','E-IO-005'];
+    const promoStarts=['2026-06-01','2026-07-01','2026-08-01','2026-09-01','2026-10-01'];
+    mats.forEach((m,i)=>{
+      const base=Math.round(800+Math.random()*3200);
+      const upliftPct=10+Math.floor(Math.random()*25);
+      const upliftQt=Math.round(base*upliftPct/100);
+      const cost=Math.round(50000+Math.random()*200000);
+      const revenue=Math.round((base+upliftQt)*50+Math.random()*100000);
+      demandPlanData.promotions.push({
+        id:'PROMO-'+String(i+1).padStart(3,'0'),name:m+'促销活动',material:m,
+        baseDemand:base,upliftPct,upliftQt,afterDemand:base+upliftQt,
+        cost,revenue,roi:cost>0?Math.round((revenue-cost)/cost*100):0
+      });
+      demandPlanData.promoEvents.push({
+        id:'EVT-'+String(i+1).padStart(3,'0'),name:m+'促销',material:m,
+        startDate:promoStarts[i%promoStarts.length],
+        endDate:'2026-0'+(1+Math.floor(Math.random()*3+6))+'-'+(15+Math.floor(Math.random()*10)),
+        discount:Math.round(10+Math.random()*25),target:Math.round(2000+Math.random()*3000),status:'计划中'
+      });
+    });
+  }
+
+  const totalUplift=demandPlanData.promotions.reduce((s,p)=>s+p.upliftQt,0);
+  const avgUplift=demandPlanData.promotions.length?demandPlanData.promotions.reduce((s,p)=>s+p.upliftPct,0)/demandPlanData.promotions.length:0;
+  const avgRoi=demandPlanData.promotions.length?demandPlanData.promotions.reduce((s,p)=>s+p.roi,0)/demandPlanData.promotions.length:0;
+  document.getElementById('dpPromoCards').innerHTML=
+    '<div class="summary-card blue"><div class="lbl">🎯 促销活动</div><div class="num" style="color:var(--primary)">'+demandPlanData.promotions.length+'</div><div class="sub-text">计划中/进行中</div></div>'+
+    '<div class="summary-card green"><div class="lbl">📈 平均Uplift</div><div class="num" style="color:var(--success)">'+avgUplift.toFixed(0)+'%</div><div class="sub-text">需求提升</div></div>'+
+    '<div class="summary-card yellow"><div class="lbl">💰 平均ROI</div><div class="num" style="color:'+(avgRoi>100?'var(--success)':'var(--warning)')+'">'+avgRoi.toFixed(0)+'%</div><div class="sub-text">投资回报率</div></div>';
+
+  const promoLabels=demandPlanData.promotions.map(p=>p.material);
+  const promoBase=demandPlanData.promotions.map(p=>p.baseDemand);
+  const promoAfter=demandPlanData.promotions.map(p=>p.afterDemand);
+  if(window.dpPromoChartInstance){window.dpPromoChartInstance.destroy();}
+  const ctx=document.getElementById('dpPromoChart');
+  if(ctx){
+    window.dpPromoChartInstance=new Chart(ctx.getContext('2d'),{
+      type:'bar',data:{labels:promoLabels,
+        datasets:[
+          {label:'基线需求',data:promoBase,backgroundColor:'rgba(148,163,184,.6)',borderRadius:4},
+          {label:'Uplift量',data:demandPlanData.promotions.map(p=>p.upliftQt),backgroundColor:'rgba(245,158,11,.6)',borderRadius:4},
+          {label:'促销后需求',data:promoAfter,backgroundColor:'rgba(16,185,129,.6)',borderRadius:4}
+        ]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true,ticks:{callback:v=>v.toLocaleString()}}}}
+    });
+  }
+
+  let html='';demandPlanData.promotions.forEach(p=>{
+    const roiColor=p.roi>150?'var(--success)':p.roi>80?'var(--warning)':'var(--danger)';
+    html+='<tr><td>'+p.name+'</td><td>'+p.material+'</td><td>'+p.baseDemand.toLocaleString()+'</td><td>+'+p.upliftPct+'%</td><td>+'+p.upliftQt.toLocaleString()+'</td><td style="font-weight:600;color:var(--success)">'+p.afterDemand.toLocaleString()+'</td><td>¥'+p.cost.toLocaleString()+'</td><td>¥'+p.revenue.toLocaleString()+'</td><td style="color:'+roiColor+';font-weight:600">'+p.roi+'%</td></tr>';
+  });
+  document.getElementById('dpPromoUpliftTable').querySelector('tbody').innerHTML=html;
+
+  html='';demandPlanData.promoEvents.forEach((e,i)=>{
+    const stColor=e.status==='进行中'?'var(--success)':e.status==='已结束'?'var(--gray-400)':'var(--warning)';
+    html+='<tr><td>'+e.id+'</td><td>'+e.name+'</td><td>'+e.material+'</td><td>'+e.startDate+'</td><td>'+e.endDate+'</td><td>'+e.discount+'%</td><td>'+e.target.toLocaleString()+'</td><td><span style="color:'+stColor+';font-weight:600">'+e.status+'</span></td><td><button class="btn btn-sm btn-outline" onclick="editDpPromo('+i+')">✏️</button></td></tr>';
+  });
+  document.getElementById('dpPromoTable').querySelector('tbody').innerHTML=html;
+}
+
+function openDpNewPromoModal(){
+  const mats=appData.materials.length?appData.materials.map(m=>m.code):['A-RAM-001','B-CPU-002'];
+  const opts=mats.map(m=>'<option value="'+m+'">'+m+'</option>').join('');
+  const html='<h3>➕ 新建促销活动</h3><div class="grid-2" style="margin:10px 0;gap:10px"><div><label style="font-size:12px">活动名称</label><input type="text" id="newPromoName" value="新品促销" style="width:100%;padding:6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px"></div><div><label style="font-size:12px">物料</label><select id="newPromoMat" style="width:100%;padding:6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px">'+opts+'</select></div></div><div class="grid-2" style="margin:10px 0;gap:10px"><div><label style="font-size:12px">开始日期</label><input type="date" id="newPromoStart" value="2026-07-01" style="width:100%;padding:6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px"></div><div><label style="font-size:12px">折扣率(%)</label><input type="number" id="newPromoDisc" value="15" min="1" max="50" style="width:100%;padding:6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px"></div></div><div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-sm btn-primary" onclick="saveDpNewPromo()">💾 保存</button><button class="btn btn-sm btn-outline" onclick="closeModal()">取消</button></div>';
+  openModal(html);
+}
+
+function saveDpNewPromo(){
+  const name=document.getElementById('newPromoName')?.value||'促销活动';
+  const mat=document.getElementById('newPromoMat')?.value||'A-RAM-001';
+  const start=document.getElementById('newPromoStart')?.value||'2026-07-01';
+  const disc=parseInt(document.getElementById('newPromoDisc')?.value)||15;
+  demandPlanData.promoEvents.push({
+    id:'EVT-'+String(demandPlanData.promoEvents.length+1).padStart(3,'0'),
+    name,material:mat,startDate:start,
+    endDate:'2026-08-15',discount:disc,target:2000,status:'计划中'
+  });
+  closeModal();renderDpPromotion();showToast('✅ 促销活动已创建','success');
+}
+
+function editDpPromo(idx){
+  const e=demandPlanData.promoEvents[idx];
+  if(!e)return;
+  const html='<h3>✏️ 编辑促销活动</h3><div style="margin:12px 0;padding:12px;background:var(--gray-50);border-radius:6px;font-size:13px"><strong>活动ID：</strong>'+e.id+'<br><strong>名称：</strong>'+e.name+'<br><strong>物料：</strong>'+e.material+'<br><strong>日期：</strong>'+e.startDate+' ~ '+e.endDate+'<br><strong>折扣：</strong>'+e.discount+'%<br><strong>状态：</strong>'+e.status+'</div><div style="margin:12px 0"><label style="font-size:13px;font-weight:600">修改状态：</label><select id="editPromoStatus" style="width:100%;padding:8px;border:1px solid var(--gray-300);border-radius:6px"><option value="计划中" '+(e.status==='计划中'?'selected':'')+'>计划中</option><option value="进行中" '+(e.status==='进行中'?'selected':'')+'>进行中</option><option value="已结束" '+(e.status==='已结束'?'selected':'')+'>已结束</option></select></div><div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-sm btn-primary" onclick="saveEditDpPromo('+idx+')">💾 保存</button><button class="btn btn-sm btn-outline" onclick="closeModal()">取消</button></div>';
+  openModal(html);
+}
+
+function saveEditDpPromo(idx){
+  const newStatus=document.getElementById('editPromoStatus')?.value;
+  if(demandPlanData.promoEvents[idx])demandPlanData.promoEvents[idx].status=newStatus;
+  closeModal();renderDpPromotion();showToast('✅ 促销已更新','success');
+}
+
+// ==================== Tab 5: NPI Planning（新品生命周期） ====================
+function renderDpNpi(){
+  if(!demandPlanData.npiProducts.length){
+    const newProducts=['IC-NPU-001','IC-DSP-002','IC-ISP-003','IC-PMU-NEXT'];
+    const stages=['导入期','导入期','成长期','导入期'];
+    const curves=['S-Curve','线性增长','S-Curve','指数增长'];
+    newProducts.forEach((m,i)=>{
+      const startDate='2026-0'+(3+Math.floor(Math.random()*4))+'-01';
+      const endDate='2028-0'+(1+Math.floor(Math.random()*12))+'-01';
+      const rampMonths=3+Math.floor(Math.random()*6);
+      const peak=Math.round(3000+Math.random()*7000);
+      demandPlanData.npiProducts.push({
+        product:m,type:'新品导入',startDate,endDate,
+        rampMonths,curve:curves[i],peakDemand:peak,currentStage:stages[i]
+      });
+      // lifecycle stages
+      const intro=Math.round(peak*0.3),grow=Math.round(peak*0.8),mature=peak,decline=Math.round(peak*0.4),phaseOut=Math.round(peak*0.1);
+      demandPlanData.lifecycleStages.push({
+        product:m,introQtr:intro,growQtr:grow,matureQtr:mature,
+        declineQtr:decline,phaseOutQtr:phaseOut,total:intro+grow+mature+decline+phaseOut,
+        currentFc:stages[i]==='导入期'?intro:stages[i]==='成长期'?grow:stages[i]==='成熟期'?mature:stages[i]==='衰退期'?decline:phaseOut
+      });
+    });
+  }
+
+  const totalNpi=demandPlanData.npiProducts.length;
+  const introCount=demandPlanData.npiProducts.filter(p=>p.currentStage==='导入期').length;
+  const totalLifecycle=demandPlanData.lifecycleStages.reduce((s,l)=>s+l.total,0);
+  document.getElementById('dpNpiCards').innerHTML=
+    '<div class="summary-card blue"><div class="lbl">🔄 新品数量</div><div class="num" style="color:var(--primary)">'+totalNpi+'</div><div class="sub-text">NPI计划中</div></div>'+
+    '<div class="summary-card yellow"><div class="lbl">🌱 导入期产品</div><div class="num" style="color:var(--warning)">'+introCount+'</div><div class="sub-text">需关注爬坡</div></div>'+
+    '<div class="summary-card green"><div class="lbl">📊 全生命周期量</div><div class="num" style="color:var(--success)">'+totalLifecycle.toLocaleString()+'</div><div class="sub-text">预估总需求</div></div>';
+
+  // Lifecycle curve chart
+  const stageNames=['导入期','成长期','成熟期','衰退期','退市期'];
+  const stageColors=['#f59e0b','#10b981','#2563eb','#8b5cf6','#ef4444'];
+  if(window.dpNpiChartInstance){window.dpNpiChartInstance.destroy();}
+  const ctx=document.getElementById('dpNpiChart');
+  if(ctx&&demandPlanData.lifecycleStages.length){
+    const datasets=demandPlanData.lifecycleStages.slice(0,4).map((l,i)=>{
+      const data=[l.introQtr,l.growQtr,l.matureQtr,l.declineQtr,l.phaseOutQtr];
+      return {label:l.product,data,borderColor:['#2563eb','#10b981','#f59e0b','#ef4444'][i%4],fill:false,tension:.3,pointRadius:3};
+    });
+    window.dpNpiChartInstance=new Chart(ctx.getContext('2d'),{
+      type:'line',data:{labels:stageNames,datasets},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{size:10}}}},scales:{y:{beginAtZero:true,ticks:{callback:v=>v.toLocaleString()}}}}
+    });
+  }
+
+  let html='';demandPlanData.npiProducts.forEach((p,i)=>{
+    const stageColor=p.currentStage==='导入期'?'var(--warning)':p.currentStage==='成长期'?'var(--success)':p.currentStage==='成熟期'?'var(--primary)':p.currentStage==='衰退期'?'var(--danger)':'var(--gray-400)';
+    html+='<tr><td>'+p.product+'</td><td>'+p.type+'</td><td>'+p.startDate+'</td><td>'+p.endDate+'</td><td>'+p.rampMonths+'个月</td><td>'+p.curve+'</td><td>'+p.peakDemand.toLocaleString()+'</td><td><span style="color:'+stageColor+';font-weight:600">'+p.currentStage+'</span></td><td><button class="btn btn-sm btn-outline" onclick="editDpNpi('+i+')">✏️</button></td></tr>';
+  });
+  document.getElementById('dpNpiPlanTable').querySelector('tbody').innerHTML=html;
+
+  html='';demandPlanData.lifecycleStages.forEach(l=>{
+    html+='<tr><td style="font-weight:600">'+l.product+'</td><td>'+l.introQtr.toLocaleString()+'</td><td>'+l.growQtr.toLocaleString()+'</td><td>'+l.matureQtr.toLocaleString()+'</td><td>'+l.declineQtr.toLocaleString()+'</td><td>'+l.phaseOutQtr.toLocaleString()+'</td><td style="font-weight:600;color:var(--primary)">'+l.total.toLocaleString()+'</td><td style="font-weight:600;color:var(--success)">'+l.currentFc.toLocaleString()+'</td></tr>';
+  });
+  document.getElementById('dpNpiDemandTable').querySelector('tbody').innerHTML=html;
+}
+
+function openDpNewNpiModal(){
+  const html='<h3>➕ 新建产品生命周期</h3><div class="grid-2" style="margin:10px 0;gap:10px"><div><label style="font-size:12px">产品名称</label><input type="text" id="newNpiProduct" value="IC-CHIP-007" style="width:100%;padding:6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px"></div><div><label style="font-size:12px">导入日期</label><input type="date" id="newNpiStart" value="2026-07-01" style="width:100%;padding:6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px"></div></div><div class="grid-2" style="margin:10px 0;gap:10px"><div><label style="font-size:12px">爬坡周期(月)</label><input type="number" id="newNpiRamp" value="4" min="1" max="12" style="width:100%;padding:6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px"></div><div><label style="font-size:12px">峰值月需求</label><input type="number" id="newNpiPeak" value="5000" min="100" style="width:100%;padding:6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px"></div></div><div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-sm btn-primary" onclick="saveDpNewNpi()">💾 保存</button><button class="btn btn-sm btn-outline" onclick="closeModal()">取消</button></div>';
+  openModal(html);
+}
+
+function saveDpNewNpi(){
+  const product=document.getElementById('newNpiProduct')?.value||'IC-NEW-001';
+  const start=document.getElementById('newNpiStart')?.value||'2026-07-01';
+  const ramp=parseInt(document.getElementById('newNpiRamp')?.value)||4;
+  const peak=parseInt(document.getElementById('newNpiPeak')?.value)||5000;
+  demandPlanData.npiProducts.push({
+    product,type:'新品导入',startDate:start,endDate:'2028-01-01',
+    rampMonths:ramp,curve:'S-Curve',peakDemand:peak,currentStage:'导入期'
+  });
+  const intro=Math.round(peak*0.3),grow=Math.round(peak*0.8),mature=peak,decline=Math.round(peak*0.4),phaseOut=Math.round(peak*0.1);
+  demandPlanData.lifecycleStages.push({
+    product,introQtr:intro,growQtr:grow,matureQtr:mature,declineQtr:decline,phaseOutQtr:phaseOut,total:intro+grow+mature+decline+phaseOut,currentFc:intro
+  });
+  closeModal();renderDpNpi();showToast('✅ 新产品已加入生命周期计划','success');
+}
+
+function editDpNpi(idx){
+  const p=demandPlanData.npiProducts[idx];
+  if(!p)return;
+  const html='<h3>✏️ 编辑产品生命周期</h3><div style="margin:12px 0;padding:12px;background:var(--gray-50);border-radius:6px;font-size:13px"><strong>产品：</strong>'+p.product+'<br><strong>导入：</strong>'+p.startDate+'<br><strong>退市：</strong>'+p.endDate+'<br><strong>爬坡：</strong>'+p.rampMonths+'个月<br><strong>曲线：</strong>'+p.curve+'<br><strong>当前阶段：</strong>'+p.currentStage+'</div><div style="margin:12px 0"><label style="font-size:13px;font-weight:600">修改阶段：</label><select id="editNpiStage" style="width:100%;padding:8px;border:1px solid var(--gray-300);border-radius:6px"><option value="导入期">导入期</option><option value="成长期">成长期</option><option value="成熟期">成熟期</option><option value="衰退期">衰退期</option><option value="退市期">退市期</option></select></div><div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-sm btn-primary" onclick="saveEditDpNpi('+idx+')">💾 保存</button><button class="btn btn-sm btn-outline" onclick="closeModal()">取消</button></div>';
+  openModal(html);
+}
+
+function saveEditDpNpi(idx){
+  const newStage=document.getElementById('editNpiStage')?.value;
+  if(demandPlanData.npiProducts[idx]){
+    demandPlanData.npiProducts[idx].currentStage=newStage;
+    // update lifecycle stage forecast
+    const lc=demandPlanData.lifecycleStages.find(l=>l.product===demandPlanData.npiProducts[idx].product);
+    if(lc){
+      const stageMap={'导入期':lc.introQtr,'成长期':lc.growQtr,'成熟期':lc.matureQtr,'衰退期':lc.declineQtr,'退市期':lc.phaseOutQtr};
+      lc.currentFc=stageMap[newStage]||lc.introQtr;
+    }
+  }
+  closeModal();renderDpNpi();showToast('✅ 生命周期已更新','success');
+}
+
+// ==================== Tab 6: Demand Analytics（需求分析） ====================
+function renderDpAnalytics(){
+  if(!demandPlanData.segmentData.length){
+    const segments=['HPC芯片','消费电子','汽车电子','工业控制','通信基站'];
+    segments.forEach((s,i)=>{
+      const vol=Math.round(5000+Math.random()*20000);
+      const mape=5+Math.random()*25;
+      demandPlanData.segmentData.push({segment:s,volume:vol,ratio:0});
+      demandPlanData.kpiRecords.push({
+        family:s,mape:mape.toFixed(1),mae:Math.round(vol*mape/100),rmse:Math.round(Math.sqrt(vol*mape)),
+        bias:(-5+Math.random()*10).toFixed(1),ts:(0.5+Math.random()*3).toFixed(2),samples:Math.round(20+Math.random()*80),
+        assessment:mape<10?'🌟 优秀':mape<20?'✅ 良好':mape<30?'⚠️ 一般':'🔴 需改进'
+      });
+    });
+    const total=demandPlanData.segmentData.reduce((s,d)=>s+d.volume,0);
+    demandPlanData.segmentData.forEach(d=>d.ratio=Math.round(d.volume/total*100));
+    // anomalies
+    const mats=appData.materials.length?appData.materials.slice(0,5).map(m=>m.code):['A-RAM-001','B-CPU-002','C-ADC-003'];
+    const types=['需求激增','需求骤降','季节性异常','数据缺失','模式变化'];
+    mats.forEach((m,i)=>{
+      const actual=Math.round(500+Math.random()*4000);
+      const forecast=Math.round(actual*(0.5+Math.random()*0.5));
+      demandPlanData.anomalies.push({
+        material:m,type:types[i%types.length],actual,forecast,
+        diff:actual-forecast,diffRate:Math.abs(actual-forecast)/Math.max(actual,1)*100,
+        date:'2026-0'+(1+Math.floor(Math.random()*6))+'-'+(10+Math.floor(Math.random()*15)),
+        severity:Math.random()>0.6?'高':Math.random()>0.3?'中':'低',
+        suggestion:types[i%types.length]==='需求激增'?'检查是否漏单及重复计数':types[i%types.length]==='需求骤降'?'确认是否有取消订单':types[i%types.length]==='季节性异常'?'检查季节性模式是否变化':'检查数据源完整性',
+        status:'待处理'
+      });
+    });
+    // what-if
+    demandPlanData.whatIfResults=demandPlanData.forecasts.length?demandPlanData.forecasts.slice(0,5).map(f=>({
+      material:f.material,base:Math.round(f.totalForecast),
+      optimistic:Math.round(f.totalForecast*1.1),pessimistic:Math.round(f.totalForecast*0.9),promo:Math.round(f.totalForecast*1.15),
+      recommend:'基准预测',note:'需综合评估'
+    })):[];
+  }
+
+  const totalSegVol=demandPlanData.segmentData.reduce((s,d)=>s+d.volume,0);
+  const avgMapeKpi=demandPlanData.kpiRecords.length?demandPlanData.kpiRecords.reduce((s,k)=>s+parseFloat(k.mape),0)/demandPlanData.kpiRecords.length:0;
+  const anomalyCount=demandPlanData.anomalies.length;
+  const highAnom=demandPlanData.anomalies.filter(a=>a.severity==='高').length;
+  document.getElementById('dpAnalyticsCards').innerHTML=
+    '<div class="summary-card blue"><div class="lbl">📊 分割市场</div><div class="num" style="color:var(--primary)">'+demandPlanData.segmentData.length+'</div><div class="sub-text">总需求 '+totalSegVol.toLocaleString()+'</div></div>'+
+    '<div class="summary-card '+(avgMapeKpi<15?'green':'yellow')+'"><div class="lbl">🎯 综合MAPE</div><div class="num" style="color:'+(avgMapeKpi<15?'var(--success)':'var(--warning)')+'">'+avgMapeKpi.toFixed(1)+'%</div><div class="sub-text">全产品族</div></div>'+
+    '<div class="summary-card '+(highAnom>0?'red':'green')+'"><div class="lbl">⚠️ 严重异常</div><div class="num" style="color:'+(highAnom>0?'var(--danger)':'var(--success)')+'">'+highAnom+'/'+anomalyCount+'</div><div class="sub-text">需立即处理</div></div>';
+
+  // Segment pie chart
+  if(window.dpSegChartInstance){window.dpSegChartInstance.destroy();}
+  const ctx=document.getElementById('dpAnalyticsSegmentChart');
+  if(ctx&&demandPlanData.segmentData.length){
+    window.dpSegChartInstance=new Chart(ctx.getContext('2d'),{
+      type:'doughnut',data:{
+        labels:demandPlanData.segmentData.map(d=>d.segment),
+        datasets:[{data:demandPlanData.segmentData.map(d=>d.volume),backgroundColor:['#2563eb','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4']}]
+      },
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right'}}}
+    });
+  }
+
+  // KPI table
+  let html='';demandPlanData.kpiRecords.forEach(k=>{
+    const assessColor=k.assessment.includes('优秀')?'var(--success)':k.assessment.includes('良好')?'var(--success)':k.assessment.includes('一般')?'var(--warning)':'var(--danger)';
+    html+='<tr><td style="font-weight:600">'+k.family+'</td><td style="color:'+(parseFloat(k.mape)<15?'var(--success)':'var(--danger)')+'">'+k.mape+'%</td><td>'+k.mae.toLocaleString()+'</td><td>'+k.rmse.toLocaleString()+'</td><td>'+(parseFloat(k.bias)>0?'+':'')+k.bias+'%</td><td>'+k.ts+'</td><td>'+k.samples+'</td><td style="color:'+assessColor+';font-weight:600">'+k.assessment+'</td></tr>';
+  });
+  document.getElementById('dpAnalyticsKpiTable').querySelector('tbody').innerHTML=html;
+
+  // Anomaly table
+  html='';demandPlanData.anomalies.forEach((a,i)=>{
+    const sevColor=a.severity==='高'?'var(--danger)':a.severity==='中'?'var(--warning)':'var(--info)';
+    const diffDir=a.diff>0?'↑ 高于预测':'↓ 低于预测';
+    html+='<tr><td>'+a.material+'</td><td><span class="tag" style="background:#fef3c7;color:#92400e">'+a.type+'</span></td><td>'+a.actual.toLocaleString()+'</td><td>'+a.forecast.toLocaleString()+'</td><td>'+(a.diff>0?'+':'')+a.diff.toLocaleString()+'</td><td style="color:'+sevColor+';font-weight:600">'+a.diffRate.toFixed(1)+'%</td><td>'+a.date+'</td><td><span style="color:'+sevColor+';font-weight:600">'+a.severity+'</span></td><td style="font-size:12px;color:var(--gray-500)">'+a.suggestion+'</td><td><button class="btn btn-sm btn-primary" onclick="resolveDpAnomaly('+i+')">✅ 处理</button></td></tr>';
+  });
+  document.getElementById('dpAnomalyTable').querySelector('tbody').innerHTML=html;
+
+  // What-if table
+  html='';demandPlanData.whatIfResults.forEach(w=>{
+    html+='<tr><td>'+w.material+'</td><td>'+w.base.toLocaleString()+'</td><td style="color:var(--success)">'+w.optimistic.toLocaleString()+'</td><td style="color:var(--danger)">'+w.pessimistic.toLocaleString()+'</td><td style="color:var(--warning)">'+(w.promo||'—').toLocaleString()+'</td><td style="font-weight:600;color:var(--primary)">'+w.recommend+'</td><td style="font-size:12px;color:var(--gray-500)">'+w.note+'</td></tr>';
+  });
+  document.getElementById('dpWhatIfTable').querySelector('tbody').innerHTML=html;
+}
+
+function runDpExceptionAnalysis(){
+  demandPlanData.anomalies=[];demandPlanData.segmentData=[];demandPlanData.kpiRecords=[];
+  demandPlanData.whatIfResults=[];
+  renderDpAnalytics();showToast('🔍 异常检测完成，已识别需求异常信号','success');
+}
+
+function resolveDpAnomaly(idx){
+  if(demandPlanData.anomalies[idx]){demandPlanData.anomalies[idx].status='已处理';demandPlanData.anomalies.splice(idx,1);}
+  renderDpAnalytics();showToast('✅ 异常已处理','success');
+}
+
+function runDpWhatIf(){
+  const scenario=document.getElementById('dpWhatIfScenario')?.value||'base';
+  const multipliers={base:1,optimistic:1.1,pessimistic:0.9,promo:1.15};
+  const descs={base:'基准预测',optimistic:'乐观(+10%)',pessimistic:'悲观(-10%)',promo:'含促销影响'};
+  demandPlanData.whatIfResults=(demandPlanData.forecasts||[]).slice(0,5).map(f=>({
+    material:f.material,base:Math.round(f.totalForecast),
+    optimistic:Math.round(f.totalForecast*1.1),pessimistic:Math.round(f.totalForecast*0.9),
+    promo:Math.round(f.totalForecast*1.15),
+    recommend:descs[scenario],note:'已应用 '+descs[scenario]+' 情景'
+  }));
+  renderDpAnalytics();showToast('📊 情景分析完成：'+descs[scenario],'success');
 }
 
 document.addEventListener('DOMContentLoaded', init);
