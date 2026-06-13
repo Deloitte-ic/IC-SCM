@@ -1199,134 +1199,134 @@ tbody tr:hover td{background:var(--primary-bg)}
       </div>
     </div>
 
-    <!-- ==================== Supply Planning（供应链计划）= SAP IBP Supply 全面对标 ==================== -->
+    <!-- ==================== Supply Planning（供应链计划）= 半导体IC设计委外模式 ==================== -->
     <div class="section" id="section-supplyplan">
       <div class="tabs" id="supplyPlanTabs">
-        <div class="tab active" data-tab="sp-network" onclick="switchSupplyPlanTab('sp-network')">📊 Supply Network Planning（供应网络计划）</div>
-        <div class="tab" data-tab="sp-production" onclick="switchSupplyPlanTab('sp-production')">🏭 Production Planning（生产计划）</div>
-        <div class="tab" data-tab="sp-deployment" onclick="switchSupplyPlanTab('sp-deployment')">📦 Deployment（分配计划）</div>
-        <div class="tab" data-tab="sp-matching" onclick="switchSupplyPlanTab('sp-matching')">🔄 S&amp;D Matching（供需匹配）</div>
-        <div class="tab" data-tab="sp-ctm" onclick="switchSupplyPlanTab('sp-ctm')">🎯 CTM（可承诺匹配）</div>
+        <div class="tab active" data-tab="sp-network" onclick="switchSupplyPlanTab('sp-network')">📊 晶圆供应&amp;委外网络</div>
+        <div class="tab" data-tab="sp-production" onclick="switchSupplyPlanTab('sp-production')">🏭 委外制程生产计划</div>
+        <div class="tab" data-tab="sp-deployment" onclick="switchSupplyPlanTab('sp-deployment')">📦 投料分配&amp;在制追踪</div>
+        <div class="tab" data-tab="sp-matching" onclick="switchSupplyPlanTab('sp-matching')">🔄 供需匹配&amp;缺口分析</div>
+        <div class="tab" data-tab="sp-ctm" onclick="switchSupplyPlanTab('sp-ctm')">🎯 晶圆级ATP/CTP</div>
       </div>
 
-      <!-- ==================== Tab 1: Supply Network Planning（供应网络计划） ==================== -->
+      <!-- ==================== Tab 1: 晶圆供应&委外网络 ==================== -->
       <div class="tab-content active" id="tab-sp-network">
         <div class="result-summary" id="spNetworkCards"></div>
         <div class="grid-2">
           <div class="card">
-            <div class="card-title">🌐 多站点供应网络 <span class="tag">Multi-Site Network</span></div>
+            <div class="card-title">🌐 晶圆供应&amp;委外产能网络 <span class="tag">Wafer Supply &amp; Outsourced Network</span></div>
             <div class="chart-container chart-container-sm"><canvas id="spNetworkChart"></canvas></div>
           </div>
           <div class="card">
-            <div class="card-title">🏭 站点供应分配 <span class="tag">Supply Allocation</span></div>
-            <div class="table-wrapper" style="max-height:240px"><table id="spSupplyAllocTable"><thead><tr><th>站点</th><th>物料</th><th>总产能</th><th>已分配</th><th>可用余量</th><th>分配比例</th><th>优先级</th></tr></thead><tbody></tbody></table></div>
+            <div class="card-title">🏭 委外供应商产能分配 <span class="tag">Supplier Capacity Allocation</span></div>
+            <div class="table-wrapper" style="max-height:240px"><table id="spSupplyAllocTable"><thead><tr><th>制程</th><th>供应商</th><th>周产能</th><th>已分配</th><th>余量</th><th>分配率</th><th>交期(天)</th></tr></thead><tbody></tbody></table></div>
             <div style="margin-top:8px;display:flex;gap:8px">
               <button class="btn btn-sm btn-primary" onclick="openSpAllocModal()">✏️ 调整分配</button>
-              <button class="btn btn-sm btn-outline" onclick="runSpNetworkOptimization()">🔁 运行优化</button>
+              <button class="btn btn-sm btn-outline" onclick="runSpNetworkOptimization()">🔁 均衡优化</button>
             </div>
           </div>
         </div>
         <div class="card">
           <div class="card-header">
-            <div class="card-title">📋 供应链约束清单 <span class="tag">Supply Constraints</span></div>
+            <div class="card-title">⚠️ 委外产能约束清单 <span class="tag">Capacity Constraints</span></div>
             <button class="btn btn-sm btn-outline" onclick="exportSpReport('network')">📥 导出</button>
           </div>
-          <div class="table-wrapper"><table id="spConstraintTable"><thead><tr><th>约束站点</th><th>约束物料</th><th>制程</th><th>约束类型</th><th>当前负荷</th><th>上限</th><th>超限(%)</th><th>影响</th></tr></thead><tbody></tbody></table></div>
+          <div class="table-wrapper"><table id="spConstraintTable"><thead><tr><th>制程</th><th>供应商</th><th>约束类型</th><th>当前负荷</th><th>产能上限</th><th>超限%</th><th>影响说明</th><th>建议措施</th></tr></thead><tbody></tbody></table></div>
         </div>
       </div>
 
-      <!-- ==================== Tab 2: Production Planning（生产计划） ==================== -->
+      <!-- ==================== Tab 2: 委外制程生产计划 ==================== -->
       <div class="tab-content" id="tab-sp-production">
         <div class="result-summary" id="spProductionCards"></div>
         <div class="grid-2">
           <div class="card">
-            <div class="card-title">🏗️ 各制程产能负荷 <span class="tag">Capacity Load Analysis</span></div>
+            <div class="card-title">🏗️ 各制程委外产出 <span class="tag">Outsourced Output by Process</span></div>
             <div class="chart-container chart-container-sm"><canvas id="spCapacityChart"></canvas></div>
           </div>
           <div class="card">
-            <div class="card-title">📈 生产速率计划 <span class="tag">Production Rate Plan</span></div>
-            <div class="table-wrapper" style="max-height:240px"><table id="spRatePlanTable"><thead><tr><th>物料</th><th>制程</th><th>计划日产量</th><th>月产能</th><th>实际产出</th><th>达成率(%)</th><th>状态</th></tr></thead><tbody></tbody></table></div>
+            <div class="card-title">📋 委外生产计划 <span class="tag">Outsource Production Plan</span></div>
+            <div class="table-wrapper" style="max-height:240px"><table id="spRatePlanTable"><thead><tr><th>制程</th><th>供应商</th><th>本周计划</th><th>月计划量</th><th>本周实际</th><th>达成率</th><th>累计交付</th><th>状态</th></tr></thead><tbody></tbody></table></div>
           </div>
         </div>
         <div class="card">
           <div class="card-header">
-            <div class="card-title">⏱️ 资源负荷详情 <span class="tag">Resource Loading</span></div>
-            <button class="btn btn-sm btn-primary" onclick="openSpRateAdjustModal()">✏️ 调整速率</button>
+            <div class="card-title">📊 供应商交付绩效 <span class="tag">Supplier Delivery Performance</span></div>
+            <button class="btn btn-sm btn-primary" onclick="openSpRateAdjustModal()">✏️ 调整计划</button>
           </div>
-          <div class="table-wrapper"><table id="spResourceLoadTable"><thead><tr><th>资源</th><th>关联制程</th><th>可用容量</th><th>已分配</th><th>剩余容量</th><th>负荷率(%)</th><th>建议措施</th></tr></thead><tbody></tbody></table></div>
+          <div class="table-wrapper"><table id="spResourceLoadTable"><thead><tr><th>供应商</th><th>负责制程</th><th>OTD%</th><th>良率%</th><th>交期偏差</th><th>质量评级</th><th>建议措施</th></tr></thead><tbody></tbody></table></div>
         </div>
       </div>
 
-      <!-- ==================== Tab 3: Deployment（分配/部署计划） ==================== -->
+      <!-- ==================== Tab 3: 投料分配&在制追踪 ==================== -->
       <div class="tab-content" id="tab-sp-deployment">
         <div class="result-summary" id="spDeployCards"></div>
         <div class="grid-2">
           <div class="card">
-            <div class="card-title">📊 分阶段分配计划 <span class="tag">Deployment Plan</span></div>
+            <div class="card-title">📊 制程间在制品分布 <span class="tag">WIP Distribution</span></div>
             <div class="chart-container chart-container-sm"><canvas id="spDeployChart"></canvas></div>
           </div>
           <div class="card">
-            <div class="card-title">📋 分配执行明细 <span class="tag">Deployment Execution</span></div>
-            <div class="table-wrapper" style="max-height:240px"><table id="spDeployTable"><thead><tr><th>批次</th><th>物料</th><th>来源站点</th><th>目标站点</th><th>分配数量</th><th>分配日期</th><th>分配规则</th><th>状态</th></tr></thead><tbody></tbody></table></div>
+            <div class="card-title">📋 投料执行明细 <span class="tag">Material Release</span></div>
+            <div class="table-wrapper" style="max-height:240px"><table id="spDeployTable"><thead><tr><th>投料批次</th><th>来源制程</th><th>目标制程</th><th>供应商</th><th>物料</th><th>投料数量</th><th>投料日期</th><th>预计完工</th><th>状态</th></tr></thead><tbody></tbody></table></div>
           </div>
         </div>
         <div class="card">
           <div class="card-header">
-            <div class="card-title">⚙️ 分配规则配置 <span class="tag">Deployment Heuristics</span></div>
+            <div class="card-title">🔍 在制品追踪 <span class="tag">WIP Tracking</span></div>
             <div class="card-actions">
-              <button class="btn btn-sm btn-primary" onclick="runDeployment()">▶️ 执行分配</button>
-              <button class="btn btn-sm btn-outline" onclick="openDeployRuleModal()">⚙️ 规则设置</button>
+              <button class="btn btn-sm btn-primary" onclick="runDeployment()">▶️ 推进一批</button>
+              <button class="btn btn-sm btn-outline" onclick="openDeployRuleModal()">⚙️ 分配策略</button>
             </div>
           </div>
-          <div class="table-wrapper"><table id="spDeployRuleTable"><thead><tr><th>规则名称</th><th>优先级</th><th>分配逻辑</th><th>适用站点</th><th>生效日期</th><th>状态</th></tr></thead><tbody></tbody></table></div>
+          <div class="table-wrapper"><table id="spDeployRuleTable"><thead><tr><th>批次号</th><th>物料</th><th>当前制程</th><th>供应商</th><th>投料数量</th><th>已产出</th><th>良率</th><th>预计下一站</th><th>状态</th><th>操作</th></tr></thead><tbody></tbody></table></div>
         </div>
       </div>
 
-      <!-- ==================== Tab 4: S&D Matching（供需匹配） ==================== -->
+      <!-- ==================== Tab 4: 供需匹配&缺口分析 ==================== -->
       <div class="tab-content" id="tab-sp-matching">
         <div class="result-summary" id="spMatchCards"></div>
         <div class="card">
-          <div class="card-title">📊 供需匹配概览 <span class="tag">Supply &amp; Demand Matching</span></div>
+          <div class="card-title">📊 供需匹配概览（考虑良率折损） <span class="tag">Supply &amp; Demand w/ Yield</span></div>
           <div class="chart-container chart-container-sm"><canvas id="spMatchChart"></canvas></div>
         </div>
         <div class="card">
           <div class="card-header">
-            <div class="card-title">⚠️ 异常消息列表 <span class="tag">Exception Messages</span></div>
+            <div class="card-title">⚠️ 供应链例外消息 <span class="tag">Exception Messages</span></div>
             <div class="card-actions">
-              <button class="btn btn-sm btn-primary" onclick="runSpMatching()">🔁 运行匹配</button>
-              <button class="btn btn-sm btn-outline" onclick="autoResolveExceptions()">🤖 自动解决</button>
+              <button class="btn btn-sm btn-primary" onclick="runSpMatching()">🔁 全链路匹配</button>
+              <button class="btn btn-sm btn-outline" onclick="autoResolveExceptions()">🤖 自动建议</button>
             </div>
           </div>
-          <div class="table-wrapper"><table id="spMatchExceptionTable"><thead><tr><th>异常编号</th><th>物料</th><th>类型</th><th>描述</th><th>影响数量</th><th>影响日期</th><th>严重程度</th><th>建议方案</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+          <div class="table-wrapper"><table id="spMatchExceptionTable"><thead><tr><th>编号</th><th>制程</th><th>异常类型</th><th>描述</th><th>影响数量</th><th>影响日期</th><th>严重度</th><th>建议方案</th><th>操作</th></tr></thead><tbody></tbody></table></div>
         </div>
         <div class="card">
-          <div class="card-title">🔍 匹配详细结果</div>
-          <div class="table-wrapper"><table id="spMatchDetailTable"><thead><tr><th>需求单号</th><th>物料</th><th>需求日期</th><th>需求数量</th><th>匹配供给</th><th>匹配数量</th><th>剩余缺口</th><th>匹配来源</th><th>匹配状态</th></tr></thead><tbody></tbody></table></div>
+          <div class="card-title">🔍 成品级匹配明细</div>
+          <div class="table-wrapper"><table id="spMatchDetailTable"><thead><tr><th>订单号</th><th>成品物料</th><th>需求日期</th><th>FT需求</th><th>等效Wafer</th><th>可用晶圆</th><th>匹配数量</th><th>缺口</th><th>匹配状态</th></tr></thead><tbody></tbody></table></div>
         </div>
       </div>
 
-      <!-- ==================== Tab 5: CTM（可承诺匹配） ==================== -->
+      <!-- ==================== Tab 5: 晶圆级ATP/CTP ==================== -->
       <div class="tab-content" id="tab-sp-ctm">
         <div class="result-summary" id="spCtmCards"></div>
         <div class="grid-2">
           <div class="card">
-            <div class="card-title">🎯 订单级 ATP/CTP <span class="tag">Available-to-Promise</span></div>
-            <div class="table-wrapper" style="max-height:240px"><table id="spCtmOrderTable"><thead><tr><th>订单号</th><th>物料</th><th>需求数量</th><th>需求日期</th><th>ATP数量</th><th>ATP日期</th><th>可承诺量</th><th>承诺状态</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+            <div class="card-title">🎯 订单级ATP <span class="tag">Wafer-Level ATP</span></div>
+            <div class="table-wrapper" style="max-height:240px"><table id="spCtmOrderTable"><thead><tr><th>订单号</th><th>成品物料</th><th>需求数量</th><th>等效Wafer</th><th>可用晶圆</th><th>ATP数量</th><th>ATP日期</th><th>承诺状态</th><th>操作</th></tr></thead><tbody></tbody></table></div>
           </div>
           <div class="card">
-            <div class="card-title">📋 可承诺库存 <span class="tag">Available Inventory</span></div>
-            <div class="table-wrapper" style="max-height:240px"><table id="spCtmStockTable"><thead><tr><th>物料</th><th>总库存</th><th>已分配</th><th>在制</th><th>安全库存</th><th>可承诺量</th><th>ATP时域(天)</th></tr></thead><tbody></tbody></table></div>
+            <div class="card-title">📋 制程级可承诺库存 <span class="tag">Process-Level ATP Inventory</span></div>
+            <div class="table-wrapper" style="max-height:240px"><table id="spCtmStockTable"><thead><tr><th>制程</th><th>物料</th><th>总库存</th><th>已分配</th><th>在制</th><th>良率</th><th>有效可承诺</th><th>ATP时域</th></tr></thead><tbody></tbody></table></div>
           </div>
         </div>
         <div class="card">
           <div class="card-header">
-            <div class="card-title">✏️ 订单承诺 <span class="tag">Order Commitment</span></div>
+            <div class="card-title">✏️ 订单承诺记录 <span class="tag">Order Commitment</span></div>
             <div class="card-actions">
-              <button class="btn btn-sm btn-primary" onclick="openCtmCheckModal()">🔍 检查可承诺</button>
-              <button class="btn btn-sm btn-outline" onclick="confirmCtmOrders()">✅ 批量确认</button>
+              <button class="btn btn-sm btn-primary" onclick="openCtmCheckModal()">🔍 ATP检查</button>
+              <button class="btn btn-sm btn-outline" onclick="confirmCtmOrders()">✅ 批量承诺</button>
             </div>
           </div>
-          <div class="table-wrapper"><table id="spCtmCommitTable"><thead><tr><th>订单号</th><th>物料</th><th>数量</th><th>请求日期</th><th>ATP承诺日期</th><th>承诺数量</th><th>承诺人</th><th>承诺日期</th><th>状态</th></tr></thead><tbody></tbody></table></div>
+          <div class="table-wrapper"><table id="spCtmCommitTable"><thead><tr><th>订单号</th><th>成品</th><th>数量</th><th>请求日期</th><th>承诺日期</th><th>承诺数量</th><th>等效Wafer消耗</th><th>状态</th></tr></thead><tbody></tbody></table></div>
         </div>
       </div>
     </div>
@@ -5851,14 +5851,40 @@ function updateDashboard(){
   const matLabels=Object.keys(dByMat);
   if(matLabels.length){const ctx2=document.getElementById('dashboardSupplyChart').getContext('2d');supplyChartInstance=new Chart(ctx2,{type:'bar',data:{labels:matLabels,datasets:[{label:'需求',data:matLabels.map(l=>dByMat[l]||0),backgroundColor:'rgba(239,68,68,.6)',borderRadius:4},{label:'供给',data:matLabels.map(l=>sByMat[l]||0),backgroundColor:'rgba(16,185,129,.6)',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true,ticks:{callback:v=>v.toLocaleString()}}}}});}
 }
-// ======================== Supply Planning（供应链计划）= SAP IBP Supply 全面对标 ========================
+// ======================== Supply Planning（供应链计划）= 半导体IC设计委外模式 ========================
+// 半导体制程：Wafer(晶圆采购) → BP(委外凸块) → CP(委外测试) → AB(委外封装) → FT(产成品)
+// 全部委外：AB/CP/BP为委外供应商生产，Wafer为晶圆厂采购
+const SEMI_SUPPLIERS = {
+  Wafer: [
+    {code:'SUP-WF-001', name:'TSMC晶圆代工', weeklyCap:600, leadTime:40, unitPrice:1200},
+    {code:'SUP-WF-002', name:'SMIC晶圆代工', weeklyCap:400, leadTime:45, unitPrice:980}
+  ],
+  BP: [
+    {code:'SUP-BP-001', name:'SPIL凸块', weeklyCap:500, leadTime:12, unitPrice:85},
+    {code:'SUP-BP-002', name:'Amkor凸块', weeklyCap:350, leadTime:14, unitPrice:92}
+  ],
+  CP: [
+    {code:'SUP-CP-001', name:'京元电子CP', weeklyCap:700, leadTime:7, unitPrice:55},
+    {code:'SUP-CP-002', name:'矽格CP测试', weeklyCap:450, leadTime:8, unitPrice:62}
+  ],
+  AB: [
+    {code:'SUP-AB-001', name:'ASE封装', weeklyCap:800, leadTime:12, unitPrice:75},
+    {code:'SUP-AB-002', name:'PTI封装', weeklyCap:500, leadTime:14, unitPrice:80}
+  ],
+  FT: [
+    {code:'SUP-FT-001', name:'京元电子FT', weeklyCap:900, leadTime:5, unitPrice:30},
+    {code:'SUP-FT-002', name:'矽品FT测试', weeklyCap:600, leadTime:6, unitPrice:35}
+  ]
+};
+
 const supplyPlanData = {
   networkAllocations: [],
   constraints: [],
   ratePlans: [],
-  resourceLoads: [],
+  supplierPerf: [],
   deployments: [],
-  deployRules: [{name:'缺量优先',priority:1,logic:'按缺量比例分配',sites:'全站点',effDate:'2026-01-01',status:'启用'},{name:'按优先级分配',priority:2,logic:'客户优先级→需求日期',sites:'全站点',effDate:'2026-01-01',status:'启用'}],
+  wipTracking: [],
+  deployRules: [{name:'晶圆优先',priority:1,logic:'晶圆产能→BP→CP→AB→FT',sites:'全链路',effDate:'2026-01-01',status:'启用'},{name:'良率加权',priority:2,logic:'按历史良率加权分配',sites:'全链路',effDate:'2026-01-01',status:'启用'}],
   exceptions: [],
   matchDetails: [],
   ctmOrders: [],
@@ -5883,71 +5909,112 @@ function updateSupplyPlan(){
   renderSpNetwork(); renderSpProduction(); renderSpDeployment(); renderSpMatching(); renderSpCtm();
 }
 
-// ==================== Tab 1: Supply Network Planning（供应网络计划） ====================
+// 辅助：制程名称映射
+function spProcLabel(proc){return {Wafer:'晶圆采购',BP:'BP凸块委外',CP:'CP测试委外',AB:'AB封装委外',FT:'FT成品测试'}[proc]||proc;}
+// 辅助：单位
+function spProcUnit(proc){return {FT:'颗',AB:'颗',CP:'片',BP:'片',Wafer:'片'}[proc]||'颗';}
+// 辅助：良率映射
+function spYield(proc){return SEMI_YIELD[proc]||0.95;}
+// 辅助：晶圆到成品折算（考虑全链良率）
+function calcWaferToFt(waferQty){
+  let qty=waferQty;
+  const revProcs=['BP','CP','AB','FT'];
+  for(const p of revProcs){
+    const y=spYield(p);
+    const bomEntry=appData.boms.find(b=>b.parent===p);
+    const usage=bomEntry?bomEntry.usage:1;
+    qty=Math.round(qty*usage*y);
+  }
+  return qty;
+}
+// 辅助：成品需求→等效晶圆
+function calcFtToWafer(ftQty){
+  const prop=propagateDemand(ftQty);
+  return prop.Wafer;
+}
+// 辅助：制程顺序（委外上下游关系）
+const SP_PROCS=['Wafer','BP','CP','AB','FT'];
+const PROC_PARENT={Wafer:null,BP:'Wafer',CP:'BP',AB:'CP',FT:'AB'};
+
+// ==================== Tab 1: 晶圆供应&委外网络 ====================
 function renderSpNetwork(){
   if(!supplyPlanData.networkAllocations.length){
-    const sites=['Wafer Fab','CP测试','Assembly','FT测试','封裝'];
-    const mats=appData.materials.length?appData.materials.slice(0,5).map(m=>m.code):['A-RAM-001','B-CPU-002','C-ADC-003'];
     supplyPlanData.networkAllocations=[];
-    const months=['2026-01','2026-02','2026-03'];
-    sites.forEach((s,si)=>{
-      mats.forEach(m=>{
-        const cap=Math.round(8000+Math.random()*12000);
+    supplyPlanData.constraints=[];
+    // 初始化委外供应商产能
+    SP_PROCS.forEach(proc=>{
+      const suppliers=SEMI_SUPPLIERS[proc]||[];
+      suppliers.forEach((sup,si)=>{
+        const cap=sup.weeklyCap;
         const alloc=Math.round(cap*(0.6+Math.random()*0.3));
-        supplyPlanData.networkAllocations.push({site:s,material:m,totalCap:cap,allocated:alloc,remain:cap-alloc,ratio:Math.round(alloc/cap*100)+'%',priority:si+1});
+        supplyPlanData.networkAllocations.push({
+          process:proc, supplier:sup.name, supplierCode:sup.code,
+          weeklyCap:cap, allocated:alloc, remain:cap-alloc,
+          ratio:Math.round(alloc/cap*100), leadTime:sup.leadTime
+        });
       });
     });
-    const consMats=mats.slice(0,3);
-    const procNames=['Photo光刻','Etch刻蚀','Deposition沉积','CMP平坦化','Implant注入','Wafer Sort'];
-    supplyPlanData.constraints=[];
-    consMats.forEach(m=>{
-      procNames.slice(0,3+Math.floor(Math.random()*2)).forEach(p=>{
-        const cap=Math.round(5000+Math.random()*8000);
-        const load=Math.round(cap*(0.85+Math.random()*0.25));
-        if(load>cap){
-          supplyPlanData.constraints.push({site:'Wafer Fab',material:m,process:p,type:'产能瓶颈',load,cap,overRate:Math.round((load-cap)/cap*100),impact:'影响交期'+(Math.random()>0.5?'3-5天':'1-2周')});
+    // 随机产能约束
+    supplyPlanData.networkAllocations.forEach(n=>{
+      if(Math.random()>0.4){
+        const load=Math.round(n.weeklyCap*(0.88+Math.random()*0.2));
+        if(load>n.weeklyCap){
+          supplyPlanData.constraints.push({
+            process:n.process, supplier:n.supplier,
+            type:'产能紧张', load, cap:n.weeklyCap,
+            overRate:Math.round((load-n.weeklyCap)/n.weeklyCap*100),
+            impact:'交期延长'+(Math.random()>0.5?'3-5天':'1-2周'),
+            suggestion:n.process==='Wafer'?'寻找替代晶圆厂':n.process==='BP'?'协调供应商加线':'分配至备选供应商'
+          });
         }
-      });
+      }
     });
   }
 
-  const totalCap=supplyPlanData.networkAllocations.reduce((s,n)=>s+n.totalCap,0);
-  const totalAlloc=supplyPlanData.networkAllocations.reduce((s,n)=>s+n.allocated,0);
+  const totalWaferCap=supplyPlanData.networkAllocations.filter(n=>n.process==='Wafer').reduce((s,n)=>s+n.weeklyCap,0);
+  const totalWaferAlloc=supplyPlanData.networkAllocations.filter(n=>n.process==='Wafer').reduce((s,n)=>s+n.allocated,0);
+  const totalOutCap=supplyPlanData.networkAllocations.filter(n=>n.process!=='Wafer').reduce((s,n)=>s+n.weeklyCap,0);
   const totalConstraint=supplyPlanData.constraints.length;
   document.getElementById('spNetworkCards').innerHTML=
-    '<div class="summary-card blue"><div class="lbl">🌐 总站点产能</div><div class="num" style="color:var(--primary)">'+totalCap.toLocaleString()+'</div><div class="sub-text">含所有站点</div></div>'+
-    '<div class="summary-card green"><div class="lbl">✅ 已分配产能</div><div class="num" style="color:var(--success)">'+totalAlloc.toLocaleString()+'</div><div class="sub-text">分配率'+Math.round(totalAlloc/totalCap*100)+'%</div></div>'+
-    '<div class="summary-card '+(totalConstraint>0?'red':'green')+'"><div class="lbl">⚠️ 约束数量</div><div class="num" style="color:'+(totalConstraint>0?'var(--danger)':'var(--success)')+'">'+totalConstraint+'</div><div class="sub-text">'+(totalConstraint>0?'需关注瓶颈站点':'无约束')+'</div></div>';
+    '<div class="summary-card blue"><div class="lbl">🌐 晶圆周采购产能</div><div class="num" style="color:var(--primary)">'+totalWaferCap.toLocaleString()+'片</div><div class="sub-text">晶圆厂合计产能</div></div>'+
+    '<div class="summary-card purple"><div class="lbl">🏭 委外周总产能</div><div class="num" style="color:#7c3aed">'+totalOutCap.toLocaleString()+'</div><div class="sub-text">BP+CP+AB+FT合计</div></div>'+
+    '<div class="summary-card '+(totalConstraint>0?'red':'green')+'"><div class="lbl">⚠️ 产能约束</div><div class="num" style="color:'+(totalConstraint>0?'var(--danger)':'var(--success)')+'">'+totalConstraint+'项</div><div class="sub-text">'+(totalConstraint>0?'需关注瓶颈供应商':'无约束')+'</div></div>';
 
-  const sites=[...new Set(supplyPlanData.networkAllocations.map(n=>n.site))];
-  const siteCap=sites.map(s=>supplyPlanData.networkAllocations.filter(n=>n.site===s).reduce((sum,n)=>sum+n.totalCap,0));
-  const siteAlloc=sites.map(s=>supplyPlanData.networkAllocations.filter(n=>n.site===s).reduce((sum,n)=>sum+n.allocated,0));
+  // 图表：各制程总产能和已分配
+  const procLabels=SP_PROCS.map(p=>spProcLabel(p));
+  const capByProc=SP_PROCS.map(p=>supplyPlanData.networkAllocations.filter(n=>n.process===p).reduce((sum,n)=>sum+n.weeklyCap,0));
+  const allocByProc=SP_PROCS.map(p=>supplyPlanData.networkAllocations.filter(n=>n.process===p).reduce((sum,n)=>sum+n.allocated,0));
   if(window.spNetChartInstance){window.spNetChartInstance.destroy();}
   const ctx=document.getElementById('spNetworkChart');
-  if(ctx && sites.length){
+  if(ctx){
     window.spNetChartInstance=new Chart(ctx.getContext('2d'),{
-      type:'bar',data:{labels:sites,datasets:[{label:'总产能',data:siteCap,backgroundColor:'rgba(37,99,235,.6)',borderRadius:4},{label:'已分配',data:siteAlloc,backgroundColor:'rgba(16,185,129,.6)',borderRadius:4}]},
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true,ticks:{callback:v=>v.toLocaleString()}}}}
+      type:'bar',data:{labels:procLabels,datasets:[
+        {label:'周总产能',data:capByProc,backgroundColor:'rgba(37,99,235,.6)',borderRadius:4},
+        {label:'已分配',data:allocByProc,backgroundColor:'rgba(16,185,129,.6)',borderRadius:4}
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},
+        scales:{y:{beginAtZero:true,title:{display:true,text:'产能(片)'},ticks:{callback:v=>v.toLocaleString()}}}}
     });
   }
 
   let html='';supplyPlanData.networkAllocations.forEach(n=>{
-    const pct=Math.round(n.allocated/n.totalCap*100);
+    const pct=n.ratio;
     const barColor=pct>90?'var(--danger)':pct>75?'var(--warning)':'var(--success)';
-    html+='<tr><td>'+n.site+'</td><td>'+n.material+'</td><td>'+n.totalCap.toLocaleString()+'</td><td>'+n.allocated.toLocaleString()+'</td><td>'+n.remain.toLocaleString()+'</td><td><div style="display:flex;align-items:center;gap:6px"><div style="width:50px;height:6px;background:var(--gray-200);border-radius:3px;overflow:hidden"><div style="width:'+pct+'%;height:100%;background:'+barColor+';border-radius:3px"></div></div><span>'+n.ratio+'</span></div></td><td>P'+n.priority+'</td></tr>';
+    html+='<tr><td><strong>'+n.process+'</strong></td><td>'+n.supplier+'</td><td>'+n.weeklyCap.toLocaleString()+'</td><td>'+n.allocated.toLocaleString()+'</td><td>'+n.remain.toLocaleString()+'</td><td><div style="display:flex;align-items:center;gap:6px"><div style="width:50px;height:6px;background:var(--gray-200);border-radius:3px;overflow:hidden"><div style="width:'+pct+'%;height:100%;background:'+barColor+';border-radius:3px"></div></div><span>'+pct+'%</span></div></td><td>'+n.leadTime+'天</td></tr>';
   });
   document.getElementById('spSupplyAllocTable').querySelector('tbody').innerHTML=html;
 
   html='';supplyPlanData.constraints.forEach(c=>{
-    html+='<tr><td>'+c.site+'</td><td>'+c.material+'</td><td>'+c.process+'</td><td><span class="tag" style="background:#fef3c7;color:#92400e">'+c.type+'</span></td><td>'+c.load.toLocaleString()+'</td><td>'+c.cap.toLocaleString()+'</td><td><span style="color:var(--danger);font-weight:600">+'+c.overRate+'%</span></td><td>'+c.impact+'</td></tr>';
+    const sgg=c.process==='Wafer'?'寻找替代晶圆厂':c.process==='BP'?'协调加线/增投':c.process==='CP'?'切换备选供应商':'扩产协商';
+    html+='<tr><td><strong>'+c.process+'</strong></td><td>'+c.supplier+'</td><td><span class="tag" style="background:#fef3c7;color:#92400e">'+c.type+'</span></td><td>'+c.load.toLocaleString()+'</td><td>'+c.cap.toLocaleString()+'</td><td><span style="color:var(--danger);font-weight:600">+'+c.overRate+'%</span></td><td>'+c.impact+'</td><td>'+sgg+'</td></tr>';
   });
-  if(!supplyPlanData.constraints.length)html='<tr><td colspan="8" class="empty-state">暂无供应链约束</td></tr>';
+  if(!supplyPlanData.constraints.length)html='<tr><td colspan="8" class="empty-state">暂无产能约束</td></tr>';
   document.getElementById('spConstraintTable').querySelector('tbody').innerHTML=html;
 }
 
 function openSpAllocModal(){
-  const opts=supplyPlanData.networkAllocations.map((n,i)=>'<option value="'+i+'">'+n.site+' - '+n.material+'（当前:'+n.allocated.toLocaleString()+'）</option>').join('');
-  const html='<h3>✏️ 调整站点分配</h3><div style="margin:12px 0"><label style="font-size:13px;font-weight:600">选择分配项：</label><select id="allocSelect" style="width:100%;padding:8px;margin:6px 0;border:1px solid var(--gray-300);border-radius:6px">'+opts+'</select></div><div style="margin:12px 0"><label style="font-size:13px;font-weight:600">新分配量：</label><input type="number" id="allocNewVal" style="width:100%;padding:8px;margin:6px 0;border:1px solid var(--gray-300);border-radius:6px" min="0" placeholder="输入新的分配量"></div><div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-sm btn-primary" onclick="saveSpAlloc()">💾 保存</button><button class="btn btn-sm btn-outline" onclick="closeModal()">取消</button></div>';
+  const opts=supplyPlanData.networkAllocations.map((n,i)=>'<option value="'+i+'">'+n.process+' - '+n.supplier+'（当前:'+n.allocated.toLocaleString()+'片/周）</option>').join('');
+  const html='<h3>✏️ 调整委外供应商产能分配</h3><div style="margin:12px 0"><label style="font-size:13px;font-weight:600">选择供应商：</label><select id="allocSelect" style="width:100%;padding:8px;margin:6px 0;border:1px solid var(--gray-300);border-radius:6px">'+opts+'</select></div><div style="margin:8px 0;padding:8px;background:var(--gray-50);border-radius:6px;font-size:12px;color:var(--gray-500)">分配将影响下游制程投料计划，请确认上下游产能匹配</div><div style="margin:12px 0"><label style="font-size:13px;font-weight:600">新分配量(片)：</label><input type="number" id="allocNewVal" style="width:100%;padding:8px;margin:6px 0;border:1px solid var(--gray-300);border-radius:6px" min="0" placeholder="输入新的周分配量"></div><div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-sm btn-primary" onclick="saveSpAlloc()">💾 保存</button><button class="btn btn-sm btn-outline" onclick="closeModal()">取消</button></div>';
   openModal(html);
 }
 function saveSpAlloc(){
@@ -5955,73 +6022,102 @@ function saveSpAlloc(){
   const newVal=parseInt(document.getElementById('allocNewVal').value);
   if(isNaN(newVal)||newVal<0){showToast('请输入有效数量','error');return;}
   const alloc=supplyPlanData.networkAllocations[idx];
-  if(newVal>alloc.totalCap){showToast('分配量不能超过总产能'+alloc.totalCap.toLocaleString(),'error');return;}
-  alloc.allocated=newVal;alloc.remain=alloc.totalCap-newVal;alloc.ratio=Math.round(newVal/alloc.totalCap*100)+'%';
-  closeModal();renderSpNetwork();showToast('✅ 分配已更新','success');
+  if(newVal>alloc.weeklyCap){showToast('分配量不能超过周产能'+alloc.weeklyCap.toLocaleString(),'error');return;}
+  alloc.allocated=newVal;alloc.remain=alloc.weeklyCap-newVal;alloc.ratio=Math.round(newVal/alloc.weeklyCap*100);
+  closeModal();renderSpNetwork();showToast('✅ 产能分配已更新','success');
 }
 function runSpNetworkOptimization(){
-  supplyPlanData.networkAllocations.forEach(n=>{
-    const optimal=Math.round(n.totalCap*(0.75+Math.random()*0.15));
-    n.allocated=optimal;n.remain=n.totalCap-optimal;n.ratio=Math.round(optimal/n.totalCap*100)+'%';
+  // 均衡优化：按上下游比例协调
+  let prevAlloc={};
+  SP_PROCS.forEach((p,i)=>{
+    const allocs=supplyPlanData.networkAllocations.filter(n=>n.process===p);
+    if(p==='Wafer'){
+      // 晶圆产能按需求比例分配
+      allocs.forEach(n=>{n.allocated=Math.round(n.weeklyCap*(0.75+Math.random()*0.15));n.remain=n.weeklyCap-n.allocated;n.ratio=Math.round(n.allocated/n.weeklyCap*100);});
+    }else{
+      // 下游制程参照上游分配
+      const upstream=SP_PROCS[i-1];
+      const upAlloc=supplyPlanData.networkAllocations.filter(n=>n.process===upstream).reduce((s,n)=>s+n.allocated,0);
+      const totalUpstreamAlloc=upAlloc;
+      allocs.forEach(n=>{
+        const optimal=Math.min(n.weeklyCap,Math.round(totalUpstreamAlloc*0.9*Math.random()+totalUpstreamAlloc*0.05));
+        n.allocated=Math.min(optimal,n.weeklyCap);n.remain=n.weeklyCap-n.allocated;n.ratio=Math.round(n.allocated/n.weeklyCap*100);
+      });
+    }
   });
-  renderSpNetwork();showToast('🔁 网络优化完成，分配已按最优方案调整','success');
+  renderSpNetwork();showToast('🔁 委外网络均衡优化完成','success');
 }
 
-// ==================== Tab 2: Production Planning（生产计划） ====================
+// ==================== Tab 2: 委外制程生产计划 ====================
 function renderSpProduction(){
   if(!supplyPlanData.ratePlans.length){
-    const procs=appData.processLevels&&appData.processLevels.length?appData.processLevels.slice(0,5).map(p=>p.name):['Photo光刻','Etch刻蚀','Deposition沉积','CMP平坦化','Implant注入'];
-    const mats=appData.materials.length?appData.materials.slice(0,4).map(m=>m.code):['A-RAM-001','B-CPU-002','C-ADC-003','D-PMU-004'];
-    supplyPlanData.ratePlans=[];supplyPlanData.resourceLoads=[];
-    mats.forEach(m=>{procs.slice(0,2+Math.floor(Math.random()*2)).forEach((p,i)=>{
-      const daily=Math.round(200+Math.random()*800);
-      supplyPlanData.ratePlans.push({material:m,process:p,dailyRate:daily,monthlyCap:daily*26,actualOut:Math.round(daily*(0.7+Math.random()*0.3)),status:daily>0?'运行中':'已暂停'});
-      const resCap=Math.round(daily*1.5+Math.random()*500);
-      supplyPlanData.resourceLoads.push({resource:'RES-'+p.substring(0,3)+'-'+(i+1),process:p,avail:resCap,assigned:Math.round(resCap*(0.5+Math.random()*0.45)),remain:0});
-    });});
-    supplyPlanData.resourceLoads.forEach(r=>{r.remain=r.avail-r.assigned;});
+    supplyPlanData.ratePlans=[];supplyPlanData.supplierPerf=[];
+    SP_PROCS.forEach(proc=>{
+      const suppliers=SEMI_SUPPLIERS[proc]||[];
+      suppliers.forEach((sup,si)=>{
+        const weeklyPlan=Math.round(sup.weeklyCap*(0.6+Math.random()*0.35));
+        const monthlyPlan=weeklyPlan*4;
+        const actual=Math.round(weeklyPlan*(0.75+Math.random()*0.25));
+        const cum=Math.round(actual*(1+Math.random()*0.5));
+        supplyPlanData.ratePlans.push({
+          process:proc, supplier:sup.name, supplierCode:sup.code,
+          weeklyPlan, monthlyPlan, actual, cum, unit:spProcUnit(proc)
+        });
+        supplyPlanData.supplierPerf.push({
+          supplier:sup.name, process:proc,
+          otd:Math.round(85+Math.random()*15),
+          yieldRate:Math.round((spYield(proc)*100-Math.random()*2)*100)/100,
+          devDays:Math.round(Math.random()*4)-1,
+          rating:Math.random()>0.7?'B':'A'
+        });
+      });
+    });
   }
 
-  const totalDaily=supplyPlanData.ratePlans.reduce((s,r)=>s+r.dailyRate,0);
-  const totalActual=supplyPlanData.ratePlans.reduce((s,r)=>s+r.actualOut,0);
-  const avgRate=supplyPlanData.ratePlans.length?Math.round(totalActual/totalDaily*100):0;
-  const heavyLoad=supplyPlanData.resourceLoads.filter(r=>r.assigned/r.avail>0.85).length;
+  const totalWeekly=supplyPlanData.ratePlans.reduce((s,r)=>s+r.weeklyPlan,0);
+  const totalActual=supplyPlanData.ratePlans.reduce((s,r)=>s+r.actual,0);
+  const avgRate=totalWeekly>0?Math.round(totalActual/totalWeekly*100):0;
+  const lowYields=supplyPlanData.supplierPerf.filter(s=>s.yieldRate<90).length;
   document.getElementById('spProductionCards').innerHTML=
-    '<div class="summary-card blue"><div class="lbl">🏭 计划日总产量</div><div class="num" style="color:var(--primary)">'+totalDaily.toLocaleString()+'</div><div class="sub-text">各制程合计</div></div>'+
-    '<div class="summary-card '+(avgRate>85?'green':'yellow')+'"><div class="lbl">📈 平均达成率</div><div class="num" style="color:'+(avgRate>85?'var(--success)':'var(--warning)')+'">'+avgRate+'%</div><div class="sub-text">实际/计划</div></div>'+
-    '<div class="summary-card '+(heavyLoad>0?'red':'green')+'"><div class="lbl">⚠️ 高负荷资源</div><div class="num" style="color:'+(heavyLoad>0?'var(--danger)':'var(--success)')+'">'+heavyLoad+'项</div><div class="sub-text">占用率>85%</div></div>';
+    '<div class="summary-card blue"><div class="lbl">📋 委外周总计划</div><div class="num" style="color:var(--primary)">'+totalWeekly.toLocaleString()+'</div><div class="sub-text">各制程合计</div></div>'+
+    '<div class="summary-card '+(avgRate>85?'green':'yellow')+'"><div class="lbl">📈 周达成率</div><div class="num" style="color:'+(avgRate>85?'var(--success)':'var(--warning)')+'">'+avgRate+'%</div><div class="sub-text">实际交付/计划</div></div>'+
+    '<div class="summary-card '+(lowYields>0?'red':'green')+'"><div class="lbl">⚠️ 良率偏低供应商</div><div class="num" style="color:'+(lowYields>0?'var(--danger)':'var(--success)')+'">'+lowYields+'家</div><div class="sub-text">良率<90%</div></div>';
 
-  const procs=[...new Set(supplyPlanData.ratePlans.map(r=>r.process))];
-  const rateData=procs.map(p=>supplyPlanData.ratePlans.filter(r=>r.process===p).reduce((s,r)=>s+r.dailyRate,0));
-  const actualData=procs.map(p=>supplyPlanData.ratePlans.filter(r=>r.process===p).reduce((s,r)=>s+r.actualOut,0));
+  // 图表：各制程计划 vs 实际产出
+  const procs=SP_PROCS;
+  const planData=procs.map(p=>supplyPlanData.ratePlans.filter(r=>r.process===p).reduce((s,r)=>s+r.weeklyPlan,0));
+  const actualData=procs.map(p=>supplyPlanData.ratePlans.filter(r=>r.process===p).reduce((s,r)=>s+r.actual,0));
   if(window.spCapChartInstance){window.spCapChartInstance.destroy();}
   const ctx=document.getElementById('spCapacityChart');
-  if(ctx && procs.length){
+  if(ctx){
     window.spCapChartInstance=new Chart(ctx.getContext('2d'),{
-      type:'bar',data:{labels:procs,datasets:[{label:'计划日产量',data:rateData,backgroundColor:'rgba(59,130,246,.6)',borderRadius:4},{label:'实际产出',data:actualData,backgroundColor:'rgba(16,185,129,.6)',borderRadius:4}]},
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true,ticks:{callback:v=>v.toLocaleString()}}}}
+      type:'bar',data:{labels:procs.map(p=>spProcLabel(p)),
+        datasets:[{label:'周计划产出',data:planData,backgroundColor:'rgba(59,130,246,.6)',borderRadius:4},
+          {label:'实际交付',data:actualData,backgroundColor:'rgba(16,185,129,.6)',borderRadius:4}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},
+        scales:{y:{beginAtZero:true,title:{display:true,text:'数量'},ticks:{callback:v=>v.toLocaleString()}}}}
     });
   }
 
   let html='';supplyPlanData.ratePlans.forEach(r=>{
-    const ach=Math.round(r.actualOut/(r.dailyRate||1)*100);
+    const ach=Math.round(r.actual/(r.weeklyPlan||1)*100);
     const achColor=ach>90?'var(--success)':ach>70?'var(--warning)':'var(--danger)';
-    html+='<tr><td>'+r.material+'</td><td>'+r.process+'</td><td>'+r.dailyRate.toLocaleString()+'</td><td>'+r.monthlyCap.toLocaleString()+'</td><td>'+r.actualOut.toLocaleString()+'</td><td><span style="color:'+achColor+';font-weight:600">'+ach+'%</span></td><td><span class="tag" style="background:'+(r.status==='运行中'?'#d1fae5;color:#065f46':'#fef3c7;color:#92400e')+'">'+r.status+'</span></td></tr>';
+    html+='<tr><td><strong>'+r.process+'</strong></td><td>'+r.supplier+'</td><td>'+r.weeklyPlan.toLocaleString()+r.unit+'</td><td>'+r.monthlyPlan.toLocaleString()+r.unit+'</td><td>'+r.actual.toLocaleString()+r.unit+'</td><td><span style="color:'+achColor+';font-weight:600">'+ach+'%</span></td><td>'+r.cum.toLocaleString()+r.unit+'</td><td><span class="tag" style="background:'+(ach>80?'#d1fae5;color:#065f46':'#fef3c7;color:#92400e')+'">'+(ach>80?'正常':'关注')+'</span></td></tr>';
   });
   document.getElementById('spRatePlanTable').querySelector('tbody').innerHTML=html;
 
-  html='';supplyPlanData.resourceLoads.forEach(r=>{
-    const loadPct=Math.round(r.assigned/r.avail*100);
-    const lColor=loadPct>90?'var(--danger)':loadPct>75?'var(--warning)':'var(--success)';
-    const suggestion=loadPct>90?'⚠️ 需增加产能':loadPct>75?'📊 关注负荷':'✅ 正常';
-    html+='<tr><td>'+r.resource+'</td><td>'+r.process+'</td><td>'+r.avail.toLocaleString()+'</td><td>'+r.assigned.toLocaleString()+'</td><td>'+r.remain.toLocaleString()+'</td><td><div style="display:flex;align-items:center;gap:6px"><div style="width:60px;height:7px;background:var(--gray-200);border-radius:3px;overflow:hidden"><div style="width:'+loadPct+'%;height:100%;background:'+lColor+';border-radius:3px"></div></div><span style="color:'+lColor+';font-weight:600">'+loadPct+'%</span></div></td><td>'+suggestion+'</td></tr>';
+  html='';supplyPlanData.supplierPerf.forEach(s=>{
+    const otdColor=s.otd>90?'var(--success)':s.otd>80?'var(--warning)':'var(--danger)';
+    const yieldColor=s.yieldRate>92?'var(--success)':s.yieldRate>85?'var(--warning)':'var(--danger)';
+    const sgg=s.yieldRate<88?'⚠️ 需驻厂改善':s.otd<85?'⏰ 交期管理':s.rating==='A'?'✅ 优质供应商':'📊 持续监控';
+    html+='<tr><td>'+s.supplier+'</td><td>'+spProcLabel(s.process)+'</td><td><span style="color:'+otdColor+';font-weight:600">'+s.otd+'%</span></td><td><span style="color:'+yieldColor+';font-weight:600">'+s.yieldRate+'%</span></td><td>'+(s.devDays>0?'+'+s.devDays+'天':s.devDays===0?'准时':s.devDays+'天')+'</td><td><span class="tag" style="background:'+(s.rating==='A'?'#d1fae5;color:#065f46':'#fef3c7;color:#92400e')+'">'+s.rating+'级</span></td><td>'+sgg+'</td></tr>';
   });
   document.getElementById('spResourceLoadTable').querySelector('tbody').innerHTML=html;
 }
 
 function openSpRateAdjustModal(){
-  const opts=supplyPlanData.ratePlans.map((r,i)=>'<option value="'+i+'">'+r.material+' - '+r.process+'（当前日产量:'+r.dailyRate+'）</option>').join('');
-  const html='<h3>✏️ 调整生产速率</h3><div style="margin:12px 0"><label style="font-size:13px;font-weight:600">选择产线：</label><select id="rateSelect" style="width:100%;padding:8px;margin:6px 0;border:1px solid var(--gray-300);border-radius:6px">'+opts+'</select></div><div style="margin:12px 0"><label style="font-size:13px;font-weight:600">新日产量：</label><input type="number" id="rateNewVal" style="width:100%;padding:8px;margin:6px 0;border:1px solid var(--gray-300);border-radius:6px" min="1" placeholder="输入新的日产量"></div><div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-sm btn-primary" onclick="saveSpRate()">💾 保存</button><button class="btn btn-sm btn-outline" onclick="closeModal()">取消</button></div>';
+  const opts=supplyPlanData.ratePlans.map((r,i)=>'<option value="'+i+'">'+r.process+' - '+r.supplier+'（本周计划:'+r.weeklyPlan+spProcUnit(r.process)+'）</option>').join('');
+  const html='<h3>✏️ 调整委外周计划</h3><div style="margin:12px 0"><label style="font-size:13px;font-weight:600">选择供应商制程：</label><select id="rateSelect" style="width:100%;padding:8px;margin:6px 0;border:1px solid var(--gray-300);border-radius:6px">'+opts+'</select></div><div style="margin:8px 0;padding:8px;background:#fef3c7;border-radius:6px;font-size:12px;color:#92400e">💡 调整Wafer采购量将连锁影响下游BP→CP→AB→FT全链路产出</div><div style="margin:12px 0"><label style="font-size:13px;font-weight:600">新周计划量：</label><input type="number" id="rateNewVal" style="width:100%;padding:8px;margin:6px 0;border:1px solid var(--gray-300);border-radius:6px" min="1" placeholder="输入新的周计划量"></div><div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-sm btn-primary" onclick="saveSpRate()">💾 保存</button><button class="btn btn-sm btn-outline" onclick="closeModal()">取消</button></div>';
   openModal(html);
 }
 function saveSpRate(){
@@ -6029,152 +6125,218 @@ function saveSpRate(){
   const newVal=parseInt(document.getElementById('rateNewVal').value);
   if(isNaN(newVal)||newVal<1){showToast('请输入有效数量','error');return;}
   const r=supplyPlanData.ratePlans[idx];
-  r.dailyRate=newVal;r.monthlyCap=newVal*26;r.actualOut=Math.round(newVal*(0.7+Math.random()*0.3));
-  closeModal();renderSpProduction();showToast('✅ 生产速率已更新','success');
+  r.weeklyPlan=newVal;r.monthlyPlan=newVal*4;r.actual=Math.round(newVal*(0.75+Math.random()*0.2));
+  closeModal();renderSpProduction();showToast('✅ 委外计划已更新','success');
 }
 
-// ==================== Tab 3: Deployment（分配/部署计划） ====================
+// ==================== Tab 3: 投料分配&在制追踪 ====================
 function renderSpDeployment(){
   if(!supplyPlanData.deployments.length){
-    const sites=['Wafer Fab→CP测试','CP测试→Assembly','Assembly→FT测试','FT测试→封裝'];
-    const mats=appData.materials.length?appData.materials.slice(0,5).map(m=>m.code):['A-RAM-001','B-CPU-002'];
-    sites.forEach(s=>{mats.forEach((m,mi)=>{
-      const qty=Math.round(3000+Math.random()*7000);
-      supplyPlanData.deployments.push({batch:'DEP-'+String(supplyPlanData.deployments.length+1).padStart(3,'0'),material:m,source:s.split('→')[0],target:s.split('→')[1],qty,date:'2026-0'+(1+Math.floor(Math.random()*3))+'-'+(10+Math.floor(Math.random()*15)),rule:mi%2===0?'缺量优先':'按优先级分配',status:'待执行'});
-    });});
+    supplyPlanData.deployments=[];
+    supplyPlanData.wipTracking=[];
+    // 模拟投料批次：Wafer→BP→CP→AB→FT全链路
+    const weeks=[1,2,3,4];
+    weeks.forEach(w=>{
+      const waferQty=Math.round(200+Math.random()*300);
+      const batchNo='REL-'+String(w).padStart(3,'0');
+      supplyPlanData.deployments.push({
+        batch:batchNo, fromProc:'Wafer', toProc:'BP', supplier:SEMI_SUPPLIERS.BP[0].name,
+        material:'IC-1000-Wafer', qty:waferQty, date:'2026-0'+(5+Math.floor(w/2))+'-'+(w*7),
+        estComplete:'2026-0'+(5+Math.floor(w/2))+'-'+(w*7+12), status:Math.random()>0.3?'已完成':'运行中'
+      });
+      // 模拟WIP批次
+      const yieldFactor=spYield('BP');
+      const bpOut=Math.round(waferQty*yieldFactor);
+      supplyPlanData.wipTracking.push({
+        batch:batchNo, material:'IC-1000-Wafer', currentProc:'BP', supplier:SEMI_SUPPLIERS.BP[0].name,
+        inputQty:waferQty, outputQty:bpOut, yieldRate:Math.round(yieldFactor*100),
+        nextProc:'CP', status:Math.random()>0.3?'在制':'已完成'
+      });
+    });
+    // 再模拟一批CP→AB→FT
+    const cpBatchQty=Math.round(400+Math.random()*300);
+    supplyPlanData.deployments.push({
+      batch:'REL-005', fromProc:'CP', toProc:'AB', supplier:SEMI_SUPPLIERS.AB[0].name,
+      material:'IC-1000-CP', qty:cpBatchQty, date:'2026-06-10',
+      estComplete:'2026-06-22', status:'待投料'
+    });
+    supplyPlanData.wipTracking.push({
+      batch:'WIP-001', material:'IC-1000-CP', currentProc:'AB', supplier:SEMI_SUPPLIERS.AB[0].name,
+      inputQty:cpBatchQty, outputQty:Math.round(cpBatchQty*spYield('AB')), yieldRate:Math.round(spYield('AB')*100),
+      nextProc:'FT', status:'在制'
+    });
   }
 
   const totalDeploy=supplyPlanData.deployments.reduce((s,d)=>s+d.qty,0);
-  const pendingDeploy=supplyPlanData.deployments.filter(d=>d.status==='待执行').length;
-  const doneDeploy=supplyPlanData.deployments.filter(d=>d.status==='已完成').length;
+  const wipCount=supplyPlanData.wipTracking.filter(w=>w.status==='在制').length;
+  const pendingDeploy=supplyPlanData.deployments.filter(d=>d.status==='待投料').length;
   document.getElementById('spDeployCards').innerHTML=
-    '<div class="summary-card blue"><div class="lbl">📦 总分配量</div><div class="num" style="color:var(--primary)">'+totalDeploy.toLocaleString()+'</div><div class="sub-text">各站点合计</div></div>'+
-    '<div class="summary-card yellow"><div class="lbl">⏳ 待执行</div><div class="num" style="color:var(--warning)">'+pendingDeploy+'批次</div><div class="sub-text">需执行分配</div></div>'+
-    '<div class="summary-card green"><div class="lbl">✅ 已完成</div><div class="num" style="color:var(--success)">'+doneDeploy+'批次</div><div class="sub-text">已分配完成</div></div>';
+    '<div class="summary-card blue"><div class="lbl">📦 累计投料量</div><div class="num" style="color:var(--primary)">'+totalDeploy.toLocaleString()+'</div><div class="sub-text">全链路累计</div></div>'+
+    '<div class="summary-card yellow"><div class="lbl">⏳ 在制批次</div><div class="num" style="color:var(--warning)">'+wipCount+'批</div><div class="sub-text">处于委外加工流程中</div></div>'+
+    '<div class="summary-card purple"><div class="lbl">📋 待投料批次</div><div class="num" style="color:#7c3aed">'+pendingDeploy+'批</div><div class="sub-text">等待执行投料</div></div>';
 
-  const sites=[...new Set(supplyPlanData.deployments.map(d=>d.source))];
-  const deployBySrc=sites.map(s=>supplyPlanData.deployments.filter(d=>d.source===s).reduce((sum,d)=>sum+d.qty,0));
+  // 图表：各制程WIP分布
+  const wipProcs=SP_PROCS;
+  const wipData=wipProcs.map(p=>supplyPlanData.wipTracking.filter(w=>w.currentProc===p).reduce((sum,w)=>sum+w.inputQty,0));
   if(window.spDeployChartInstance){window.spDeployChartInstance.destroy();}
   const ctx=document.getElementById('spDeployChart');
-  if(ctx && sites.length){
+  if(ctx){
     window.spDeployChartInstance=new Chart(ctx.getContext('2d'),{
-      type:'doughnut',data:{labels:sites,datasets:[{data:deployBySrc,backgroundColor:['#2563eb','#10b981','#f59e0b','#ef4444','#8b5cf6']}]},
+      type:'doughnut',data:{labels:wipProcs.map(p=>spProcLabel(p)+'(在制)'),datasets:[{data:wipData,backgroundColor:['#2563eb','#10b981','#f59e0b','#ef4444','#8b5cf6']}]},
       options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right'}}}
     });
   }
 
+  // 投料执行明细
   let html='';supplyPlanData.deployments.forEach(d=>{
-    html+='<tr><td>'+d.batch+'</td><td>'+d.material+'</td><td>'+d.source+'</td><td>'+d.target+'</td><td>'+d.qty.toLocaleString()+'</td><td>'+d.date+'</td><td>'+d.rule+'</td><td><span class="tag" style="background:'+(d.status==='已完成'?'#d1fae5;color:#065f46':d.status==='执行中'?'#dbeafe;color:#1e40af':'#fef3c7;color:#92400e')+'">'+d.status+'</span></td></tr>';
+    html+='<tr><td>'+d.batch+'</td><td>'+spProcLabel(d.fromProc)+'→'+spProcLabel(d.toProc)+'</td><td>'+spProcLabel(d.toProc)+'</td><td>'+d.supplier+'</td><td>'+d.material+'</td><td>'+d.qty.toLocaleString()+'</td><td>'+d.date+'</td><td>'+d.estComplete+'</td><td><span class="tag" style="background:'+(d.status==='已完成'?'#d1fae5;color:#065f46':d.status==='运行中'?'#dbeafe;color:#1e40af':'#fef3c7;color:#92400e')+'">'+d.status+'</span></td></tr>';
   });
   document.getElementById('spDeployTable').querySelector('tbody').innerHTML=html;
 
-  html='';supplyPlanData.deployRules.forEach(r=>{
-    html+='<tr><td>'+r.name+'</td><td>P'+r.priority+'</td><td>'+r.logic+'</td><td>'+r.sites+'</td><td>'+r.effDate+'</td><td><span class="tag" style="background:#d1fae5;color:#065f46">'+r.status+'</span></td></tr>';
+  // 在制品追踪
+  html='';supplyPlanData.wipTracking.forEach((w,i)=>{
+    const nextLabel=w.nextProc?spProcLabel(w.nextProc):'—';
+    html+='<tr><td>'+w.batch+'</td><td>'+w.material+'</td><td>'+spProcLabel(w.currentProc)+'</td><td>'+w.supplier+'</td><td>'+w.inputQty.toLocaleString()+'</td><td>'+w.outputQty.toLocaleString()+'</td><td><span style="color:var(--success);font-weight:600">'+w.yieldRate+'%</span></td><td>'+nextLabel+'</td><td><span class="tag" style="background:'+(w.status==='在制'?'#dbeafe;color:#1e40af':'#d1fae5;color:#065f46')+'">'+w.status+'</span></td><td>'+(w.status==='在制'?'<button class="btn btn-sm btn-outline" onclick="showToast(\'📤 已通知供应商加快交付\',\'info\')">📤 催货</button>':'<span style="color:var(--gray-400)">—</span>')+'</td></tr>';
   });
   document.getElementById('spDeployRuleTable').querySelector('tbody').innerHTML=html;
 }
 
 function runDeployment(){
+  // 推进一批：将所有待投料→运行中→已完成
   supplyPlanData.deployments.forEach(d=>{
-    if(d.status==='待执行')d.status='已完成';
+    if(d.status==='待投料'){d.status='运行中';d.estComplete='2026-06-'+(10+Math.floor(Math.random()*10));}
+    else if(d.status==='运行中'){d.status='已完成';}
   });
-  renderSpDeployment();showToast('▶️ 分配执行完成，'+supplyPlanData.deployments.length+'批次已处理','success');
+  renderSpDeployment();showToast('▶️ 投料推进完成','success');
 }
 function openDeployRuleModal(){
-  const html='<h3>⚙️ 分配规则配置</h3><div style="margin:12px 0 8px;padding:12px;background:var(--gray-50);border-radius:6px;font-size:13px"><strong>当前规则：</strong><br>1️⃣ 缺量优先：按各站点缺量比例分配供给<br>2️⃣ 按优先级分配：按客户优先级+需求日期分配<br>3️⃣ 公平份额：各站点按需求比例均分<br><br><strong>SAP IBP Deployment Heuristics：</strong><br>• Fair Share (公平份额分配)<br>• Priority-based Allocation (优先级分配)<br>• Constraint-based Deployment (约束分配)</div><div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-sm btn-primary" onclick="closeModal();showToast(\'✅ 规则已应用\',\'success\')">应用规则</button><button class="btn btn-sm btn-outline" onclick="closeModal()">关闭</button></div>';
+  const html='<h3>⚙️ 投料分配策略</h3><div style="margin:12px 0 8px;padding:12px;background:var(--gray-50);border-radius:6px;font-size:13px"><strong>当前分配规则：</strong><br>1️⃣ 晶圆优先：优先分配晶圆产能→BP委外供应商<br>2️⃣ 良率加权：按历史良率分配投料量，良率高优先<br>3️⃣ 负载均衡：供应商负荷>85%时自动切换备选<br><br><strong>半导体制程委外投料逻辑：</strong><br>• Wafer晶圆→BP凸块供应商（产出经良率折算）<br>• BP完工→收货→发至CP测试供应商<br>• CP测试完→收货→发至AB封装供应商<br>• AB封装完→收货→发至FT成品测试<br>• FT产出即入库为成品</div><div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-sm btn-primary" onclick="closeModal();showToast(\'✅ 策略已应用\',\'success\')">应用策略</button><button class="btn btn-sm btn-outline" onclick="closeModal()">关闭</button></div>';
   openModal(html);
 }
 
-// ==================== Tab 4: S&D Matching（供需匹配） ====================
+// ==================== Tab 4: 供需匹配&缺口分析 ====================
 function renderSpMatching(){
   if(!supplyPlanData.exceptions.length){
-    const mats=appData.materials.length?appData.materials.slice(0,6).map(m=>m.code):['A-RAM-001','B-CPU-002','C-ADC-003'];
-    const types=['供给不足','交期延迟','质量异常','产能不足','物料短缺'];
-    const sev=['高','中','低'];
-    mats.forEach((m,i)=>{
-      const type=types[i%types.length];
-      const qty=Math.round(500+Math.random()*4500);
-      const date='2026-0'+(1+Math.floor(Math.random()*3))+'-'+(10+Math.floor(Math.random()*15));
-      const sv=sev[i%sev.length];
-      const suggestion=type==='供给不足'?'增加采购量'+Math.round(qty*1.2):type==='交期延迟'?'调整生产计划优先级':type==='产能不足'?'外包辅助产能':'质量复查/替换';
-      supplyPlanData.exceptions.push({id:'EXC-'+String(i+1).padStart(3,'0'),material:m,type,desc:type+'：'+m+'于'+date+'出现'+Math.round(qty*0.3)+'短缺',affected:qty,date,severity:sv,suggestion,status:'待处理'});
+    supplyPlanData.exceptions=[];
+    supplyPlanData.matchDetails=[];
+    // 异常消息：按制程
+    SP_PROCS.slice(0,4).forEach((proc,i)=>{
+      const qty=Math.round(500+Math.random()*4000);
+      const types=['晶圆供应不足','委外产能紧张','良率波动影响','交期延迟'];
+      const suggs=['增加晶圆采购量','协调供应商加线','调整良率预期值','启动紧急投料'];
+      supplyPlanData.exceptions.push({
+        id:'EXC-'+String(i+1).padStart(3,'0'),process:proc,
+        type:types[i],desc:types[i]+'：'+spProcLabel(proc)+'预计短缺'+qty.toLocaleString()+spProcUnit(proc),
+        affected:qty,date:'2026-06-'+(15+i*3),severity:i<2?'高':'中',
+        suggestion:suggs[i],status:'待处理'
+      });
     });
-    const dems=appData.demands.length?appData.demands.slice(0,8):[{demandNo:'SO-001',material:'A-RAM-001',demandDate:'2026-02-15',quantity:1500},{demandNo:'SO-002',material:'B-CPU-002',demandDate:'2026-02-20',quantity:2200},{demandNo:'SO-003',material:'C-ADC-003',demandDate:'2026-03-01',quantity:800}];
-    supplyPlanData.matchDetails=dems.map((d,i)=>{
-      const matchQty=Math.round(d.quantity*(0.6+Math.random()*0.35));
-      return {orderNo:d.demandNo||'SO-'+String(i+1).padStart(3,'0'),material:d.material,reqDate:d.demandDate,reqQty:d.quantity,matchSrc:'库存/在制',matchQty,gap:d.quantity-matchQty,status:matchQty>=d.quantity?'已匹配':'部分匹配'};
+    // 成品级匹配明细
+    const ftDemands=[{order:'SO-2026-001',material:'IC-1000-FT',qty:18500,date:'2026-06-20'},
+      {order:'SO-2026-002',material:'IC-1000-FT',qty:12000,date:'2026-06-25'},
+      {order:'SO-2026-003',material:'IC-1000-FT',qty:8000,date:'2026-07-05'}];
+    ftDemands.forEach(d=>{
+      const waferNeed=calcFtToWafer(d.qty);
+      const availWafer=Math.round(waferNeed*(0.6+Math.random()*0.4));
+      const matchQty=Math.round(calcWaferToFt(availWafer));
+      supplyPlanData.matchDetails.push({
+        orderNo:d.order,material:d.material,reqDate:d.date,
+        ftQty:d.qty,waferNeed,availWafer,matchQty,
+        gap:Math.max(0,d.qty-matchQty),
+        status:matchQty>=d.qty?'已匹配':matchQty>=d.qty*0.7?'部分匹配':'待匹配'
+      });
     });
   }
 
-  const totalReq=supplyPlanData.matchDetails.reduce((s,m)=>s+m.reqQty,0);
+  const totalFt=supplyPlanData.matchDetails.reduce((s,m)=>s+m.ftQty,0);
   const totalMatch=supplyPlanData.matchDetails.reduce((s,m)=>s+m.matchQty,0);
-  const matchRate=totalReq>0?Math.round(totalMatch/totalReq*100):0;
+  const matchRate=totalFt>0?Math.round(totalMatch/totalFt*100):0;
   const highExc=supplyPlanData.exceptions.filter(e=>e.severity==='高').length;
   document.getElementById('spMatchCards').innerHTML=
-    '<div class="summary-card blue"><div class="lbl">📊 总需求数量</div><div class="num" style="color:var(--primary)">'+totalReq.toLocaleString()+'</div><div class="sub-text">需匹配的需求总和</div></div>'+
-    '<div class="summary-card '+(matchRate>85?'green':'yellow')+'"><div class="lbl">✅ 匹配率</div><div class="num" style="color:'+(matchRate>85?'var(--success)':'var(--warning)')+'">'+matchRate+'%</div><div class="sub-text">已匹配/总需求</div></div>'+
-    '<div class="summary-card '+(highExc>0?'red':'green')+'"><div class="lbl">⚠️ 高优先级异常</div><div class="num" style="color:'+(highExc>0?'var(--danger)':'var(--success)')+'">'+highExc+'项</div><div class="sub-text">需立即处理</div></div>';
+    '<div class="summary-card blue"><div class="lbl">📊 成品总需求</div><div class="num" style="color:var(--primary)">'+totalFt.toLocaleString()+'颗</div><div class="sub-text">含已确认+预测订单</div></div>'+
+    '<div class="summary-card '+(matchRate>80?'green':'yellow')+'"><div class="lbl">✅ 匹配率</div><div class="num" style="color:'+(matchRate>80?'var(--success)':'var(--warning)')+'">'+matchRate+'%</div><div class="sub-text">考虑全链良率折损</div></div>'+
+    '<div class="summary-card '+(highExc>0?'red':'green')+'"><div class="lbl">⚠️ 待处理异常</div><div class="num" style="color:'+(highExc>0?'var(--danger)':'var(--success)')+'">'+highExc+'项</div><div class="sub-text">需立即处理</div></div>';
 
-  const matNames=[...new Set(supplyPlanData.matchDetails.map(m=>m.material))];
-  const matReq=matNames.map(m=>supplyPlanData.matchDetails.filter(x=>x.material===m).reduce((s,x)=>s+x.reqQty,0));
-  const matMatch=matNames.map(m=>supplyPlanData.matchDetails.filter(x=>x.material===m).reduce((s,x)=>s+x.matchQty,0));
+  // 图表：各订单FT需求 vs 可用晶圆折算
+  const ordNames=supplyPlanData.matchDetails.map(m=>m.orderNo);
+  const ftData=supplyPlanData.matchDetails.map(m=>m.ftQty);
+  const matchData=supplyPlanData.matchDetails.map(m=>m.matchQty);
   if(window.spMatchChartInstance){window.spMatchChartInstance.destroy();}
   const ctx=document.getElementById('spMatchChart');
-  if(ctx && matNames.length){
+  if(ctx && ordNames.length){
     window.spMatchChartInstance=new Chart(ctx.getContext('2d'),{
-      type:'bar',data:{labels:matNames,datasets:[{label:'需求',data:matReq,backgroundColor:'rgba(239,68,68,.6)',borderRadius:4},{label:'匹配供给',data:matMatch,backgroundColor:'rgba(16,185,129,.6)',borderRadius:4}]},
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true,ticks:{callback:v=>v.toLocaleString()}}}}
+      type:'bar',data:{labels:ordNames,datasets:[
+        {label:'FT成品需求(颗)',data:ftData,backgroundColor:'rgba(239,68,68,.6)',borderRadius:4},
+        {label:'可匹配(考虑良率)',data:matchData,backgroundColor:'rgba(16,185,129,.6)',borderRadius:4}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},
+        scales:{y:{beginAtZero:true,title:{display:true,text:'颗'},ticks:{callback:v=>v.toLocaleString()}}}}
     });
   }
 
   let html='';supplyPlanData.exceptions.forEach((e,i)=>{
     const sevColor=e.severity==='高'?'var(--danger)':e.severity==='中'?'var(--warning)':'var(--info)';
-    html+='<tr><td>'+e.id+'</td><td>'+e.material+'</td><td><span class="tag" style="background:#fef3c7;color:#92400e">'+e.type+'</span></td><td>'+e.desc+'</td><td>'+e.affected.toLocaleString()+'</td><td>'+e.date+'</td><td><span style="color:'+sevColor+';font-weight:600">'+e.severity+'</span></td><td>'+e.suggestion+'</td><td><button class="btn btn-sm btn-primary" onclick="resolveException('+i+')">✅ 解决</button></td></tr>';
+    html+='<tr><td>'+e.id+'</td><td><strong>'+spProcLabel(e.process)+'</strong></td><td><span class="tag" style="background:#fef3c7;color:#92400e">'+e.type+'</span></td><td>'+e.desc+'</td><td>'+e.affected.toLocaleString()+'</td><td>'+e.date+'</td><td><span style="color:'+sevColor+';font-weight:600">'+e.severity+'</span></td><td>'+e.suggestion+'</td><td><button class="btn btn-sm btn-primary" onclick="resolveException('+i+')">✅ 处理</button></td></tr>';
   });
-  if(!supplyPlanData.exceptions.length)html='<tr><td colspan="9" class="empty-state">暂无异常消息</td></tr>';
+  if(!supplyPlanData.exceptions.length)html='<tr><td colspan="9" class="empty-state">暂无例外消息</td></tr>';
   document.getElementById('spMatchExceptionTable').querySelector('tbody').innerHTML=html;
 
   html='';supplyPlanData.matchDetails.forEach(m=>{
-    const statusColor=m.status==='已匹配'?'var(--success)':'var(--warning)';
-    html+='<tr><td>'+m.orderNo+'</td><td>'+m.material+'</td><td>'+m.reqDate+'</td><td>'+m.reqQty.toLocaleString()+'</td><td>'+m.matchSrc+'</td><td>'+m.matchQty.toLocaleString()+'</td><td>'+(m.gap>0?'<span style="color:var(--danger)">'+m.gap.toLocaleString()+'</span>':'0')+'</td><td>'+m.matchSrc+'</td><td><span style="color:'+statusColor+';font-weight:600">'+m.status+'</span></td></tr>';
+    const statusColor=m.status==='已匹配'?'var(--success)':m.status==='部分匹配'?'var(--warning)':'var(--danger)';
+    html+='<tr><td>'+m.orderNo+'</td><td>'+m.material+'</td><td>'+m.reqDate+'</td><td>'+m.ftQty.toLocaleString()+'</td><td>'+m.waferNeed.toLocaleString()+'片</td><td>'+(m.availWafer>0?m.availWafer.toLocaleString()+'片':'<span style="color:var(--danger)">无</span>')+'</td><td>'+m.matchQty.toLocaleString()+'</td><td>'+(m.gap>0?'<span style="color:var(--danger)">'+m.gap.toLocaleString()+'</span>':'0')+'</td><td><span style="color:'+statusColor+';font-weight:600">'+m.status+'</span></td></tr>';
   });
   document.getElementById('spMatchDetailTable').querySelector('tbody').innerHTML=html;
 }
 
 function runSpMatching(){
+  // 全链路匹配：尝试从晶圆端增加供给
   const before=supplyPlanData.matchDetails.reduce((s,m)=>s+m.gap,0);
   supplyPlanData.matchDetails.forEach(m=>{
-    const extra=Math.round(m.gap*(0.3+Math.random()*0.5));
-    m.matchQty+=extra;m.gap=Math.max(0,m.gap-extra);
-    m.status=m.gap<=0?'已匹配':'部分匹配';
+    const extraWafer=Math.round(m.waferNeed*(0.1+Math.random()*0.3));
+    const extraFt=calcWaferToFt(extraWafer);
+    m.availWafer+=extraWafer;
+    m.matchQty=Math.min(m.ftQty,m.matchQty+extraFt);
+    m.gap=Math.max(0,m.ftQty-m.matchQty);
+    m.status=m.gap<=0?'已匹配':m.gap<m.ftQty*0.3?'部分匹配':'待匹配';
   });
   const after=supplyPlanData.matchDetails.reduce((s,m)=>s+m.gap,0);
-  const resolved=before-after;
   supplyPlanData.exceptions=supplyPlanData.exceptions.filter(e=>e.status!=='已解决');
-  renderSpMatching();showToast('🔁 匹配完成，已消除缺口'+resolved.toLocaleString(),'success');
+  renderSpMatching();showToast('🔁 全链路匹配完成，消除缺口'+(before-after).toLocaleString()+'颗','success');
 }
 function autoResolveExceptions(){
   supplyPlanData.exceptions.forEach(e=>{if(e.severity==='低'){e.status='已解决';}});
   supplyPlanData.exceptions=supplyPlanData.exceptions.filter(e=>e.status!=='已解决');
   renderSpMatching();
   const remaining=supplyPlanData.exceptions.length;
-  showToast('🤖 已自动解决低严重级别异常，剩余'+remaining+'项待处理',remaining?'warning':'success');
+  showToast('🤖 已自动处理低级异常，剩余'+remaining+'项待处理',remaining?'warning':'success');
 }
 function resolveException(idx){
   if(supplyPlanData.exceptions[idx]){supplyPlanData.exceptions[idx].status='已解决';supplyPlanData.exceptions.splice(idx,1);}
-  renderSpMatching();showToast('✅ 异常已解决','success');
+  renderSpMatching();showToast('✅ 异常已处理','success');
 }
 
-// ==================== Tab 5: CTM（可承诺匹配） ====================
+// ==================== Tab 5: 晶圆级ATP/CTP ====================
 function renderSpCtm(){
   if(!supplyPlanData.ctmOrders.length){
-    const mats=appData.materials.length?appData.materials.slice(0,6).map(m=>m.code):['A-RAM-001','B-CPU-002','C-ADC-003'];
-    mats.forEach((m,i)=>{
-      const qty=Math.round(1000+Math.random()*5000);
-      const atpQty=Math.round(qty*(0.5+Math.random()*0.4));
-      supplyPlanData.ctmOrders.push({orderNo:'ORD-'+String(i+1).padStart(3,'0'),material:m,reqQty:qty,reqDate:'2026-0'+(1+Math.floor(Math.random()*3))+'-'+(10+Math.floor(Math.random()*15)),atpQty,atpDate:'2026-0'+(1+Math.floor(Math.random()*3))+'-'+(15+Math.floor(Math.random()*10)),commitQty:0,commitStatus:'待检查'});
-    });
+    supplyPlanData.ctmOrders=[];
     supplyPlanData.ctmCommits=[];
+    const orders=[
+      {orderNo:'ORD-001',material:'IC-1000-FT',reqQty:8000,reqDate:'2026-06-20'},
+      {orderNo:'ORD-002',material:'IC-1000-FT',reqQty:12000,reqDate:'2026-06-28'},
+      {orderNo:'ORD-003',material:'IC-1000-FT',reqQty:5000,reqDate:'2026-07-05'},
+      {orderNo:'ORD-004',material:'IC-1000-FT',reqQty:15000,reqDate:'2026-07-15'}
+    ];
+    orders.forEach(o=>{
+      const waferNeed=calcFtToWafer(o.reqQty);
+      const availWafer=Math.round(waferNeed*(0.5+Math.random()*0.4));
+      const atpQty=Math.round(calcWaferToFt(availWafer));
+      const atpDelay=Math.floor(Math.random()*10)+3;
+      supplyPlanData.ctmOrders.push({
+        orderNo:o.orderNo,material:o.material,reqQty:o.reqQty,
+        reqDate:o.reqDate,waferNeed,availWafer,
+        atpQty,atpDate:'2026-06-'+(15+atpDelay),
+        commitQty:0,commitStatus:'待检查'
+      });
+    });
   }
 
   const totalReq=supplyPlanData.ctmOrders.reduce((s,o)=>s+o.reqQty,0);
@@ -6182,32 +6344,34 @@ function renderSpCtm(){
   const atpRate=totalReq>0?Math.round(totalAtp/totalReq*100):0;
   const commitCount=supplyPlanData.ctmCommits.filter(c=>c.status==='已承诺').length;
   document.getElementById('spCtmCards').innerHTML=
-    '<div class="summary-card blue"><div class="lbl">📋 订单请求总量</div><div class="num" style="color:var(--primary)">'+totalReq.toLocaleString()+'</div><div class="sub-text">'+supplyPlanData.ctmOrders.length+'笔订单</div></div>'+
-    '<div class="summary-card '+(atpRate>70?'green':'yellow')+'"><div class="lbl">🎯 ATP满足率</div><div class="num" style="color:'+(atpRate>70?'var(--success)':'var(--warning)')+'">'+atpRate+'%</div><div class="sub-text">可承诺/请求</div></div>'+
-    '<div class="summary-card green"><div class="lbl">✅ 已承诺订单</div><div class="num" style="color:var(--success)">'+commitCount+'笔</div><div class="sub-text">已确认</div></div>';
+    '<div class="summary-card blue"><div class="lbl">📋 订单请求总量</div><div class="num" style="color:var(--primary)">'+totalReq.toLocaleString()+'颗</div><div class="sub-text">'+supplyPlanData.ctmOrders.length+'笔订单</div></div>'+
+    '<div class="summary-card '+(atpRate>65?'green':'yellow')+'"><div class="lbl">🎯 ATP满足率</div><div class="num" style="color:'+(atpRate>65?'var(--success)':'var(--warning)')+'">'+atpRate+'%</div><div class="sub-text">考虑晶圆约束+良率</div></div>'+
+    '<div class="summary-card green"><div class="lbl">✅ 已承诺订单</div><div class="num" style="color:var(--success)">'+commitCount+'笔</div><div class="sub-text">已确认交期</div></div>';
 
   let html='';supplyPlanData.ctmOrders.forEach((o,i)=>{
     const canCommit=o.atpQty>0;
     const stColor=o.commitStatus==='已承诺'?'var(--success)':o.commitStatus==='部分承诺'?'var(--warning)':'var(--gray-400)';
-    html+='<tr><td>'+o.orderNo+'</td><td>'+o.material+'</td><td>'+o.reqQty.toLocaleString()+'</td><td>'+o.reqDate+'</td><td>'+(o.atpQty>0?o.atpQty.toLocaleString():'<span style="color:var(--danger)">无</span>')+'</td><td>'+o.atpDate+'</td><td>'+(o.commitQty||0).toLocaleString()+'</td><td><span style="color:'+stColor+';font-weight:600">'+o.commitStatus+'</span></td><td>'+(canCommit&&o.commitStatus!=='已承诺'?'<button class="btn btn-sm btn-primary" onclick="commitCtmOrder('+i+')">✅ 承诺</button>':'—')+'</td></tr>';
+    html+='<tr><td>'+o.orderNo+'</td><td>'+o.material+'</td><td>'+o.reqQty.toLocaleString()+'</td><td>'+(o.waferNeed||0).toLocaleString()+'片</td><td>'+(o.availWafer>0?o.availWafer.toLocaleString()+'片':'<span style="color:var(--danger)">无</span>')+'</td><td>'+(o.atpQty>0?o.atpQty.toLocaleString():'<span style="color:var(--danger)">—</span>')+'</td><td>'+o.atpDate+'</td><td><span style="color:'+stColor+';font-weight:600">'+o.commitStatus+'</span></td><td>'+(canCommit&&o.commitStatus!=='已承诺'?'<button class="btn btn-sm btn-primary" onclick="commitCtmOrder('+i+')">✅ 承诺</button>':'—')+'</td></tr>';
   });
   if(!supplyPlanData.ctmOrders.length)html='<tr><td colspan="9" class="empty-state">暂无订单数据</td></tr>';
   document.getElementById('spCtmOrderTable').querySelector('tbody').innerHTML=html;
 
-  const stocks=supplyPlanData.ctmOrders.map(o=>{
-    const safety=Math.round(o.reqQty*0.15);
-    return {material:o.material,totalStock:o.reqQty+Math.round(Math.random()*2000),allocated:Math.round(o.atpQty*0.3),transit:Math.round(Math.random()*500),safety,avail:0,atpDays:30+Math.floor(Math.random()*30)};
-  });
-  stocks.forEach(s=>{s.avail=Math.max(0,s.totalStock-s.allocated-s.transit-s.safety);});
-  html='';stocks.forEach(s=>{
-    html+='<tr><td>'+s.material+'</td><td>'+s.totalStock.toLocaleString()+'</td><td>'+s.allocated.toLocaleString()+'</td><td>'+s.transit.toLocaleString()+'</td><td>'+s.safety.toLocaleString()+'</td><td><span style="color:'+(s.avail>0?'var(--success)':'var(--danger)')+';font-weight:600">'+s.avail.toLocaleString()+'</span></td><td>'+s.atpDays+'</td></tr>';
+  // 制程级可承诺库存
+  html='';SP_PROCS.forEach(proc=>{
+    const matCode=appData.materialCodeMap[proc]||('IC-1000-'+proc);
+    const yieldRate=spYield(proc);
+    const totalStock=Math.round(200+Math.random()*800);
+    const allocated=Math.round(totalStock*0.3);
+    const inTransit=Math.round(Math.random()*200);
+    const avail=Math.max(0,Math.round((totalStock-allocated-inTransit)*yieldRate));
+    html+='<tr><td><strong>'+spProcLabel(proc)+'</strong></td><td>'+matCode+'</td><td>'+totalStock.toLocaleString()+'</td><td>'+allocated.toLocaleString()+'</td><td>'+inTransit.toLocaleString()+'</td><td>'+(yieldRate*100)+'%</td><td><span style="color:'+(avail>0?'var(--success)':'var(--danger)')+';font-weight:600">'+avail.toLocaleString()+'</span></td><td>'+(proc==='Wafer'?60:proc==='BP'?30:proc==='CP'?21:proc==='AB'?30:14)+'天</td></tr>';
   });
   document.getElementById('spCtmStockTable').querySelector('tbody').innerHTML=html;
 
   html='';supplyPlanData.ctmCommits.forEach(c=>{
-    html+='<tr><td>'+c.orderNo+'</td><td>'+c.material+'</td><td>'+c.qty.toLocaleString()+'</td><td>'+c.reqDate+'</td><td>'+c.atpDate+'</td><td>'+c.commitQty.toLocaleString()+'</td><td>'+c.owner+'</td><td>'+c.commitDate+'</td><td><span class="tag" style="background:'+(c.status==='已承诺'?'#d1fae5;color:#065f46':'#fef3c7;color:#92400e')+'">'+c.status+'</span></td></tr>';
+    html+='<tr><td>'+c.orderNo+'</td><td>'+c.material+'</td><td>'+c.qty.toLocaleString()+'</td><td>'+c.reqDate+'</td><td>'+c.atpDate+'</td><td>'+c.commitQty.toLocaleString()+'</td><td>'+(c.waferConsumed||0).toLocaleString()+'片</td><td><span class="tag" style="background:'+(c.status==='已承诺'?'#d1fae5;color:#065f46':'#fef3c7;color:#92400e')+'">'+c.status+'</span></td></tr>';
   });
-  if(!supplyPlanData.ctmCommits.length)html='<tr><td colspan="9" class="empty-state">暂无承诺记录，请检查ATP后确认订单</td></tr>';
+  if(!supplyPlanData.ctmCommits.length)html='<tr><td colspan="8" class="empty-state">暂无承诺记录，请进行ATP检查后承诺</td></tr>';
   document.getElementById('spCtmCommitTable').querySelector('tbody').innerHTML=html;
 }
 
@@ -6216,12 +6380,17 @@ function commitCtmOrder(idx){
   if(!o||o.commitStatus==='已承诺') return;
   o.commitQty=Math.min(o.atpQty,o.reqQty);
   o.commitStatus=o.commitQty>=o.reqQty?'已承诺':'部分承诺';
-  supplyPlanData.ctmCommits.push({orderNo:o.orderNo,material:o.material,qty:o.reqQty,reqDate:o.reqDate,atpDate:o.atpDate,commitQty:o.commitQty,owner:'Planer',commitDate:new Date().toISOString().split('T')[0],status:o.commitStatus});
-  renderSpCtm();showToast('✅ '+o.orderNo+' 已承诺'+o.commitQty.toLocaleString(),'success');
+  const waferConsumed=calcFtToWafer(o.commitQty);
+  supplyPlanData.ctmCommits.push({
+    orderNo:o.orderNo,material:o.material,qty:o.reqQty,reqDate:o.reqDate,
+    atpDate:o.atpDate,commitQty:o.commitQty,waferConsumed,
+    status:o.commitStatus
+  });
+  renderSpCtm();showToast('✅ '+o.orderNo+' 已承诺'+o.commitQty.toLocaleString()+'颗（消耗晶圆'+waferConsumed+'片）','success');
 }
 function openCtmCheckModal(){
-  const opts=supplyPlanData.ctmOrders.map((o,i)=>'<option value="'+i+'">'+o.orderNo+' - '+o.material+'（需'+o.reqQty+'）</option>').join('');
-  const html='<h3>🔍 ATP/CTP 检查</h3><div style="margin:12px 0"><label style="font-size:13px;font-weight:600">选择订单：</label><select id="ctmOrderSelect" style="width:100%;padding:8px;margin:6px 0;border:1px solid var(--gray-300);border-radius:6px">'+opts+'</select></div><div style="margin:12px 0;padding:12px;background:var(--gray-50);border-radius:6px;font-size:13px"><strong>ATP 检查结果：</strong><br>• 库存检查：可用库存可覆盖 70% 需求<br>• 产能检查：CTP 可覆盖额外 15%<br>• 物料检查：BOM 物料齐全<br>• 推荐承诺日期：2026-0'+Math.floor(Math.random()*3+1)+'-'+(10+Math.floor(Math.random()*10))+'</div><div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-sm btn-success" onclick="confirmCtmCheck()">✅ 确认承诺</button><button class="btn btn-sm btn-outline" onclick="closeModal()">取消</button></div>';
+  const opts=supplyPlanData.ctmOrders.map((o,i)=>'<option value="'+i+'">'+o.orderNo+' - '+o.material+'（需'+o.reqQty+'颗FT，等效'+calcFtToWafer(o.reqQty)+'片Wafer）</option>').join('');
+  const html='<h3>🔍 晶圆级ATP检查</h3><div style="margin:12px 0"><label style="font-size:13px;font-weight:600">选择订单：</label><select id="ctmOrderSelect" style="width:100%;padding:8px;margin:6px 0;border:1px solid var(--gray-300);border-radius:6px">'+opts+'</select></div><div style="margin:12px 0;padding:12px;background:var(--gray-50);border-radius:6px;font-size:13px"><strong>ATP 检查结果（晶圆级）：</strong><br>• 晶圆库存检查：可用'+Math.round(500+Math.random()*2000)+'片<br>• 委外产能检查：BP/CP/AB/FT 全线产能正常<br>• 良率预估：综合良率约 85%<br>• 全链交期预估：从Wafer投料到FT成品约 40-50 天<br>• 推荐承诺日期：2026-0'+(6+Math.floor(Math.random()*2))+'-'+(15+Math.floor(Math.random()*10))+'</div><div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-sm btn-success" onclick="confirmCtmCheck()">✅ 确认承诺</button><button class="btn btn-sm btn-outline" onclick="closeModal()">取消</button></div>';
   openModal(html);
 }
 function confirmCtmCheck(){
@@ -6234,27 +6403,32 @@ function confirmCtmOrders(){
     if(o.commitStatus!=='已承诺'&&o.atpQty>0){
       o.commitQty=Math.min(o.atpQty,o.reqQty);
       o.commitStatus=o.commitQty>=o.reqQty?'已承诺':'部分承诺';
-      supplyPlanData.ctmCommits.push({orderNo:o.orderNo,material:o.material,qty:o.reqQty,reqDate:o.reqDate,atpDate:o.atpDate,commitQty:o.commitQty,owner:'Planer',commitDate:new Date().toISOString().split('T')[0],status:o.commitStatus});
+      const waferConsumed=calcFtToWafer(o.commitQty);
+      supplyPlanData.ctmCommits.push({
+        orderNo:o.orderNo,material:o.material,qty:o.reqQty,reqDate:o.reqDate,
+        atpDate:o.atpDate,commitQty:o.commitQty,waferConsumed,
+        status:o.commitStatus
+      });
       count++;
     }
   });
-  renderSpCtm();showToast('✅ 已批量确认 '+count+' 笔订单','success');
+  renderSpCtm();showToast('✅ 已批量承诺 '+count+' 笔订单','success');
 }
 
 function exportSpReport(section){
   let csv='';
   if(section==='network'){
-    csv='站点,物料,总产能,已分配,可用余量,分配比例,优先级\n';
-    supplyPlanData.networkAllocations.forEach(n=>{csv+=n.site+','+n.material+','+n.totalCap+','+n.allocated+','+n.remain+','+n.ratio+','+n.priority+'\n';});
+    csv='制程,供应商,周产能,已分配,余量,分配率,交期(天)\n';
+    supplyPlanData.networkAllocations.forEach(n=>{csv+=n.process+','+n.supplier+','+n.weeklyCap+','+n.allocated+','+n.remain+','+n.ratio+'%,'+n.leadTime+'\n';});
   }else if(section==='production'){
-    csv='物料,制程,计划日产量,月产能,实际产出,达成率,状态\n';
-    supplyPlanData.ratePlans.forEach(r=>{csv+=r.material+','+r.process+','+r.dailyRate+','+r.monthlyCap+','+r.actualOut+','+Math.round(r.actualOut/r.dailyRate*100)+'%,'+r.status+'\n';});
+    csv='制程,供应商,周计划,月计划,实际交付,达成率,累计交付\n';
+    supplyPlanData.ratePlans.forEach(r=>{csv+=r.process+','+r.supplier+','+r.weeklyPlan+','+r.monthlyPlan+','+r.actual+','+Math.round(r.actual/r.weeklyPlan*100)+'%,'+r.cum+'\n';});
   }else{
-    csv='批次,物料,来源,目标,数量,日期,规则,状态\n';
-    supplyPlanData.deployments.forEach(d=>{csv+=d.batch+','+d.material+','+d.source+','+d.target+','+d.qty+','+d.date+','+d.rule+','+d.status+'\n';});
+    csv='投料批次,来源制程,目标制程,供应商,物料,投料量,投料日期,预计完工,状态\n';
+    supplyPlanData.deployments.forEach(d=>{csv+=d.batch+','+d.fromProc+','+d.toProc+','+d.supplier+','+d.material+','+d.qty+','+d.date+','+d.estComplete+','+d.status+'\n';});
   }
   const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='SCM_SupplyPlan_'+section+'_'+(new Date().toISOString().split('T')[0])+'.csv';a.click();showToast('📥 报告已导出','success');
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='SCM_SemiSupply_'+section+'_'+(new Date().toISOString().split('T')[0])+'.csv';a.click();showToast('📥 报告已导出','success');
 }
 
 // ==================== Demand（需求计划）= SAP IBP Demand Planning 半导体全面对标 ====================
