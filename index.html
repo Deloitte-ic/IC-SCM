@@ -3201,6 +3201,10 @@ function deleteDemand(idx) { appData.demands.splice(idx,1); renderDemand(); upda
 let fusionChartInstance = null;
 let lastFusionResult = null;
 function renderFusionView(){
+  if(!lastFusionResult){
+    const saved=localStorage.getItem('ic_scm_lastFusion');
+    if(saved) try{lastFusionResult=JSON.parse(saved);}catch(e){}
+  }
   if(lastFusionResult){
     displayFusionResult(lastFusionResult);
   } else {
@@ -3238,6 +3242,7 @@ function runDemandFusion(){
   });
   // STEP 4: 结果展示
   lastFusionResult=fusion;
+  localStorage.setItem('ic_scm_lastFusion', JSON.stringify(fusion));
   // 卡片
   document.getElementById('fusionSummaryCards').innerHTML=
     '<div class="summary-card blue"><div class="lbl">📦 融合总需求</div><div class="num" style="color:var(--primary)">'+totalFusion.toLocaleString()+'</div><div class="sub-text">'+allKeys.size+' 个月份-物料组合</div></div>'+
