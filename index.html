@@ -863,13 +863,7 @@ tbody tr:hover td{background:var(--primary-bg)}
 
     <!-- ==================== Demand（需求计划）= IC设计企业多层级需求计划 半导体委外版 ==================== -->
     <div class="section" id="section-demandplan">
-      <!-- 数据源关联 + 删除按钮 -->
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:8px;flex-wrap:wrap">
-        <div id="dpDataSourceBar" style="display:flex;align-items:center;gap:6px;padding:4px 10px;background:#f0f7ff;border-radius:6px;font-size:11px;flex-wrap:wrap;flex:1">
-          <span style="font-weight:600;color:var(--gray-500)">🔗 数据来源：</span>
-          <span id="dpDataSourceStatus" style="color:var(--gray-500)">正在加载...</span>
-          <button class="btn btn-sm btn-ghost" onclick="switchSection('demand')" style="font-size:10px;padding:2px 6px">📋 前往需求管理</button>
-        </div>
+      <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:6px;gap:8px;flex-wrap:wrap">
         <button class="btn btn-sm btn-outline-danger" onclick="clearAllDemandPlanData()" style="font-size:11px;white-space:nowrap" title="删除所有Tab下已生成的数据">🗑️ 删除数据</button>
       </div>
       <div class="tabs" id="demandPlanTabs">
@@ -6896,34 +6890,10 @@ function switchDemandPlanTab(tab){
   if(tab==='dp-promotion') renderDpPromotion();
   if(tab==='dp-npi') renderDpNpi();
   if(tab==='dp-analytics') renderDpAnalytics();
-  updateDpDataSource();
 }
 function updateDemandPlan(){
-  updateDpDataSource();
   renderDpStatistical();renderDpSensing();renderDpConsensus();
   renderDpPromotion();renderDpNpi();renderDpAnalytics();
-}
-
-// 更新DP数据来源状态栏（关联Requirement）
-function updateDpDataSource(){
-  const el = document.getElementById('dpDataSourceStatus');
-  if(!el) return;
-  const co = appData.customerOrders || [];
-  const sh = appData.salesHistory || [];
-  const dm = appData.demands || [];
-  const fuse = (()=>{try{return JSON.parse(localStorage.getItem('ic_scm_lastFusion'))}catch(e){return null}})();
-  const parts = [];
-  if(co.length) parts.push('📋 客户订单'+co.length+'条');
-  if(sh.length) parts.push('📜 历史销售'+sh.length+'条');
-  if(fuse) parts.push('🔮 需求融合已就绪');
-  if(dm.length) parts.push('🧩 融合需求'+dm.length+'笔');
-  if(parts.length){
-    el.innerHTML = '✅ 来自 <strong>需求管理(Requirement)</strong>：'+parts.join(' · ');
-    el.style.color = 'var(--primary)';
-  } else {
-    el.innerHTML = '⚠️ 需求管理暂无数据，请先录入客户订单或历史销售';
-    el.style.color = 'var(--danger)';
-  }
 }
 
 // 清空Demand Planning所有Tab下已生成的数据
