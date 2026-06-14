@@ -870,7 +870,7 @@ tbody tr:hover td{background:var(--primary-bg)}
         <div class="tab" data-tab="dp-promotion" onclick="switchDemandPlanTab('dp-promotion')" style="flex-shrink:0">📋 客户承诺 <span style="font-size:10px;color:var(--gray-400)">产能博弈</span></div>
         <div class="tab" data-tab="dp-analytics" onclick="switchDemandPlanTab('dp-analytics')" style="flex-shrink:0">📈 需求分析 <span style="font-size:10px;color:var(--gray-400)">委外维度</span></div>
         <div style="margin-left:auto;flex-shrink:0;padding-left:8px">
-          <button class="btn btn-sm btn-outline-danger" onclick="clearAllDemandPlanData()" style="font-size:10px;padding:2px 8px;white-space:nowrap" title="删除所有Tab下已生成的数据">🗑️ 删除</button>
+          <button class="btn btn-sm btn-outline-danger" onclick="clearAllDemandPlanData()" style="font-size:10px;padding:2px 8px;white-space:nowrap" title="删除所有Tab下已生成的数据">🗑️ 删除数据</button>
         </div>
       </div>
 
@@ -1040,8 +1040,9 @@ tbody tr:hover td{background:var(--primary-bg)}
       <!-- ==================== Tab 4: Customer Commitment（委外产能博弈） ==================== -->
       <div class="tab-content" id="tab-dp-promotion">
         <div class="result-summary" id="dpPromoCards"></div>
-        <div style="margin-bottom:8px;padding:6px 10px;background:#f0f7ff;border-radius:6px;font-size:11px;color:var(--gray-600)">
-          📋 <strong>IC设计客户承诺与委外产能博弈</strong>：客户Hard/Flexible/Forecast承诺 → 经委外级联折算等效晶圆 → 与晶圆产能约束进行分配
+        <div style="margin-bottom:8px;padding:6px 10px;background:#f0f7ff;border-radius:6px;font-size:11px;color:var(--gray-600);display:flex;align-items:center;justify-content:space-between">
+          <span>📋 <strong>IC设计客户承诺与委外产能博弈</strong>：客户Hard/Flexible/Forecast承诺 → 经委外级联折算等效晶圆 → 与晶圆产能约束进行分配</span>
+          <button class="btn btn-sm btn-outline-danger" onclick="clearAllDemandPlanData()" style="font-size:10px;padding:2px 8px;white-space:nowrap;flex-shrink:0">🗑️ 删除数据</button>
         </div>
         <div class="grid-2">
           <div class="card">
@@ -1206,7 +1207,7 @@ tbody tr:hover td{background:var(--primary-bg)}
         </div>
         <div class="card">
           <div class="card-title">🔍 成品级匹配明细</div>
-          <div class="table-wrapper"><table id="spMatchDetailTable"><thead><tr><th>订单号</th><th>成品物料</th><th>需求日期</th><th>FT需求</th><th>等效Wafer</th><th>可用晶圆</th><th>匹配数量</th><th>缺口</th><th>匹配状态</th></tr></thead><tbody></tbody></table></div>
+          <div class="table-wrapper"><table id="spMatchDetailTable"><thead><tr><th>订单号</th><th>成品物料</th><th>需求日期</th><th>FT需求</th><th>等效Wafer</th><th>可用晶圆</th><th>匹配数量</th><th>缺口</th><th>匹配状态</th><th>数据来源</th></tr></thead><tbody></tbody></table></div>
         </div>
       </div>
 
@@ -6514,6 +6515,7 @@ function renderSpMatching(){
     supplyPlanData.exceptions=[];
     supplyPlanData.matchDetails=[];
     const hasRealDemands = appData.demands.length > 0;
+    const hasRealFc = demandPlanData.forecasts && demandPlanData.forecasts.length > 0;
     const hasRealInv = appData.inventory.length > 0;
     const hasRealWip = appData.wip.length > 0;
     const hasRealPrpo = appData.prpo.length > 0;
@@ -6562,15 +6564,18 @@ function renderSpMatching(){
       });
     }
     
-    // 从实际需求构建匹配明细
-    if(hasRealDemands){
-      // 按物料分组需求
+    // 从实际需求/预测构建匹配明细
+    function buildMatchFromDemands(demandSource, sourceLabel){
       const demandByMat = {};
-      appData.demands.forEach(d => {
+      demandSource.forEach(d => {
         const key = d.material;
         if(!demandByMat[key]) demandByMat[key] = {material:d.material, orders:[], totalQty:0};
-        demandByMat[key].orders.push({orderNo:d.orderNo||d.orderType+'-'+Math.random().toString(36).substr(2,5), qty:d.quantity||0, date:d.demandDate});
-        demandByMat[key].totalQty += (d.quantity||0);
+        const qty = d.totalForecast || d.quantity || 0;
+        if(qty <= 0) return;
+        const orderNo = d.orderNo || d.period || sourceLabel+'-'+String(demandByMat[key].orders.length+1).padStart(3,'0');
+        const date = d.demandDate || d.deliveryDate || d.period || '—';
+        demandByMat[key].orders.push({orderNo, qty, date});
+        demandByMat[key].totalQty += qty;
       });
       Object.keys(demandByMat).forEach(key => {
         const dm = demandByMat[key];
@@ -6579,27 +6584,31 @@ function renderSpMatching(){
         if(isFT){
           dm.orders.forEach(ord => {
             const waferNeed = calcFtToWafer(ord.qty);
-            // 从实际库存和WIP计算可用供应
             const invQty = appData.inventory.filter(inv => inv.materialCode === key).reduce((s,inv) => s+(inv.stock||0), 0);
             const wipQty = appData.wip.filter(w => w.materialCode === key && w.processCode === 'FT').reduce((s,w) => s+(w.outputQty||0), 0);
             const poQty = appData.prpo.filter(p => p.materialCode === key && p.orderType === 'PO').reduce((s,p) => s+(p.quantity||0), 0);
             const totalSupply = invQty + wipQty + poQty;
-            // wafer供应从inventory和prpo中Wafer相关计算
             const waferInv = appData.inventory.filter(inv => inv.processCode === 'Wafer' || appData.materials.find(m=>m.code===inv.materialCode)?.processCode==='Wafer').reduce((s,inv) => s+(inv.stock||0), 0);
             const availWafer = Math.round(waferNeed * Math.min(1, (waferInv + totalSupply) / Math.max(ord.qty, 1)));
             const matchQty = Math.round(calcWaferToFt(availWafer));
             supplyPlanData.matchDetails.push({
               orderNo:ord.orderNo, material:key, reqDate:ord.date,
               ftQty:ord.qty, waferNeed, availWafer:Math.round(availWafer), matchQty,
-              gap:Math.max(0, ord.qty-matchQty),
+              gap:Math.max(0, ord.qty-matchQty), source:sourceLabel,
               status:matchQty>=ord.qty?'已匹配':matchQty>=ord.qty*0.7?'部分匹配':'待匹配'
             });
           });
         }
       });
     }
+    if(hasRealDemands){
+      buildMatchFromDemands(appData.demands, '融合需求');
+    }
+    if(!supplyPlanData.matchDetails.length && hasRealFc){
+      buildMatchFromDemands(demandPlanData.forecasts, 'DP预测');
+    }
     if(!supplyPlanData.matchDetails.length){
-      // 无实际需求时使用示例
+      // 无实际需求也无预测时使用示例
       const ftDemands=[{order:'SO-2026-001',material:'IC-1000-FT',qty:18500,date:'2026-06-20'},
         {order:'SO-2026-002',material:'IC-1000-FT',qty:12000,date:'2026-06-25'},
         {order:'SO-2026-003',material:'IC-1000-FT',qty:8000,date:'2026-07-05'}];
@@ -6610,7 +6619,7 @@ function renderSpMatching(){
         supplyPlanData.matchDetails.push({
           orderNo:d.order,material:d.material,reqDate:d.date,
           ftQty:d.qty,waferNeed,availWafer,matchQty,
-          gap:Math.max(0,d.qty-matchQty),
+          gap:Math.max(0,d.qty-matchQty),source:'示例',
           status:matchQty>=d.qty?'已匹配':matchQty>=d.qty*0.7?'部分匹配':'待匹配'
         });
       });
@@ -6651,7 +6660,7 @@ function renderSpMatching(){
 
   html='';supplyPlanData.matchDetails.forEach(m=>{
     const statusColor=m.status==='已匹配'?'var(--success)':m.status==='部分匹配'?'var(--warning)':'var(--danger)';
-    html+='<tr><td>'+m.orderNo+'</td><td>'+m.material+'</td><td>'+m.reqDate+'</td><td>'+m.ftQty.toLocaleString()+'</td><td>'+m.waferNeed.toLocaleString()+'片</td><td>'+(m.availWafer>0?m.availWafer.toLocaleString()+'片':'<span style="color:var(--danger)">无</span>')+'</td><td>'+m.matchQty.toLocaleString()+'</td><td>'+(m.gap>0?'<span style="color:var(--danger)">'+m.gap.toLocaleString()+'</span>':'0')+'</td><td><span style="color:'+statusColor+';font-weight:600">'+m.status+'</span></td></tr>';
+    html+='<tr><td>'+m.orderNo+'</td><td>'+m.material+'</td><td>'+m.reqDate+'</td><td>'+m.ftQty.toLocaleString()+'</td><td>'+m.waferNeed.toLocaleString()+'片</td><td>'+(m.availWafer>0?m.availWafer.toLocaleString()+'片':'<span style="color:var(--danger)">无</span>')+'</td><td>'+m.matchQty.toLocaleString()+'</td><td>'+(m.gap>0?'<span style="color:var(--danger)">'+m.gap.toLocaleString()+'</span>':'0')+'</td><td><span style="color:'+statusColor+';font-weight:600">'+m.status+'</span></td><td><span class="tag" style="background:#e0f2fe;color:#0369a1;font-size:11px">'+m.source+'</span></td></tr>';
   });
   document.getElementById('spMatchDetailTable').querySelector('tbody').innerHTML=html;
 }
@@ -6688,24 +6697,81 @@ function renderSpCtm(){
   if(!supplyPlanData.ctmOrders.length){
     supplyPlanData.ctmOrders=[];
     supplyPlanData.ctmCommits=[];
-    const orders=[
-      {orderNo:'ORD-001',material:'IC-1000-FT',reqQty:8000,reqDate:'2026-06-20'},
-      {orderNo:'ORD-002',material:'IC-1000-FT',reqQty:12000,reqDate:'2026-06-28'},
-      {orderNo:'ORD-003',material:'IC-1000-FT',reqQty:5000,reqDate:'2026-07-05'},
-      {orderNo:'ORD-004',material:'IC-1000-FT',reqQty:15000,reqDate:'2026-07-15'}
-    ];
-    orders.forEach(o=>{
-      const waferNeed=calcFtToWafer(o.reqQty);
-      const availWafer=Math.round(waferNeed*(0.5+Math.random()*0.4));
-      const atpQty=Math.round(calcWaferToFt(availWafer));
-      const atpDelay=Math.floor(Math.random()*10)+3;
-      supplyPlanData.ctmOrders.push({
-        orderNo:o.orderNo,material:o.material,reqQty:o.reqQty,
-        reqDate:o.reqDate,waferNeed,availWafer,
-        atpQty,atpDate:'2026-06-'+(15+atpDelay),
-        commitQty:0,commitStatus:'待检查'
+    // 从DP预测数据/客户订单构建ATP订单
+    const forecastOrders = demandPlanData.forecasts || [];
+    const customerOrders = appData.customerOrders || [];
+    const hasFcData = forecastOrders.length > 0;
+    const hasCustOrders = customerOrders.length > 0;
+    
+    if(hasFcData || hasCustOrders){
+      // 从预测构建ATP检查订单
+      if(hasFcData){
+        forecastOrders.slice(0,8).forEach((f,i)=>{
+          const matCode = f.material || 'IC-1000-FT';
+          const qty = f.totalForecast || 0;
+          if(qty <= 0) return;
+          const waferNeed = calcFtToWafer(qty);
+          // 从实际库存/WIP/PO计算可用晶圆
+          const waferInv = appData.inventory.filter(inv => {
+            const mat=appData.materials.find(m=>m.code===inv.materialCode);
+            return mat?.processCode==='Wafer'||inv.materialCode?.includes('Wafer');
+          }).reduce((s,inv) => s+(inv.stock||0), 0);
+          const waferPo = appData.prpo.filter(p => {
+            const mat=appData.materials.find(m=>m.code===p.materialCode);
+            return (mat?.processCode==='Wafer'||p.materialCode?.includes('Wafer')) && p.orderType==='PO';
+          }).reduce((s,p) => s+(p.quantity||0), 0);
+          const totalWaferAvail = Math.max(waferInv + waferPo, Math.round(waferNeed * 0.5));
+          const availWafer = Math.round(Math.min(waferNeed, totalWaferAvail));
+          const atpQty = Math.round(calcWaferToFt(availWafer));
+          const weeksOut = f.period ? parseInt(f.period.replace(/[^0-9]/g,''))||i+1 : i+1;
+          const atpDate = new Date(Date.now() + weeksOut*7*86400000).toISOString().substring(0,10);
+          supplyPlanData.ctmOrders.push({
+            orderNo:'FC-'+String(i+1).padStart(3,'0'), material:matCode,
+            reqQty:qty, reqDate:f.period||'W'+(i+1), waferNeed,
+            availWafer, atpQty, atpDate,
+            commitQty:0, commitStatus:'待检查'
+          });
+        });
+      }
+      // 也从客户订单构建
+      if(hasCustOrders && supplyPlanData.ctmOrders.length < 6){
+        customerOrders.slice(0,4).forEach((co,i)=>{
+          const qty = co.quantity || 0;
+          if(qty <= 0) return;
+          const waferNeed = calcFtToWafer(qty);
+          const availWafer = Math.round(waferNeed * (0.6+Math.random()*0.3));
+          const atpQty = Math.round(calcWaferToFt(availWafer));
+          const reqDate = co.deliveryDate || co.orderDate || '—';
+          supplyPlanData.ctmOrders.push({
+            orderNo:co.orderNo||'CO-'+String(i+1).padStart(3,'0'),
+            material:co.materialCode||co.material||'IC-1000-FT',
+            reqQty:qty, reqDate, waferNeed,
+            availWafer, atpQty, atpDate:reqDate,
+            commitQty:0, commitStatus:'待检查'
+          });
+        });
+      }
+    } else {
+      // 无预测也无客户订单时使用示例
+      const orders=[
+        {orderNo:'ORD-001',material:'IC-1000-FT',reqQty:8000,reqDate:'2026-06-20'},
+        {orderNo:'ORD-002',material:'IC-1000-FT',reqQty:12000,reqDate:'2026-06-28'},
+        {orderNo:'ORD-003',material:'IC-1000-FT',reqQty:5000,reqDate:'2026-07-05'},
+        {orderNo:'ORD-004',material:'IC-1000-FT',reqQty:15000,reqDate:'2026-07-15'}
+      ];
+      orders.forEach(o=>{
+        const waferNeed=calcFtToWafer(o.reqQty);
+        const availWafer=Math.round(waferNeed*(0.5+Math.random()*0.4));
+        const atpQty=Math.round(calcWaferToFt(availWafer));
+        const atpDelay=Math.floor(Math.random()*10)+3;
+        supplyPlanData.ctmOrders.push({
+          orderNo:o.orderNo,material:o.material,reqQty:o.reqQty,
+          reqDate:o.reqDate,waferNeed,availWafer,
+          atpQty,atpDate:'2026-06-'+(15+atpDelay),
+          commitQty:0,commitStatus:'待检查'
+        });
       });
-    });
+    }
   }
 
   const totalReq=supplyPlanData.ctmOrders.reduce((s,o)=>s+o.reqQty,0);
@@ -6725,14 +6791,18 @@ function renderSpCtm(){
   if(!supplyPlanData.ctmOrders.length)html='<tr><td colspan="9" class="empty-state">暂无订单数据</td></tr>';
   document.getElementById('spCtmOrderTable').querySelector('tbody').innerHTML=html;
 
-  // 制程级可承诺库存
+  // 制程级可承诺库存（从实际数据读取）
   html='';SP_PROCS.forEach(proc=>{
     const matCode=appData.materialCodeMap[proc]||('IC-1000-'+proc);
     const yieldRate=spYield(proc);
-    const totalStock=Math.round(200+Math.random()*800);
-    const allocated=Math.round(totalStock*0.3);
-    const inTransit=Math.round(Math.random()*200);
-    const avail=Math.max(0,Math.round((totalStock-allocated-inTransit)*yieldRate));
+    const procInv = appData.inventory.filter(inv => {
+      const mat=appData.materials.find(m=>m.code===inv.materialCode);
+      return mat?.processCode===proc || inv.materialCode?.includes(proc);
+    });
+    const totalStock = procInv.reduce((s,inv)=>s+(inv.stock||0), 0);
+    const allocated = Math.round(totalStock * 0.3);
+    const inTransit = appData.wip.filter(w=>w.processCode===proc).reduce((s,w)=>s+(w.inputQty||0)-(w.outputQty||0), 0);
+    const avail = Math.max(0, Math.round((totalStock - allocated - inTransit) * yieldRate));
     html+='<tr><td><strong>'+spProcLabel(proc)+'</strong></td><td>'+matCode+'</td><td>'+totalStock.toLocaleString()+'</td><td>'+allocated.toLocaleString()+'</td><td>'+inTransit.toLocaleString()+'</td><td>'+(yieldRate*100)+'%</td><td><span style="color:'+(avail>0?'var(--success)':'var(--danger)')+';font-weight:600">'+avail.toLocaleString()+'</span></td><td>'+(proc==='Wafer'?60:proc==='BP'?30:proc==='CP'?21:proc==='AB'?30:14)+'天</td></tr>';
   });
   document.getElementById('spCtmStockTable').querySelector('tbody').innerHTML=html;
@@ -6759,7 +6829,20 @@ function commitCtmOrder(idx){
 }
 function openCtmCheckModal(){
   const opts=supplyPlanData.ctmOrders.map((o,i)=>'<option value="'+i+'">'+o.orderNo+' - '+o.material+'（需'+o.reqQty+'颗FT，等效'+calcFtToWafer(o.reqQty)+'片Wafer）</option>').join('');
-  const html='<h3>🔍 晶圆级ATP检查</h3><div style="margin:12px 0"><label style="font-size:13px;font-weight:600">选择订单：</label><select id="ctmOrderSelect" style="width:100%;padding:8px;margin:6px 0;border:1px solid var(--gray-300);border-radius:6px">'+opts+'</select></div><div style="margin:12px 0;padding:12px;background:var(--gray-50);border-radius:6px;font-size:13px"><strong>ATP 检查结果（晶圆级）：</strong><br>• 晶圆库存检查：可用'+Math.round(500+Math.random()*2000)+'片<br>• 委外产能检查：BP/CP/AB/FT 全线产能正常<br>• 良率预估：综合良率约 85%<br>• 全链交期预估：从Wafer投料到FT成品约 40-50 天<br>• 推荐承诺日期：2026-0'+(6+Math.floor(Math.random()*2))+'-'+(15+Math.floor(Math.random()*10))+'</div><div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-sm btn-success" onclick="confirmCtmCheck()">✅ 确认承诺</button><button class="btn btn-sm btn-outline" onclick="closeModal()">取消</button></div>';
+  // 从实际数据计算ATP结果
+  const waferInv = appData.inventory.filter(inv => {
+    const mat=appData.materials.find(m=>m.code===inv.materialCode);
+    return mat?.processCode==='Wafer'||inv.materialCode?.includes('Wafer');
+  }).reduce((s,inv) => s+(inv.stock||0), 0);
+  const waferPo = appData.prpo.filter(p => {
+    const mat=appData.materials.find(m=>m.code===p.materialCode);
+    return (mat?.processCode==='Wafer'||p.materialCode?.includes('Wafer')) && p.orderType==='PO';
+  }).reduce((s,p) => s+(p.quantity||0), 0);
+  const waferWip = appData.wip.filter(w=>w.processCode==='Wafer').reduce((s,w)=>s+(w.outputQty||0), 0);
+  const totalWaferAvail = waferInv + waferPo + waferWip;
+  const nextWeek = new Date(Date.now()+7*86400000);
+  const recDate = nextWeek.toISOString().substring(0,10).replace(/-/g,'-');
+  const html='<h3>🔍 晶圆级ATP检查</h3><div style="margin:12px 0"><label style="font-size:13px;font-weight:600">选择订单：</label><select id="ctmOrderSelect" style="width:100%;padding:8px;margin:6px 0;border:1px solid var(--gray-300);border-radius:6px">'+opts+'</select></div><div style="margin:12px 0;padding:12px;background:var(--gray-50);border-radius:6px;font-size:13px"><strong>ATP 检查结果（晶圆级）：</strong><br>• 晶圆库存检查：可用'+totalWaferAvail.toLocaleString()+'片（库存'+waferInv+'片+在途PO'+waferPo+'片+在制'+waferWip+'片）<br>• 委外产能检查：BP/CP/AB/FT 全线产能正常<br>• 良率预估：综合良率约 85%<br>• 全链交期预估：从Wafer投料到FT成品约 40-50 天<br>• 推荐承诺日期：'+recDate+'</div><div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-sm btn-success" onclick="confirmCtmCheck()">✅ 确认承诺</button><button class="btn btn-sm btn-outline" onclick="closeModal()">取消</button></div>';
   openModal(html);
 }
 function confirmCtmCheck(){
