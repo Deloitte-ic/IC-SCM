@@ -884,6 +884,7 @@ tbody tr:hover td{background:var(--primary-bg)}
       <!-- ==================== Tab 5: Plan Simulation（计划模拟） ==================== -->
       <div class="tab-content" id="tab-sop-invopt">
         <div class="result-summary" id="sopSimCards"></div>
+        <div id="sopSimDataBar" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;padding:8px 14px;background:var(--primary-bg);border-radius:8px;font-size:11px;color:var(--gray-600);align-items:center"></div>
         <div class="card">
           <div class="card-header">
             <div class="card-title">⚙️ 模拟参数设置 <span class="tag">Simulation Parameters</span></div>
@@ -6068,43 +6069,106 @@ function generateSopExecReport(){
 }
 
 // ==================== Tab 5: Plan Simulation（计划模拟） ====================
-const SIM_DEFAULT = {
-  demandAdj: {}, capacityAdj: {}, yieldAdj: {}, supplierAdj: {}
-};
-const SIM_KEYS = { demandAdj: ['FT','AB','CP','BP','Wafer'], capacityAdj: ['Wafer','BP','CP','AB','FT'], yieldAdj: ['FT','AB','CP','BP','Wafer'], supplierAdj: ['TSMC','SMIC','京元','硅品','SPIL','Amkor','ASE','PTI'] };
-let simParams = JSON.parse(JSON.stringify(SIM_DEFAULT));
+// 动态模拟参数 — 每次执行时从主数据/业务数据实时读取
+let simParams = { demandAdj: {}, capacityAdj: {}, yieldAdj: {}, supplierAdj: {} };
 let simResult = null;
 
-function initSimSliders(){
-  // Demand sliders
-  let dh='';SIM_KEYS.demandAdj.forEach(k=>{const v=simParams.demandAdj[k]||0;dh+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px"><span style="font-size:11px;width:50px">'+k+'</span><input type="range" min="-50" max="50" value="'+v+'" class="sim-slider" data-group="demandAdj" data-key="'+k+'" oninput="updateSimLabel(this)" style="flex:1"><span class="sim-val" id="lbl_demandAdj_'+k+'" style="font-size:11px;min-width:40px;text-align:right">'+(v>0?'+':'')+v+'%</span></div>';});
-  document.getElementById('sopSimDemandSliders').innerHTML=dh||'<span style="font-size:12px;color:var(--gray-400)">无需求数据</span>';
-  // Capacity sliders
-  let ch='';SIM_KEYS.capacityAdj.forEach(k=>{const v=simParams.capacityAdj[k]||0;ch+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px"><span style="font-size:11px;width:50px">'+k+'</span><input type="range" min="-30" max="30" value="'+v+'" class="sim-slider" data-group="capacityAdj" data-key="'+k+'" oninput="updateSimLabel(this)" style="flex:1"><span class="sim-val" id="lbl_capacityAdj_'+k+'" style="font-size:11px;min-width:40px;text-align:right">'+(v>0?'+':'')+v+'%</span></div>';});
-  document.getElementById('sopSimCapacitySliders').innerHTML=ch||'<span style="font-size:12px;color:var(--gray-400)">无产能数据</span>';
-  // Yield sliders
-  let yh='';SIM_KEYS.yieldAdj.forEach(k=>{const v=simParams.yieldAdj[k]||0;yh+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px"><span style="font-size:11px;width:50px">'+k+'</span><input type="range" min="-10" max="10" step="0.5" value="'+v+'" class="sim-slider" data-group="yieldAdj" data-key="'+k+'" oninput="updateSimLabel(this)" style="flex:1"><span class="sim-val" id="lbl_yieldAdj_'+k+'" style="font-size:11px;min-width:40px;text-align:right">'+(v>0?'+':'')+v+'%</span></div>';});
-  document.getElementById('sopSimYieldSliders').innerHTML=yh||'<span style="font-size:12px;color:var(--gray-400)">无良率数据</span>';
-  // Supplier sliders
-  let sh='';SIM_KEYS.supplierAdj.forEach(k=>{const v=simParams.supplierAdj[k]||0;sh+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px"><span style="font-size:11px;width:50px">'+k+'</span><input type="range" min="-40" max="40" value="'+v+'" class="sim-slider" data-group="supplierAdj" data-key="'+k+'" oninput="updateSimLabel(this)" style="flex:1"><span class="sim-val" id="lbl_supplierAdj_'+k+'" style="font-size:11px;min-width:40px;text-align:right">'+(v>0?'+':'')+v+'%</span></div>';});
-  document.getElementById('sopSimSupplierSliders').innerHTML=sh||'<span style="font-size:12px;color:var(--gray-400)">无供应商数据</span>';
+// 从appData动态生成滑块键名列表
+function buildSimKeys(){
+  const keys = { demandAdj: [], capacityAdj: [], yieldAdj: [], supplierAdj: [] };
+  // 需求滑块：读取实际有需求数据的制程层级
+  const procsWithDemand = new Set();
+  appData.demands.forEach(d => {
+    const mat = appData.materials.find(m => m.code === d.material);
+    const proc = mat?.processCode || 'FT';
+    procsWithDemand.add(proc);
+  });
+  // 无数据时兜底
+  keys.demandAdj = procsWithDemand.size > 0 ? [...procsWithDemand] : ['FT','Wafer'];
+  
+  // 产能滑块：从appData.suppliers中读取实际有数据的制程
+  const procsWithCap = new Set();
+  appData.suppliers.forEach(s => {
+    if(s.processCode && s.weeklyCap) procsWithCap.add(s.processCode);
+  });
+  keys.capacityAdj = procsWithCap.size > 0 ? [...procsWithCap] : PROCESS_CHAIN;
+  
+  // 良率滑块：从appData.materials中读取有良率数据的制程
+  const procsWithYield = new Set();
+  appData.materials.forEach(m => {
+    if(m.processCode && m.yieldRate) procsWithYield.add(m.processCode);
+  });
+  keys.yieldAdj = procsWithYield.size > 0 ? [...procsWithYield] : PROCESS_CHAIN;
+  
+  // 供应商滑块：从实际供应商数据生成（code+processCode+material联合）
+  const supNames = new Set();
+  appData.suppliers.forEach(s => supNames.add(s.name));
+  // 兜底用 SEMI_SUPPLIERS
+  if(supNames.size === 0){
+    Object.values(SEMI_SUPPLIERS).forEach(arr => arr.forEach(s => supNames.add(s.name)));
+  }
+  keys.supplierAdj = [...supNames];
+  
+  return keys;
 }
+
+function initSimSliders(){
+  const keys = buildSimKeys();
+  // 确保simParams中各组的键与keys同步（保留已有值，新增0）
+  ['demandAdj','capacityAdj','yieldAdj','supplierAdj'].forEach(group => {
+    keys[group].forEach(k => {
+      if(simParams[group][k] === undefined) simParams[group][k] = 0;
+    });
+  });
+  
+  // Demand sliders — 各制程层级
+  let dh=''; keys.demandAdj.forEach(k => {
+    const v=simParams.demandAdj[k]||0;
+    const label = PROCESS_LABELS[k] ? k+'('+PROCESS_LABELS[k]+')' : k;
+    dh+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px"><span style="font-size:11px;width:70px">'+label+'</span><input type="range" min="-50" max="50" value="'+v+'" class="sim-slider" data-group="demandAdj" data-key="'+k+'" oninput="updateSimLabel(this)" style="flex:1"><span class="sim-val" id="lbl_demandAdj_'+k+'" style="font-size:11px;min-width:40px;text-align:right">'+(v>0?'+':'')+v+'%</span></div>';
+  });
+  document.getElementById('sopSimDemandSliders').innerHTML = dh || '<span style="font-size:12px;color:var(--gray-400)">暂无需求数据</span>';
+  
+  // Capacity sliders — 各制程（可调±30%）
+  let ch=''; keys.capacityAdj.forEach(k => {
+    const v=simParams.capacityAdj[k]||0;
+    const label = PROCESS_LABELS[k] ? k+'('+PROCESS_LABELS[k]+')' : k;
+    ch+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px"><span style="font-size:11px;width:70px">'+label+'</span><input type="range" min="-30" max="30" value="'+v+'" class="sim-slider" data-group="capacityAdj" data-key="'+k+'" oninput="updateSimLabel(this)" style="flex:1"><span class="sim-val" id="lbl_capacityAdj_'+k+'" style="font-size:11px;min-width:40px;text-align:right">'+(v>0?'+':'')+v+'%</span></div>';
+  });
+  document.getElementById('sopSimCapacitySliders').innerHTML = ch || '<span style="font-size:12px;color:var(--gray-400)">暂无产能数据</span>';
+  
+  // Yield sliders — 各制程（可调±10%，步长0.5%）
+  let yh=''; keys.yieldAdj.forEach(k => {
+    const v=simParams.yieldAdj[k]||0;
+    const label = PROCESS_LABELS[k] ? k+'('+PROCESS_LABELS[k]+')' : k;
+    yh+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px"><span style="font-size:11px;width:70px">'+label+'</span><input type="range" min="-10" max="10" step="0.5" value="'+v+'" class="sim-slider" data-group="yieldAdj" data-key="'+k+'" oninput="updateSimLabel(this)" style="flex:1"><span class="sim-val" id="lbl_yieldAdj_'+k+'" style="font-size:11px;min-width:40px;text-align:right">'+(v>0?'+':'')+v+'%</span></div>';
+  });
+  document.getElementById('sopSimYieldSliders').innerHTML = yh || '<span style="font-size:12px;color:var(--gray-400)">暂无良率数据</span>';
+  
+  // Supplier sliders — 具体供应商名
+  let sh=''; keys.supplierAdj.forEach(k => {
+    const v=simParams.supplierAdj[k]||0;
+    sh+='<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px"><span style="font-size:11px;width:80px">'+k+'</span><input type="range" min="-40" max="40" value="'+v+'" class="sim-slider" data-group="supplierAdj" data-key="'+k+'" oninput="updateSimLabel(this)" style="flex:1"><span class="sim-val" id="lbl_supplierAdj_'+k+'" style="font-size:11px;min-width:40px;text-align:right">'+(v>0?'+':'')+v+'%</span></div>';
+  });
+  document.getElementById('sopSimSupplierSliders').innerHTML = sh || '<span style="font-size:12px;color:var(--gray-400)">暂无供应商数据</span>';
+}
+
 function updateSimLabel(el){
   const g=el.dataset.group, k=el.dataset.key, v=parseInt(el.value);
   simParams[g][k]=v;
   const lbl=document.getElementById('lbl_'+g+'_'+k);
   if(lbl) lbl.textContent=(v>0?'+':'')+v+'%';
 }
+
 function resetSimParams(){
-  simParams=JSON.parse(JSON.stringify(SIM_DEFAULT));
+  simParams = { demandAdj: {}, capacityAdj: {}, yieldAdj: {}, supplierAdj: {} };
   initSimSliders();
   renderSopSimulation();
   showToast('↺ 参数已重置','info');
 }
 
 function runPlanSimulation(){
-  // Collect slider values
-  document.querySelectorAll('.sim-slider').forEach(el=>{
+  document.querySelectorAll('.sim-slider').forEach(el => {
     const g=el.dataset.group, k=el.dataset.key, v=parseInt(el.value);
     simParams[g][k]=v;
   });
@@ -6112,169 +6176,323 @@ function runPlanSimulation(){
   showToast('▶️ 模拟完成','success');
 }
 
+// ===== 核心模拟引擎：全链路推演（关联主数据+业务数据） =====
 function renderSopSimulation(){
   initSimSliders();
   
-  // --- Baseline: compute from real data ---
-  // Get FT-level demands from appData.demands
-  const ftDemands = appData.demands.filter(d => {
-    const mat = appData.materials.find(m => m.code === d.material);
-    return !mat || mat.processCode === 'FT' || !mat.processCode;
-  });
-  const ftTotal = ftDemands.reduce((s,d) => s + (d.quantity||0), 0);
-  const hasData = ftTotal > 0;
+  // ---- STEP 1: 从appData实时读取所有主数据与业务数据 ----
+  const demands = appData.demands || [];
+  const materials = appData.materials || [];
+  const boms = appData.boms || [];
+  const inventory = appData.inventory || [];
+  const wip = appData.wip || [];
+  const prpo = appData.prpo || [];
+  const suppliers = appData.suppliers || [];
   
-  // Build per-material demand map
+  // ---- STEP 2: 按物料归集FT级需求（通过BOM/processCode识别FT） ----
+  const ftMats = materials.filter(m => (m.processCode === 'FT' || !m.processCode));
   const matDemandMap = {};
-  appData.demands.forEach(d => {
-    const mat = appData.materials.find(m => m.code === d.material);
+  demands.forEach(d => {
+    const mat = materials.find(m => m.code === d.material);
     const proc = mat?.processCode || 'FT';
-    if(proc === 'FT'){
-      const key = d.material;
-      if(!matDemandMap[key]) matDemandMap[key] = {material:key, ftQty:0, orders:[]};
-      matDemandMap[key].ftQty += (d.quantity||0);
-      matDemandMap[key].orders.push(d);
+    if(proc !== 'FT') return; // 仅FT需求驱动
+    if(!matDemandMap[d.material]) {
+      matDemandMap[d.material] = { material: d.material, ftQty: 0, waferBase: 0 };
+    }
+    matDemandMap[d.material].ftQty += (d.quantity||0);
+  });
+  
+  const hasDemandData = Object.keys(matDemandMap).length > 0;
+  // 无真实需求数据时用示例数据
+  if(!hasDemandData){
+    matDemandMap['IC-1000-FT'] = { material:'IC-1000-FT', ftQty:18500, waferBase:0 };
+    matDemandMap['IC-2000-FT'] = { material:'IC-2000-FT', ftQty:12000, waferBase:0 };
+  }
+  
+  // ---- STEP 3: BOM物料级级联——每颗FT物料的晶圆等效需求 ----
+  Object.keys(matDemandMap).forEach(key => {
+    const item = matDemandMap[key];
+    // 使用cascadeToWafer：逐级通过BOM传导（FT→AB→CP→BP→Wafer）
+    let cascade;
+    if(boms.length > 0 && item.material){
+      cascade = cascadeToWafer(item.ftQty, item.material);
+    } else {
+      // 无BOM数据时用内置级联
+      cascade = propagateDemand(item.ftQty);
+    }
+    item.cascade = cascade;
+    item.waferNeed = cascade.Wafer || 0;
+    // 各制程需求明细
+    item.breakdown = {};
+    PROCESS_CHAIN.forEach(p => { item.breakdown[p] = cascade[p] || 0; });
+  });
+  
+  // ---- STEP 4: 各制程现有库存/WIP/PO抵减（关联业务数据） ----
+  const procInv = {};  // 各制程库存
+  const procWip = {};  // 各制程在制品
+  const procPo = {};   // 各制程待收PO
+  PROCESS_CHAIN.forEach(p => { procInv[p]=0; procWip[p]=0; procPo[p]=0; });
+  
+  // Inventory: 按物料制程归集
+  inventory.forEach(inv => {
+    const mat = materials.find(m => m.code === inv.materialCode);
+    const proc = mat?.processCode || (inv.processCode || 'FT');
+    if(procInv[proc] !== undefined) procInv[proc] += (inv.stock || 0) + (inv.goodQty || 0);
+  });
+  
+  // WIP: 按物料制程归集
+  wip.forEach(w => {
+    if(procWip[w.processCode] !== undefined) procWip[w.processCode] += (w.inputQty || 0);
+  });
+  
+  // PR/PO: 按制程归集（仅有效PO和待审批PR）
+  prpo.forEach(p => {
+    if(procPo[p.processCode] !== undefined && p.orderType === 'PO' && p.status !== '已取消'){
+      procPo[p.processCode] += (p.quantity || 0);
     }
   });
   
-  const baseDemand = hasData ? ftTotal : 18500;
-  const basePerMat = hasData ? Object.keys(matDemandMap).map(k => matDemandMap[k]) : 
-    [{material:'IC-1000-FT', ftQty:18500}, {material:'IC-2000-FT', ftQty:12000}];
-  
-  // Apply demand adjustment to get simulated demand
-  const simMatData = basePerMat.map(item => {
-    const mat = appData.materials.find(m => m.code === item.material);
-    const adjKey = mat?.processCode || 'FT';
-    const adjPct = (simParams.demandAdj[adjKey]||0) / 100;
-    const simFt = Math.round(item.ftQty * (1 + adjPct));
-    const waferNeed = calcFtToWafer(simFt);
-    return { material: item.material, ftQty: item.ftQty, simFtQty: simFt, waferNeed };
-  });
-  
-  // --- Per-process capacity calculation ---
-  // Base capacity per process (from suppliers data)
+  // ---- STEP 5: 构建各制程基线产能（从实际供应商数据） ----
   const procBaseCap = {};
   PROCESS_CHAIN.forEach(p => { procBaseCap[p] = 0; });
   
-  // From suppliers
-  const hasSuppliers = appData.suppliers.length > 0;
-  SEMI_SUPPLIERS.Wafer.forEach(s => { procBaseCap.Wafer += (s.weeklyCap || 800); });
-  SEMI_SUPPLIERS.BP.forEach(s => { procBaseCap.BP += (s.weeklyCap || 800); });
-  SEMI_SUPPLIERS.CP.forEach(s => { procBaseCap.CP += (s.weeklyCap || 800); });
-  SEMI_SUPPLIERS.AB.forEach(s => { procBaseCap.AB += (s.weeklyCap || 800); });
-  SEMI_SUPPLIERS.FT.forEach(s => { procBaseCap.FT += (s.weeklyCap || 800); });
-  
-  // Override with real supplier data if available
-  if(hasSuppliers){
-    appData.suppliers.forEach(s => {
+  const hasSupplierData = suppliers.length > 0;
+  if(hasSupplierData){
+    // 使用真实供应商数据 — 按processCode匹配
+    suppliers.forEach(s => {
       if(procBaseCap[s.processCode] !== undefined){
-        procBaseCap[s.processCode] += (s.weeklyCap || 800);
+        procBaseCap[s.processCode] += (s.weeklyCap || 0);
+      }
+    });
+  }
+  // 无真实供应商数据时使用内置默认
+  if(!hasSupplierData || PROCESS_CHAIN.some(p => procBaseCap[p] === 0)){
+    PROCESS_CHAIN.forEach(p => {
+      if(procBaseCap[p] === 0){
+        const defCaps = SEMI_SUPPLIERS[p] || [];
+        procBaseCap[p] = defCaps.reduce((s, sup) => s + (sup.weeklyCap || 800), 0) || 800;
       }
     });
   }
   
-  // Apply capacity adjustment
+  // ---- STEP 6: 各制程实际良率（从物料级数据读取，兜底用SEMI_YIELD） ----
+  const materialYield = {};
+  materials.forEach(m => {
+    if(m.processCode && m.yieldRate){
+      if(!materialYield[m.processCode]) materialYield[m.processCode] = [];
+      materialYield[m.processCode].push(m.yieldRate);
+    }
+  });
+  const procBaseYield = {};
+  PROCESS_CHAIN.forEach(p => {
+    const yields = materialYield[p];
+    if(yields && yields.length > 0){
+      procBaseYield[p] = yields.reduce((a,b)=>a+b,0) / yields.length / 100;  // 取平均
+    } else {
+      procBaseYield[p] = SEMI_YIELD[p] || 0.95;
+    }
+  });
+  
+  // ---- STEP 7: 应用调整系数 ----
+  const demandAdj = simParams.demandAdj || {};
+  const capAdj = simParams.capacityAdj || {};
+  const yieldAdj = simParams.yieldAdj || {};
+  const supAdj = simParams.supplierAdj || {};
+  
+  // 调整后的需求
+  const simMatData = Object.keys(matDemandMap).map(key => {
+    const item = matDemandMap[key];
+    const mat = materials.find(m => m.code === key);
+    const proc = mat?.processCode || 'FT';
+    const adjPct = (demandAdj[proc]||0) / 100;
+    const simFt = Math.round(item.ftQty * (1 + adjPct));
+    // 重新计算调整后的级联
+    let simCascade;
+    if(boms.length > 0 && item.material){
+      simCascade = cascadeToWafer(simFt, item.material);
+    } else {
+      simCascade = propagateDemand(simFt);
+    }
+    const simWafer = simCascade.Wafer || 0;
+    return {
+      material: key, ftQty: item.ftQty, simFtQty: simFt,
+      waferNeed: simWafer,
+      cascade: item.cascade,
+      simCascade: simCascade,
+      breakdown: item.breakdown
+    };
+  });
+  
+  // 调整后的产能
   const procSimCap = {};
   PROCESS_CHAIN.forEach(p => {
-    const adjPct = (simParams.capacityAdj[p]||0) / 100;
-    procSimCap[p] = Math.round(procBaseCap[p] * (1 + adjPct));
-  });
-  
-  // Apply supplier-specific adjustments
-  Object.keys(simParams.supplierAdj).forEach(supName => {
-    const adjPct = (simParams.supplierAdj[supName]||0) / 100;
-    if(adjPct !== 0){
-      // Find which process this supplier belongs to
-      for(const p of PROCESS_CHAIN){
+    const base = procBaseCap[p] || 800;
+    const adjPct = (capAdj[p]||0) / 100;
+    // 供应商级别的精调：匹配到对应制程的供应商
+    let supTotalAdj = 0;
+    Object.keys(supAdj).forEach(supName => {
+      const pct = (supAdj[supName]||0) / 100;
+      if(pct === 0) return;
+      // 查找该供应商属于哪个制程
+      const matchedSup = suppliers.find(s => s.name === supName);
+      if(matchedSup && matchedSup.processCode === p){
+        // 该供应商的产能占比
+        const supCap = matchedSup.weeklyCap || 0;
+        const procTotalCap = suppliers.filter(s => s.processCode === p).reduce((a,s) => a+(s.weeklyCap||0), 0);
+        const supShare = procTotalCap > 0 ? supCap / procTotalCap : 0;
+        supTotalAdj += pct * supShare;
+      } else if(!matchedSup) {
+        // 可能来自SEMI_SUPPLIERS兜底数据
         const found = (SEMI_SUPPLIERS[p]||[]).some(s => s.name.includes(supName));
         if(found){
-          procSimCap[p] = Math.round(procSimCap[p] * (1 + adjPct * 0.3));
-          break;
+          const share = 1 / ((SEMI_SUPPLIERS[p]||[]).length || 1);
+          supTotalAdj += pct * share;
         }
       }
-    }
+    });
+    const totalAdjPct = adjPct + supTotalAdj;
+    procSimCap[p] = Math.round(base * (1 + totalAdjPct));
   });
   
-  // --- Yield adjustment ---
+  // 调整后的良率
   const procYield = {};
   PROCESS_CHAIN.forEach(p => {
-    const baseYield = SEMI_YIELD[p] || 0.95;
-    const adjPct = (simParams.yieldAdj[p]||0) / 100;
-    procYield[p] = Math.min(0.999, Math.max(0.5, baseYield * (1 + adjPct)));
+    const base = procBaseYield[p];
+    const adjPct = (yieldAdj[p]||0) / 100;
+    procYield[p] = Math.min(0.999, Math.max(0.5, base * (1 + adjPct)));
   });
   
-  // --- Full supply chain simulation: Wafer → BP → CP → AB → FT ---
-  // Given wafer supply, simulate how much FT output we can get considering capacity & yield at each step
-  function simulateSupplyChain(waferSupply){
-    let flow = { Wafer: waferSupply };
+  // ---- STEP 8: 全链路供需净需求计算 ----
+  // 总FT需求
+  const totalFtDemand = simMatData.reduce((s, m) => s + m.simFtQty, 0);
+  // 总Wafer需求
+  const totalWaferNeed = simMatData.reduce((s, m) => s + m.waferNeed, 0);
+  // 各制程净需求 = 级联需求 - 现有库存 - WIP - PO
+  const netDemandByProc = {};
+  const grossDemandByProc = {};
+  PROCESS_CHAIN.forEach(p => { grossDemandByProc[p] = 0; netDemandByProc[p] = 0; });
+  simMatData.forEach(m => {
+    PROCESS_CHAIN.forEach(p => {
+      const val = m.cascade?.[p] || m.breakdown?.[p] || 0;
+      grossDemandByProc[p] += val;
+    });
+  });
+  PROCESS_CHAIN.forEach(p => {
+    const gross = grossDemandByProc[p] || 0;
+    const existing = (procInv[p]||0) + (procWip[p]||0) + (procPo[p]||0);
+    netDemandByProc[p] = Math.max(0, gross - existing);
+  });
+  
+  // ---- STEP 9: 全链路推演（从晶圆供应→各制程产能约束→良率→FT成品） ----
+  function simulateChain(waferSupply){
+    let flow = { Wafer: Math.round(waferSupply) };
     const revProcs = ['BP','CP','AB','FT'];
     let constraint = null;
+    
+    // 先扣除Wafer级已有库存
+    const waferNet = Math.max(0, flow.Wafer - (procInv.Wafer||0) - (procWip.Wafer||0) - (procPo.Wafer||0));
+    flow.Wafer = waferNet;
+    
     for(const p of revProcs){
-      const yieldRate = procYield[p];
-      // Maximum output after yield
+      const yieldRate = procYield[p] || 0.95;
+      // 最大输出（考虑良率）
       const maxAfterYield = Math.round(flow[p] * yieldRate);
-      // Capacity limit at this process
+      // 可用产能上限
       const capacity = procSimCap[p] || 800;
-      const actualThroughput = Math.min(maxAfterYield, capacity);
-      flow[p] = actualThroughput;
-      if(actualThroughput < maxAfterYield){
-        constraint = { process: p, limit: '产能', demand: maxAfterYield, supply: capacity, gap: maxAfterYield - capacity };
+      // 该制程已有的库存/WIP/PO可以部分抵减
+      const existingSupply = (procInv[p]||0) + (procWip[p]||0) + (procPo[p]||0);
+      
+      // 先消耗现有供应，再走新产能
+      const remainingAfterExisting = Math.max(0, maxAfterYield - existingSupply);
+      const newOutput = Math.min(remainingAfterExisting, capacity);
+      const totalOutput = Math.min(existingSupply, maxAfterYield) + newOutput;
+      
+      flow[p] = totalOutput;
+      
+      if(newOutput < remainingAfterExisting && remainingAfterExisting > 0){
+        constraint = {
+          process: p, limit: '产能',
+          demand: Math.round(maxAfterYield),
+          supply: Math.round(existingSupply + capacity),
+          gap: Math.round(maxAfterYield - existingSupply - capacity),
+          existingUsed: Math.round(Math.min(existingSupply, maxAfterYield))
+        };
       }
     }
-    // FT output is the final wafer-flow through FT yield
-    const ftOutput = Math.round(flow.FT);
-    // Convert to FT units (颗) — flow is in wafer-equivalent units, calcWaferToFt converts properly
-    const ftOutputUnits = Math.round(calcWaferToFt(ftOutput));
-    return { flow, ftOutput: ftOutputUnits, constraint };
+    
+    // FT输出（最终成品）—— 用calcWaferToFt把Wafer当量折算回FT颗
+    const ftRaw = Math.round(flow.FT);
+    const ftOutput = Math.round(calcWaferToFt(ftRaw));
+    
+    return { flow, ftOutput, constraint };
   }
   
-  // Baseline simulation (no adjustments)
-  const savedParams = JSON.parse(JSON.stringify(simParams));
-  simParams = JSON.parse(JSON.stringify(SIM_DEFAULT));
-  const baseWaferTotal = simMatData.reduce((s, m) => s + calcFtToWafer(m.ftQty), 0);
-  // Reset back
-  simParams = savedParams;
+  // 基线：无调整的原Wafer需求
+  const baseWaferTotal = Object.keys(matDemandMap).reduce((s, key) => {
+    return s + (matDemandMap[key].waferNeed || 0);
+  }, 0);
+  const baseResult = simulateChain(baseWaferTotal);
   
-  // Baseline supply chain run
-  const baseSupplyResult = simulateSupplyChain(baseWaferTotal);
-  
-  // Simulated supply chain run
+  // 模拟：调整后的Wafer需求
   const simWaferTotal = simMatData.reduce((s, m) => s + m.waferNeed, 0);
-  const simSupplyResult = simulateSupplyChain(simWaferTotal);
+  const simResult_ = simulateChain(simWaferTotal);
   
-  // --- Per-process bottleneck analysis ---
+  // ---- STEP 10: 瓶颈分析（各制程利用率） ----
   const procAnalysis = PROCESS_CHAIN.map(p => {
-    const load = (p === 'FT') ? simMatData.reduce((s,m) => s+m.simFtQty, 0) :
-                 (p === 'Wafer') ? simWaferTotal : Math.round(simWaferTotal * (PROCESS_CHAIN.indexOf(p)/4));
+    const load = grossDemandByProc[p] || 0;
     const cap = procSimCap[p] || 1;
-    const util = Math.min(100, Math.round(load / cap * 100));
-    const gap = Math.max(0, load - cap);
-    const isBottleneck = util > 95;
-    return { process: p, load, cap, gap, util, isBottleneck };
+    // 修正：考虑已有库存能吸收部分负荷
+    const existing = (procInv[p]||0) + (procWip[p]||0) + (procPo[p]||0);
+    const netLoad = Math.max(0, load - existing);
+    const util = cap > 0 ? Math.min(100, Math.round(netLoad / cap * 100)) : 0;
+    const gap = Math.max(0, netLoad - cap);
+    const isBottleneck = util > 90;
+    return {
+      process: p, load: Math.round(load), netLoad: Math.round(netLoad),
+      cap, existing: Math.round(existing), gap, util, isBottleneck
+    };
   });
   const bottleneck = procAnalysis.find(p => p.isBottleneck) || null;
   
-  // Store result
+  // ---- STEP 11: 存储结果 ----
   simResult = {
-    baseline: { totalFt: baseWaferTotal, ftOutput: baseSupplyResult.ftOutput, constraint: baseSupplyResult.constraint },
-    simulated: { totalFt: simWaferTotal, ftOutput: simSupplyResult.ftOutput, constraint: simSupplyResult.constraint },
-    perMat: simMatData,
-    procAnalysis
+    baseline: { waferTotal: baseWaferTotal, ftOutput: baseResult.ftOutput, constraint: baseResult.constraint },
+    simulated: { waferTotal: simWaferTotal, ftOutput: simResult_.ftOutput, constraint: simResult_.constraint },
+    perMat: simMatData, procAnalysis,
+    inventory: { byProc: procInv, total: Object.values(procInv).reduce((a,b)=>a+b,0) },
+    wip: { byProc: procWip, total: Object.values(procWip).reduce((a,b)=>a+b,0) },
+    po: { byProc: procPo, total: Object.values(procPo).reduce((a,b)=>a+b,0) },
+    netDemand: netDemandByProc
   };
   
-  // ==== RENDER UI ====
-  const baseDeliverRate = baseWaferTotal > 0 ? Math.round(baseSupplyResult.ftOutput / baseWaferTotal * 100) : 0;
-  const simDeliverRate = simWaferTotal > 0 ? Math.round(simSupplyResult.ftOutput / simWaferTotal * 100) : 0;
-  const gapChange = simSupplyResult.ftOutput - baseSupplyResult.ftOutput;
+  // ======== UI渲染 ========
+  const baseDeliverRate = baseWaferTotal > 0 ? Math.round(baseResult.ftOutput / baseWaferTotal * 100) : 0;
+  const simDeliverRate = simWaferTotal > 0 ? Math.round(simResult_.ftOutput / simWaferTotal * 100) : 0;
+  const gapChange = simResult_.ftOutput - baseResult.ftOutput;
+  
+  // 汇总卡片（增加库存/WIP/PO信息）
+  const totalInv = Object.values(procInv).reduce((a,b)=>a+b,0);
+  const totalWipVal = Object.values(procWip).reduce((a,b)=>a+b,0);
+  const totalPoVal = Object.values(procPo).reduce((a,b)=>a+b,0);
   
   document.getElementById('sopSimCards').innerHTML =
-    '<div class="summary-card blue"><div class="lbl">📊 基线FT交付率</div><div class="num" style="color:var(--primary)">'+baseDeliverRate+'%</div><div class="sub-text">当前计划</div></div>'+
-    '<div class="summary-card '+(simDeliverRate>=baseDeliverRate?'green':'red')+'"><div class="lbl">🎯 模拟FT交付率</div><div class="num" style="color:'+(simDeliverRate>=baseDeliverRate?'var(--success)':'var(--danger)')+'">'+simDeliverRate+'%</div><div class="sub-text">调整后</div></div>'+
-    '<div class="summary-card '+(gapChange>=0?'green':'red')+'"><div class="lbl">📈 交付量变化</div><div class="num" style="color:'+(gapChange>=0?'var(--success)':'var(--danger)')+'">'+(gapChange>=0?'+':'')+gapChange.toLocaleString()+'颗</div><div class="sub-text">vs 基线</div></div>'+
-    '<div class="summary-card '+(bottleneck?'orange':'green')+'"><div class="lbl">🔍 '+(bottleneck?'瓶颈制程':'无瓶颈')+'</div><div class="num" style="font-size:16px;color:'+(bottleneck?'var(--warning)':'var(--success)')+'">'+(bottleneck?bottleneck.process+'('+bottleneck.util+'%)':'✓ 畅通')+'</div><div class="sub-text">'+(bottleneck?'利用率'+bottleneck.util+'%':'全链路产能充足')+'</div></div>';
+    '<div class="summary-card blue"><div class="lbl">📊 基线FT交付率</div><div class="num" style="color:var(--primary)">' + baseDeliverRate + '%</div><div class="sub-text">当前计划(无调整)</div></div>' +
+    '<div class="summary-card ' + (simDeliverRate >= baseDeliverRate ? 'green' : 'red') + '"><div class="lbl">🎯 模拟FT交付率</div><div class="num" style="color:' + (simDeliverRate >= baseDeliverRate ? 'var(--success)' : 'var(--danger)') + '">' + simDeliverRate + '%</div><div class="sub-text">调整后</div></div>' +
+    '<div class="summary-card ' + (gapChange >= 0 ? 'green' : 'red') + '"><div class="lbl">📈 交付量变化</div><div class="num" style="color:' + (gapChange >= 0 ? 'var(--success)' : 'var(--danger)') + '">' + (gapChange >= 0 ? '+' : '') + gapChange.toLocaleString() + '颗</div><div class="sub-text">vs 基线</div></div>' +
+    '<div class="summary-card ' + (bottleneck ? 'orange' : 'green') + '"><div class="lbl">🔍 ' + (bottleneck ? '瓶颈制程' : '无瓶颈') + '</div><div class="num" style="font-size:16px;color:' + (bottleneck ? 'var(--warning)' : 'var(--success)') + '">' + (bottleneck ? bottleneck.process + '(' + bottleneck.util + '%)' : '✓ 畅通') + '</div><div class="sub-text">' + (bottleneck ? '利用率' + bottleneck.util + '%' : '全链路产能充足') + '</div></div>';
   
-  // Chart: demand vs supply (baseline vs simulated)
-  const chartLabels = simMatData.map(m => m.material.length>12 ? m.material.substring(0,10)+'…' : m.material);
+  // 数据联动信息栏
+  document.getElementById('sopSimDataBar').innerHTML =
+    '<span>📦 库存总: <strong>' + totalInv.toLocaleString() + '</strong></span>' +
+    '<span>🏭 WIP: <strong>' + totalWipVal.toLocaleString() + '</strong></span>' +
+    '<span>📋 PO在途: <strong>' + totalPoVal.toLocaleString() + '</strong></span>' +
+    '<span>⚪ Wafer需求: <strong>' + simWaferTotal.toLocaleString() + '片</strong> (基线' + baseWaferTotal.toLocaleString() + '片)</span>' +
+    '<span>🧩 FT物料数: <strong>' + Object.keys(matDemandMap).length + '</strong></span>' +
+    '<span>🏭 供应商数: <strong>' + suppliers.length + '</strong></span>' +
+    '<span style="font-size:10px;color:var(--gray-400);margin-left:auto">实时联动主数据+业务数据</span>';
+  
+  // 图表: 物料级对比（需求 vs 基线交付 vs 模拟交付）
+  const chartLabels = simMatData.map(m => m.material.length > 12 ? m.material.substring(0, 10) + '…' : m.material);
   const demandData = simMatData.map(m => m.simFtQty);
   const baseSupplyData = simMatData.map(m => Math.round(m.simFtQty * baseDeliverRate / 100));
   const simSupplyData = simMatData.map(m => Math.round(m.simFtQty * simDeliverRate / 100));
@@ -6299,26 +6517,57 @@ function renderSopSimulation(){
     });
   }
   
-  // Bottleneck table
+  // 瓶颈分析表（增加现有库存列和净负荷列）
   let bhtml = ''; procAnalysis.forEach(p => {
-    const color = p.util > 95 ? 'var(--danger)' : p.util > 80 ? 'var(--warning)' : 'var(--success)';
-    bhtml += '<tr><td><span class="tag-status" style="background:'+PROCESS_COLORS[p.process]+';color:#333;font-weight:600">'+p.process+'</span></td><td>'+p.load.toLocaleString()+'</td><td>'+p.cap.toLocaleString()+'</td><td style="color:'+(p.gap>0?'var(--danger)':'var(--success)')+'">'+(p.gap>0?p.gap.toLocaleString():'✓')+'</td><td style="color:'+color+';font-weight:600">'+p.util+'%</td><td>'+(p.isBottleneck?'<span class="tag" style="background:#fef3c7;color:#92400e">⚠️ 瓶颈</span>':'<span style="color:var(--gray-400)">—</span>')+'</td></tr>';
+    const color = p.util > 90 ? 'var(--danger)' : p.util > 75 ? 'var(--warning)' : 'var(--success)';
+    bhtml += '<tr>' +
+      '<td><span class="tag-status" style="background:' + PROCESS_COLORS[p.process] + ';color:#333;font-weight:600">' + p.process + '</span></td>' +
+      '<td>' + p.load.toLocaleString() + '</td>' +
+      '<td>' + p.existing.toLocaleString() + '</td>' +
+      '<td>' + p.netLoad.toLocaleString() + '</td>' +
+      '<td>' + p.cap.toLocaleString() + '</td>' +
+      '<td style="color:' + (p.gap > 0 ? 'var(--danger)' : 'var(--success)') + '">' + (p.gap > 0 ? p.gap.toLocaleString() : '✓') + '</td>' +
+      '<td style="color:' + color + ';font-weight:600">' + p.util + '%</td>' +
+      '<td>' + (p.isBottleneck ? '<span class="tag" style="background:#fef3c7;color:#92400e">⚠️ 瓶颈</span>' : '<span style="color:var(--gray-400)">—</span>') + '</td>' +
+      '</tr>';
   });
+  const btHead = document.getElementById('sopSimBottleneckTable').querySelector('thead');
+  if(btHead){
+    btHead.innerHTML = '<tr><th>制程</th><th>总需求负荷</th><th>现有库存/WIP/PO</th><th>净负荷</th><th>可供应能</th><th>缺口</th><th>利用率</th><th>瓶颈?</th></tr>';
+  }
   document.getElementById('sopSimBottleneckTable').querySelector('tbody').innerHTML = bhtml;
   
-  // Material delivery table
+  // 物料交付明细表（增加各制程级联和库存抵减列）
   let mhtml = ''; simMatData.forEach(m => {
     const baseDeliver = Math.round(m.ftQty * baseDeliverRate / 100);
     const simDeliver = Math.round(m.simFtQty * simDeliverRate / 100);
     const diff = simDeliver - baseDeliver;
     const rate = m.simFtQty > 0 ? Math.round(simDeliver / m.simFtQty * 100) : 0;
-    mhtml += '<tr><td><strong>'+m.material+'</strong></td><td>'+m.simFtQty.toLocaleString()+'颗</td><td>'+(m.waferNeed||0).toLocaleString()+'片</td><td>'+baseDeliver.toLocaleString()+'颗</td><td>'+simDeliver.toLocaleString()+'颗</td><td style="color:'+(diff>=0?'var(--success)':'var(--danger)')+'">'+(diff>=0?'+':'')+diff.toLocaleString()+'</td><td><span style="color:'+(rate>80?'var(--success)':'var(--danger)')+';font-weight:600">'+rate+'%</span></td></tr>';
+    // 各制程级联需求
+    const cascadeStr = PROCESS_CHAIN.map(p => {
+      const v = m.cascade?.[p] || 0;
+      return p + ':' + v.toLocaleString();
+    }).join(' | ');
+    mhtml += '<tr>' +
+      '<td><strong>' + m.material + '</strong></td>' +
+      '<td>' + m.simFtQty.toLocaleString() + '</td>' +
+      '<td>' + (m.waferNeed || 0).toLocaleString() + '</td>' +
+      '<td style="font-size:10px;color:var(--gray-500)">' + cascadeStr + '</td>' +
+      '<td>' + baseDeliver.toLocaleString() + '</td>' +
+      '<td>' + simDeliver.toLocaleString() + '</td>' +
+      '<td style="color:' + (diff >= 0 ? 'var(--success)' : 'var(--danger)') + '">' + (diff >= 0 ? '+' : '') + diff.toLocaleString() + '</td>' +
+      '<td><span style="color:' + (rate > 80 ? 'var(--success)' : 'var(--danger)') + ';font-weight:600">' + rate + '%</span></td>' +
+      '</tr>';
   });
-  document.getElementById('sopSimDeliveryTable').querySelector('tbody').innerHTML = mhtml || '<tr><td colspan="7" class="empty-state">暂无数据</td></tr>';
+  const dtHead = document.getElementById('sopSimDeliveryTable').querySelector('thead');
+  if(dtHead){
+    dtHead.innerHTML = '<tr><th>物料</th><th>FT需求(颗)</th><th>Wafer需求(片)</th><th>BOM级联明细</th><th>基线交付</th><th>模拟交付</th><th>差异</th><th>交付率</th></tr>';
+  }
+  document.getElementById('sopSimDeliveryTable').querySelector('tbody').innerHTML = mhtml || '<tr><td colspan="8" class="empty-state">暂无数据</td></tr>';
 }
 
 // 初始化模拟参数
-const simDefaultParams = JSON.parse(JSON.stringify(SIM_DEFAULT));
+const simDefaultParams = { demandAdj: {}, capacityAdj: {}, yieldAdj: {}, supplierAdj: {} };
 function exportSopReport(section){
   const name=section==='demand'?'Demand_Review':'Supply_Review';
   showToast('📥 '+name+' 报告已导出','success');
