@@ -7613,13 +7613,18 @@ function approveDpVersion(idx){
 // ==================== Tab 4: Customer Commitment（晶圆博弈客户承诺） ====================
 function renderDpPromotion(skipAuto){
   if(!skipAuto && !demandPlanData.customerCommitments.length){
+    // 如果被清空标记阻塞但数据源已有新数据，清除标记并继续
     if(localStorage.getItem('ic_scm_dp_cleared')==='1'){
-      renderEmptyDpState('dpPromoCards', ['dpPromoUpliftTable','dpPromoTable'], 'dpPromoChart', 'dpPromoChartInstance');
-      return;
+      const hasOrders = appData.customerOrders.length > 0;
+      if(hasOrders) {
+        localStorage.removeItem('ic_scm_dp_cleared');
+      } else {
+        renderEmptyDpState('dpPromoCards', ['dpPromoUpliftTable','dpPromoTable'], 'dpPromoChart', 'dpPromoChartInstance');
+        return;
+      }
     }
-    const hasOrders = appData.customerOrders.length > 0;
-    const hasCusts = appData.customers.length > 0;
-    if(!hasOrders || !hasCusts) {
+    // 客户承诺从客户订单聚合，不强制依赖客户基础数据（Master Data）
+    if(!appData.customerOrders.length) {
       renderEmptyDpState('dpPromoCards', ['dpPromoUpliftTable','dpPromoTable'], 'dpPromoChart', 'dpPromoChartInstance');
       return;
     }
@@ -7651,7 +7656,7 @@ function renderDpPromotion(skipAuto){
       const fcInfo = fcMap[g.material] || {totalForecast: 0, waferEquivalent: 0};
       const priority = g.hard >= 50000 ? 'A' : g.hard >= 10000 ? 'B' : 'C';
       const custObj = appData.customers.find(c => (c.name || c.code) === g.customer);
-      const otif = custObj?.creditLevel === 'AA' ? 98 : custObj?.creditLevel === 'A' ? 95 : 90;
+      const otif = custObj?.creditlevel === 'AA' ? 98 : custObj?.creditlevel === 'A' ? 95 : 90;
       return {customer: g.customer, material: g.material, hard: g.hard, flexible: g.flexible,
         forecastAmt: g.forecastAmt, totalComm, waferNeed, fcBaseline: fcInfo.totalForecast,
         fcWafer: fcInfo.waferEquivalent, hasSignal: signalMats.has(g.material), priority, otif};
