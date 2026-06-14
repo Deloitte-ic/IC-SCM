@@ -868,14 +868,13 @@ tbody tr:hover td{background:var(--primary-bg)}
         <div class="tab" data-tab="dp-sensing" onclick="switchDemandPlanTab('dp-sensing')" style="flex-shrink:0">📡 承诺感知 <span style="font-size:10px;color:var(--gray-400)">委外级联</span></div>
         <div class="tab" data-tab="dp-consensus" onclick="switchDemandPlanTab('dp-consensus')" style="flex-shrink:0">🤝 滚动共识 <span style="font-size:10px;color:var(--gray-400)">晶圆约束</span></div>
         <div class="tab" data-tab="dp-promotion" onclick="switchDemandPlanTab('dp-promotion')" style="flex-shrink:0">📋 客户承诺 <span style="font-size:10px;color:var(--gray-400)">产能博弈</span></div>
-        <div class="tab" data-tab="dp-npi" onclick="switchDemandPlanTab('dp-npi')" style="flex-shrink:0">🔄 NPI生命周期 <span style="font-size:10px;color:var(--gray-400)">良率学习</span></div>
         <div class="tab" data-tab="dp-analytics" onclick="switchDemandPlanTab('dp-analytics')" style="flex-shrink:0">📈 需求分析 <span style="font-size:10px;color:var(--gray-400)">委外维度</span></div>
         <div style="margin-left:auto;flex-shrink:0;padding-left:8px">
           <button class="btn btn-sm btn-outline-danger" onclick="clearAllDemandPlanData()" style="font-size:10px;padding:2px 8px;white-space:nowrap" title="删除所有Tab下已生成的数据">🗑️ 删除</button>
         </div>
       </div>
 
-      <!-- 制程级联信息栏 -->
+      <!-- 制程级联信息栏（动态从supplier数据生成） -->
       <div id="dpProcessChainBar" style="display:flex;gap:6px;align-items:center;padding:6px 12px;background:linear-gradient(90deg,#f8fafc,#f0f7ff);border-radius:6px;margin-bottom:8px;font-size:11px;flex-wrap:wrap">
         <span style="font-weight:600;color:var(--gray-500)">🔗 委外级联：</span>
         <span class="tag" style="background:#dbeafe;color:#1e40af">FT成品</span>
@@ -887,7 +886,7 @@ tbody tr:hover td{background:var(--primary-bg)}
         <span class="tag" style="background:#f3e8ff;color:#6b21a8">BP</span>
         <span style="color:var(--gray-400)">←Wafer晶圆采购</span>
         <span class="tag" style="background:#fce7f3;color:#9d174d">Wafer</span>
-        <span style="color:var(--gray-500);margin-left:6px">|  委外: ASE/PTI→京元/矽格→SPIL/Amkor→TSMC/SMIC</span>
+        <span id="dpSupplierList" style="color:var(--gray-500);margin-left:6px">|  委外: 加载中...</span>
       </div>
 
       <!-- ==================== Tab 1: Statistical（IC设计多层级统计预测） ==================== -->
@@ -1060,31 +1059,6 @@ tbody tr:hover td{background:var(--primary-bg)}
             <button class="btn btn-sm btn-primary" onclick="openDpNewPromoModal()">➕ 新建承诺</button>
           </div>
           <div class="table-wrapper"><table id="dpPromoTable"><thead><tr><th>承诺ID</th><th>客户</th><th>物料</th><th>承诺等级</th><th>数量</th><th>等效Wafer(片)</th><th>预测基线(颗)</th><th>信号</th><th>OTIF(%)</th><th>状态</th><th>操作</th></tr></thead><tbody></tbody></table></div>
-        </div>
-      </div>
-
-      <!-- ==================== Tab 5: NPI Lifecycle（半导体NPI生命周期委外版） ==================== -->
-      <div class="tab-content" id="tab-dp-npi">
-        <div class="result-summary" id="dpNpiCards"></div>
-        <div style="margin-bottom:8px;padding:6px 10px;background:#f0f7ff;border-radius:6px;font-size:11px;color:var(--gray-600)">
-          🔄 <strong>IC设计NPI委外周期</strong>：新芯片产品导入 → 经AB/CP/BP委外良率爬坡 → 各制程节点良率学习曲线 → Wafer晶圆需求估算
-        </div>
-        <div class="grid-2">
-          <div class="card">
-            <div class="card-title">🔄 生命周期曲线(含委外良率) <span class="tag">Lifecycle w/ Outsourced Yield</span></div>
-            <div class="chart-container chart-container-sm"><canvas id="dpNpiChart"></canvas></div>
-          </div>
-          <div class="card">
-            <div class="card-title">📋 NPI导入计划 <span class="tag">NPI w/ Process Nodes</span></div>
-            <div class="table-wrapper" style="max-height:240px"><table id="dpNpiPlanTable"><thead><tr><th>产品</th><th>制程节点</th><th>导入日期</th><th>爬坡曲线</th><th>目标良率</th><th>当前良率</th><th>委外供应商</th><th>峰值Wafer/月</th><th>当前阶段</th><th>操作</th></tr></thead><tbody></tbody></table></div>
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title">📈 各委外制程良率学习曲线 <span class="tag">Per-Process Yield Learning</span></div>
-            <button class="btn btn-sm btn-primary" onclick="openDpNewNpiModal()">➕ 新建产品</button>
-          </div>
-          <div class="table-wrapper"><table id="dpNpiDemandTable"><thead><tr><th>产品</th><th>FT成品%</th><th>AB封装%</th><th>CP测试%</th><th>BP凸块%</th><th>Wafer采购%</th><th>成品需求(颗)</th><th>等效Wafer(片)</th><th>当前期预测(颗)</th></tr></thead><tbody></tbody></table></div>
         </div>
       </div>
 
@@ -6832,7 +6806,7 @@ const demandPlanData={
   forecasts:[], forecastVersions:[], accuracyRecords:[], historyRecords:[],
   sensingSignals:[], sensingResults:[], consensusVersions:[], workflowStages:[],
   customerCommitments:[], commitmentPipeline:[], promotions:[], promoEvents:[],
-  npiProducts:[], lifecycleStages:[], segmentData:[], kpiRecords:[], anomalies:[], whatIfResults:[],
+  segmentData:[], kpiRecords:[], anomalies:[], whatIfResults:[],
   saved:false
 };
 
@@ -6888,12 +6862,13 @@ function switchDemandPlanTab(tab){
   if(tab==='dp-sensing') renderDpSensing();
   if(tab==='dp-consensus') renderDpConsensus();
   if(tab==='dp-promotion') renderDpPromotion();
-  if(tab==='dp-npi') renderDpNpi();
   if(tab==='dp-analytics') renderDpAnalytics();
+  updateDpProcessChainBar();
 }
 function updateDemandPlan(){
+  updateDpProcessChainBar();
   renderDpStatistical();renderDpSensing();renderDpConsensus();
-  renderDpPromotion();renderDpNpi();renderDpAnalytics();
+  renderDpPromotion();renderDpAnalytics();
 }
 
 // 清空Demand Planning所有Tab下已生成的数据
@@ -6911,8 +6886,6 @@ function clearAllDemandPlanData(){
   demandPlanData.commitmentPipeline = [];
   demandPlanData.promotions = [];
   demandPlanData.promoEvents = [];
-  demandPlanData.npiProducts = [];
-  demandPlanData.lifecycleStages = [];
   demandPlanData.segmentData = [];
   demandPlanData.kpiRecords = [];
   demandPlanData.anomalies = [];
@@ -7826,139 +7799,20 @@ function editDpPromo(idx){
   const html='<h3>✏️ 编辑承诺</h3><div style="margin:12px 0;padding:12px;background:var(--gray-50);border-radius:6px;font-size:13px"><strong>客户：</strong>'+c.customer+' | <strong>Hard：</strong>'+c.hard.toLocaleString()+'<br><strong>Flexible：</strong>'+c.flexible.toLocaleString()+' | <strong>等效Wafer：</strong>'+(c.waferEquivalent||0).toLocaleString()+'片<br><strong>已分配晶圆：</strong>'+(c.allocatedWafer||0).toLocaleString()+'片 | <strong>缺口：</strong>'+(c.gap||0).toLocaleString()+'片'+fcInfo+sigInfo+'</div><div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-sm btn-primary" onclick="closeModal()">关闭</button></div>';
   openModal(html);
 }
-
-// ==================== Tab 5: NPI Lifecycle（委外版NPI生命周期） ====================
-function renderDpNpi(skipAuto){
-  if(!skipAuto && !demandPlanData.npiProducts.length){
-    // 如果用户已手动清空DP数据，跳过自动生成
-    if(localStorage.getItem('ic_scm_dp_cleared')==='1'){
-      renderEmptyDpState('dpNpiCards', ['dpNpiPlanTable','dpNpiDemandTable'], 'dpNpiChart', 'dpNpiChartInstance');
-      return;
-    }
-    // 没有真实需求数据时跳过
-    if(!appData.demands.length) {
-      renderEmptyDpState('dpNpiCards', ['dpNpiPlanTable','dpNpiDemandTable'], 'dpNpiChart', 'dpNpiChartInstance');
-      return;
-    }
-    const newProducts=[
-      {product:'IC-2000-NPU',node:'7nm',start:'2026-07-01',curve:'S-Curve',targetYield:0.85,peak:8000},
-      {product:'IC-2000-DSP',node:'7nm',start:'2026-08-01',curve:'S-Curve',targetYield:0.82,peak:6000},
-      {product:'IC-2000-ISP',node:'5nm',start:'2026-09-01',curve:'快速爬坡',targetYield:0.88,peak:10000},
-      {product:'IC-2000-PMU',node:'12nm',start:'2026-06-15',curve:'线性增长',targetYield:0.78,peak:5000}
-    ];
-    newProducts.forEach((np,i)=>{
-      const currentYield=np.targetYield*(0.4+Math.random()*0.3);
-      // 各委外制程良率（按产品类型）
-      const procYields={
-        FT: Math.min(99, Math.round(currentYield*100*0.95)),
-        AB: Math.min(97, Math.round(currentYield*100*0.88)),
-        CP: Math.min(98, Math.round(currentYield*100*0.92)),
-        BP: Math.min(96, Math.round(currentYield*100*0.85)),
-        Wafer: Math.min(99, Math.round(currentYield*100*0.98))
-      };
-      const gatedYield=procYields.FT*procYields.AB/100*procYields.CP/100*procYields.BP/100*procYields.Wafer/100;
-      demandPlanData.npiProducts.push({
-        product:np.product,processNode:np.node,
-        startDate:np.start,endDate:'2028-01-01',rampMonths:4+Math.floor(Math.random()*4),
-        curve:np.curve,peakDemand:np.peak,targetYield:np.targetYield*100,
-        currentYield:Math.round(currentYield*100),
-        supplier:np.node==='5nm'?'TSMC':np.node==='7nm'?'TSMC/SMIC':np.node==='12nm'?'SMIC':'UMC',
-        ftYield:procYields.FT,abYield:procYields.AB,cpYield:procYields.CP,
-        bpYield:procYields.BP,waferYield:procYields.Wafer,
-        peakWafer:Math.ceil(np.peak/(gatedYield/100)),
-        currentStage:['导入期','导入期','成长期','导入期'][i]
-      });
-      const intro=Math.round(np.peak*0.2),grow=Math.round(np.peak*0.6),mature=np.peak,decline=Math.round(np.peak*0.3);
-      const gatedYieldStage=intro>0?Math.round(intro/(gatedYield/100)/120):0;
-      demandPlanData.lifecycleStages.push({
-        product:np.product,ftYield:procYields.FT,abYield:procYields.AB,
-        cpYield:procYields.CP,bpYield:procYields.BP,waferYield:procYields.Wafer,
-        finishedDemand:intro,waferQty:gatedYieldStage,currentFc:intro
-      });
-    });
+function updateDpProcessChainBar(){
+  const el = document.getElementById('dpSupplierList');
+  if(!el) return;
+  const suppliers = appData.suppliers || [];
+  if(!suppliers.length){
+    el.textContent = '|  委外: 暂无供应商数据';
+    return;
   }
-  const totalNpi=demandPlanData.npiProducts.length;
-  const introCount=demandPlanData.npiProducts.filter(p=>p.currentStage==='导入期').length;
-  document.getElementById('dpNpiCards').innerHTML=
-    '<div class="summary-card blue"><div class="lbl">🔄 NPI产品</div><div class="num" style="color:var(--primary)">'+totalNpi+'</div><div class="sub-text">含委外良率学习</div></div>'+
-    '<div class="summary-card yellow"><div class="lbl">🌱 导入期</div><div class="num" style="color:var(--warning)">'+introCount+'</div><div class="sub-text">需关注委外良率</div></div>'+
-    '<div class="summary-card green"><div class="lbl">🏭 委外晶圆代工</div><div class="num" style="color:var(--success)">'+(demandPlanData.npiProducts.length?Math.round(demandPlanData.npiProducts.reduce((s,p)=>s+p.peakWafer,0)/demandPlanData.npiProducts.length)+'片/月':'—')+'</div><div class="sub-text">峰值Wafer需求</div></div>';
-
-  const stageNames=['导入期','成长期','成熟期','衰退期'];
-  if(window.dpNpiChartInstance){window.dpNpiChartInstance.destroy();}
-  const ctx=document.getElementById('dpNpiChart');
-  if(ctx&&demandPlanData.lifecycleStages.length){
-    const datasets=demandPlanData.lifecycleStages.slice(0,4).map((l,i)=>{
-      const data=[l.waferQty*1.5||500,l.waferQty*3||1000,l.waferQty*5||1500,l.waferQty*2||600];
-      return {label:l.product,data,borderColor:['#2563eb','#10b981','#f59e0b','#ef4444'][i%4],fill:false,tension:.3,pointRadius:3};
-    });
-    window.dpNpiChartInstance=new Chart(ctx.getContext('2d'),{
-      type:'line',data:{labels:stageNames,datasets},
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{size:10}}}},scales:{y:{beginAtZero:true,ticks:{callback:v=>v.toLocaleString()}}}}
-    });
-  }
-  let html='';demandPlanData.npiProducts.forEach((p,i)=>{
-    const stageColor=p.currentStage==='导入期'?'var(--warning)':p.currentStage==='成长期'?'var(--success)':p.currentStage==='成熟期'?'var(--primary)':'var(--danger)';
-    const yieldColor=p.currentYield>=p.targetYield*0.8?'var(--success)':p.currentYield>=p.targetYield*0.6?'var(--warning)':'var(--danger)';
-    html+='<tr><td>'+p.product+'</td><td><span class="tag" style="background:#f3e8ff;color:#6b21a8">'+p.processNode+'</span></td><td>'+p.startDate+'</td><td>'+p.curve+'</td><td style="font-weight:600;color:var(--primary)">'+p.targetYield+'%</td><td style="color:'+yieldColor+';font-weight:600">'+p.currentYield+'%</td><td style="font-size:11px">'+(p.supplier||'—')+'</td><td style="color:var(--primary)">'+(p.peakWafer||'—').toLocaleString()+'</td><td><span style="color:'+stageColor+';font-weight:600">'+p.currentStage+'</span></td><td><button class="btn btn-sm btn-outline" onclick="editDpNpi('+i+')">✏️</button></td></tr>';
-  });
-  document.getElementById('dpNpiPlanTable').querySelector('tbody').innerHTML=html;
-
-  html='';demandPlanData.lifecycleStages.forEach(l=>{
-    html+='<tr><td style="font-weight:600">'+l.product+'</td><td>'+l.ftYield+'%</td><td>'+l.abYield+'%</td><td>'+l.cpYield+'%</td><td>'+l.bpYield+'%</td><td>'+l.waferYield+'%</td><td>'+l.finishedDemand.toLocaleString()+'</td><td style="color:var(--primary);font-weight:600">'+l.waferQty.toLocaleString()+'</td><td style="font-weight:600;color:var(--success)">'+l.currentFc.toLocaleString()+'</td></tr>';
-  });
-  document.getElementById('dpNpiDemandTable').querySelector('tbody').innerHTML=html;
-}
-function openDpNewNpiModal(){
-  const html='<h3>➕ 新建IC设计NPI产品</h3><div class="grid-2" style="margin:10px 0;gap:10px"><div><label style="font-size:12px">产品名</label><input type="text" id="newNpiProduct" value="IC-3000-AI" style="width:100%;padding:6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px"></div><div><label style="font-size:12px">制程节点</label><select id="newNpiNode" style="width:100%;padding:6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px"><option value="5nm">5nm(TSMC)</option><option value="7nm">7nm(TSMC/SMIC)</option><option value="12nm">12nm(SMIC)</option><option value="28nm">28nm(UMC)</option></select></div></div><div class="grid-2" style="margin:10px 0;gap:10px"><div><label style="font-size:12px">导入日期</label><input type="date" id="newNpiStart" value="2026-08-01" style="width:100%;padding:6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px"></div><div><label style="font-size:12px">目标良率(%)</label><input type="number" id="newNpiYield" value="85" min="50" max="99" style="width:100%;padding:6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px"></div></div><div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-sm btn-primary" onclick="saveDpNewNpi()">💾 保存</button><button class="btn btn-sm btn-outline" onclick="closeModal()">取消</button></div>';
-  openModal(html);
-}
-function saveDpNewNpi(){
-  const product=document.getElementById('newNpiProduct')?.value||'IC-3000-AI';
-  const nodeInput=document.getElementById('newNpiNode')?.value||'7nm';
-  const node=nodeInput.split('(')[0];
-  const supplier=nodeInput.includes('(')?nodeInput.split('(')[1].replace(')',''):'TSMC';
-  const start=document.getElementById('newNpiStart')?.value||'2026-08-01';
-  const targetYield=parseInt(document.getElementById('newNpiYield')?.value)||85;
-  const currentY=Math.round(targetYield*0.45);
-  demandPlanData.npiProducts.push({
-    product,processNode:node,startDate:start,endDate:'2028-01-01',
-    rampMonths:4,curve:'S-Curve',peakDemand:5000,targetYield,
-    currentYield:currentY,supplier,
-    ftYield:Math.round(currentY*0.95),abYield:Math.round(currentY*0.88),
-    cpYield:Math.round(currentY*0.92),bpYield:Math.round(currentY*0.85),
-    waferYield:Math.round(currentY*0.98),
-    peakWafer:Math.ceil(5000/(currentY/100*0.95*0.88*0.92*0.85*0.98/10000)),
-    currentStage:'导入期'
-  });
-  demandPlanData.lifecycleStages.push({
-    product,ftYield:Math.round(currentY*0.95),abYield:Math.round(currentY*0.88),
-    cpYield:Math.round(currentY*0.92),bpYield:Math.round(currentY*0.85),
-    waferYield:Math.round(currentY*0.98),
-    finishedDemand:1000,waferQty:Math.ceil(1000/(currentY/100*0.95*0.88*0.92*0.85*0.98/100)/120),currentFc:1000
-  });
-  closeModal();renderDpNpi();showToast('✅ 新产品 '+product+' 已加入NPI生命周期（委外代工：'+supplier+'）','success');
-}
-function editDpNpi(idx){
-  const p=demandPlanData.npiProducts[idx];
-  if(!p)return;
-  const html='<h3>✏️ 编辑NPI产品</h3><div style="margin:12px 0;padding:12px;background:var(--gray-50);border-radius:6px;font-size:13px"><strong>产品：</strong>'+p.product+' | <strong>节点：</strong>'+p.processNode+'<br><strong>导入日：</strong>'+p.startDate+' | <strong>委外供应商：</strong>'+(p.supplier||'—')+'<br><strong>目标良率：</strong>'+p.targetYield+'% | <strong>当前良率：</strong>'+p.currentYield+'%<br><strong>委外级联良率：</strong>FT'+p.ftYield+'%→AB'+p.abYield+'%→CP'+p.cpYield+'%→BP'+p.bpYield+'%→Wafer'+p.waferYield+'%<br><strong>峰值Wafer/月：</strong>'+(p.peakWafer||'—')+'<br><strong>当前阶段：</strong>'+p.currentStage+'</div><div style="margin:12px 0"><label style="font-size:13px;font-weight:600">修改阶段：</label><select id="editNpiStage" style="width:100%;padding:8px;border:1px solid var(--gray-300);border-radius:6px"><option value="导入期">导入期</option><option value="成长期">成长期</option><option value="成熟期">成熟期</option><option value="衰退期">衰退期</option></select></div><div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-sm btn-primary" onclick="saveEditDpNpi('+idx+')">💾 保存</button><button class="btn btn-sm btn-outline" onclick="closeModal()">取消</button></div>';
-  openModal(html);
-}
-function saveEditDpNpi(idx){
-  const newStage=document.getElementById('editNpiStage')?.value;
-  if(demandPlanData.npiProducts[idx]){
-    demandPlanData.npiProducts[idx].currentStage=newStage;
-    const yieldMap={'导入期':0.45,'成长期':0.7,'成熟期':0.95,'衰退期':0.9};
-    const target=demandPlanData.npiProducts[idx].targetYield;
-    demandPlanData.npiProducts[idx].currentYield=Math.round(target*(yieldMap[newStage]||0.5));
-    demandPlanData.npiProducts[idx].ftYield=Math.round(target*(yieldMap[newStage]||0.5)*0.95);
-    demandPlanData.npiProducts[idx].abYield=Math.round(target*(yieldMap[newStage]||0.5)*0.88);
-    demandPlanData.npiProducts[idx].cpYield=Math.round(target*(yieldMap[newStage]||0.5)*0.92);
-    demandPlanData.npiProducts[idx].bpYield=Math.round(target*(yieldMap[newStage]||0.5)*0.85);
-    demandPlanData.npiProducts[idx].waferYield=Math.round(target*(yieldMap[newStage]||0.5)*0.98);
-  }
-  closeModal();renderDpNpi();showToast('✅ 生命周期已更新，委外良率学习曲线已调整','success');
+  const procOrder = ['FT','AB','CP','BP','Wafer'];
+  const names = procOrder.map(p => {
+    const sups = suppliers.filter(s => s.processCode === p);
+    return sups.length ? sups.map(s => s.name).join('/') : '';
+  }).filter(Boolean);
+  el.textContent = '|  委外: ' + names.join('→');
 }
 
 // ==================== Tab 6: Demand Analytics（委外维度需求分析） ====================
@@ -7969,80 +7823,65 @@ function renderDpAnalytics(skipAuto){
       renderEmptyDpState('dpAnalyticsCards', ['dpAnalyticsKpiTable','dpAnomalyTable','dpWhatIfTable'], 'dpAnalyticsSegmentChart', 'dpAnalyticsSegmentChartInstance');
       return;
     }
-    const hasRealDemands = appData.demands.length > 0;
-    // 没有真实需求数据时跳过自动生成
-    if(!hasRealDemands) {
+    const hasForecasts = demandPlanData.forecasts.length > 0;
+    // 没有统计预测数据时跳过
+    if(!hasForecasts) {
       renderEmptyDpState('dpAnalyticsCards', ['dpAnalyticsKpiTable','dpAnomalyTable','dpWhatIfTable'], 'dpAnalyticsSegmentChart', 'dpAnalyticsSegmentChartInstance');
       return;
     }
     const processLevels=['FT成品','AB封装','CP测试','BP凸块','Wafer晶圆'];
-    const processSuppliers=['FT','AB','CP','BP','Wafer'].map(p => getSupplierNameByProcess(p));
+    const processSuppliers=['FT','AB','CP','BP','Wafer'].map(p => {
+      const sups = (appData.suppliers||[]).filter(s => s.processCode === p);
+      return sups.length ? sups.map(s => s.name).join('/') : '—';
+    });
     
-    if(hasRealDemands){
-      // 从实际需求数据按制程分组
-      const procs = ['FT','AB','CP','BP','Wafer'];
-      procs.forEach((proc,i)=>{
-        const matsInProc = appData.materials.filter(m => m.processCode === proc);
-        const codesInProc = matsInProc.map(m => m.code);
-        const procDemands = codesInProc.length > 0 ? 
-          appData.demands.filter(d => codesInProc.includes(d.material)) : 
-          appData.demands.filter(d => { const m = appData.materials.find(mt=>mt.code===d.material); return m && m.processCode===proc; });
-        const vol = procDemands.reduce((s,d) => s+(d.quantity||0), 0);
-        const mape = 8+Math.random()*12;
-        demandPlanData.segmentData.push({segment:processLevels[i], volume:Math.max(vol, 1000), ratio:0});
-        const share = (vol/Math.max(appData.demands.reduce((s,d)=>s+(d.quantity||0),0),1)*100);
-        demandPlanData.kpiRecords.push({
-          family:processLevels[i], supplier:processSuppliers[i]||'—', mape:mape.toFixed(1),
-          mae:Math.round(vol*mape/100),
-          hardAccuracy:(75+Math.random()*20).toFixed(1),
-          flexConvert:(40+Math.random()*35).toFixed(1),
-          waferShare:share.toFixed(1)+'%',
-          assessment:mape<10?'🌟 优秀':mape<20?'✅ 良好':mape<30?'⚠️ 一般':'🔴 需改进'
-        });
+    // 从统计预测数据（Tab1）按制程分组
+    const procs = ['FT','AB','CP','BP','Wafer'];
+    const totalFcVolume = demandPlanData.forecasts.reduce((s,f) => s+(f.totalForecast||0), 0);
+    procs.forEach((proc,i)=>{
+      const fcInProc = demandPlanData.forecasts.filter(f => f.process === proc);
+      const vol = fcInProc.reduce((s,f) => s+(f.totalForecast||0), 0);
+      const count = fcInProc.length;
+      // 用预测数据计算真实MAPE（与前一版本对比）
+      const mape = count > 0 ? 
+        fcInProc.reduce((s,f) => {
+          const prev = f.previousForecast || f.totalForecast;
+          return s + (prev>0 ? Math.abs(f.totalForecast - prev)/prev*100 : 0);
+        }, 0) / count : 0;
+      demandPlanData.segmentData.push({segment:processLevels[i], volume:Math.max(vol, 1), ratio:0});
+      const share = totalFcVolume>0 ? (vol/totalFcVolume*100) : 0;
+      const supplierName = (processSuppliers[i] || '—');
+      demandPlanData.kpiRecords.push({
+        family:processLevels[i], supplier:supplierName, mape:mape.toFixed(1),
+        mae:Math.round(mape>0 ? vol*mape/100 : 0),
+        hardAccuracy:'—',
+        flexConvert:'—',
+        waferShare:share.toFixed(1)+'%',
+        assessment:mape<10?'🌟 优秀':mape<20?'✅ 良好':mape<30?'⚠️ 一般':'🔴 需改进'
       });
-    }
+    });
     const total=demandPlanData.segmentData.reduce((s,d)=>s+d.volume,0);
     demandPlanData.segmentData.forEach(d=>d.ratio=Math.round(d.volume/total*100));
-    const mats=appData.materials.length?appData.materials.slice(0,5).map(m=>m.code):['IC-1000-FT','IC-1000-AB','IC-1000-CP'];
-    const types=['良率波动','需求激增','委外交货延期','Push-out','晶圆产能约束'];
-    const procImpact=['FT','AB','CP','BP','Wafer'];
     
-    if(hasRealDemands){
-      // 从实际需求数据检测异常
-      appData.demands.slice(0,5).forEach((d,i)=>{
-        const mat = appData.materials.find(m => m.code === d.material);
-        const proc = mat?.processCode || 'FT';
-        const actual = d.quantity || 0;
-        const forecast = Math.round(actual*(0.6+Math.random()*0.4));
-        const waferImpact = Math.abs(Math.round((actual-forecast)/120/0.85));
-        demandPlanData.anomalies.push({
-          material:d.material, type:types[i%types.length], process:proc,
-          actual, forecast, diff:actual-forecast,
-          diffRate:Math.abs(actual-forecast)/Math.max(actual,1)*100,
-          waferImpact, date:d.demandDate||'2026-06-15',
-          severity:Math.abs(actual-forecast)/Math.max(actual,1)>0.3?'高':Math.abs(actual-forecast)/Math.max(actual,1)>0.15?'中':'低',
-          suggestion:types[i%types.length]==='良率波动'?'检查FT/AB/CP各委外良率数据':types[i%types.length]==='需求激增'?'确认客户增单，同步增加Wafer投片':types[i%types.length]==='委外交货延期'?'核实委外供应商OTD，调整供应计划':types[i%types.length]==='Push-out'?'更新交付计划并释放Wafer产能':'与TSMC/SMIC确认晶圆产能分配',
-          status:'待处理'
-        });
-      });
-    } else {
-      const mats=appData.materials.length?appData.materials.slice(0,5).map(m=>m.code):['IC-1000-FT','IC-1000-AB','IC-1000-CP'];
-      mats.forEach((m,i)=>{
-      const actual=Math.round(2000+Math.random()*18000);
-      const forecast=Math.round(actual*(0.6+Math.random()*0.4));
-      const waferImpact=Math.abs(Math.round((actual-forecast)/120/0.85));
+    // 异常检测：从预测数据和信号中检测偏差
+    const signals = demandPlanData.sensingSignals || [];
+    const types=['良率波动','需求激增','委外交货延期','Push-out','晶圆产能约束'];
+    signals.slice(0,5).forEach((sig,i)=>{
+      const actual = Math.abs(sig.changeVal) || 0;
+      const forecast = Math.round(actual*(0.6+Math.random()*0.4));
+      const waferImpact = Math.abs(Math.round((actual-forecast)/120/0.85));
       demandPlanData.anomalies.push({
-        material:m,type:types[i%types.length],process:procImpact[i%procImpact.length],
-        actual,forecast,diff:actual-forecast,
+        material:sig.material||'—', type:types[i%types.length], process:sig.processCode||'FT',
+        actual, forecast, diff:actual-forecast,
         diffRate:Math.abs(actual-forecast)/Math.max(actual,1)*100,
         waferImpact,
-        date:'2026-0'+(7+Math.floor(i/2))+'-'+(10+Math.floor(Math.random()*15)),
-        severity:Math.random()>0.6?'高':Math.random()>0.3?'中':'低',
-        suggestion:types[i%types.length]==='良率波动'?'检查FT/AB/CP各委外良率数据':types[i%types.length]==='需求激增'?'确认客户增单，同步增加Wafer投片':types[i%types.length]==='委外交货延期'?'核实委外供应商OTD，调整供应计划':types[i%types.length]==='Push-out'?'更新交付计划并释放Wafer产能':'与TSMC/SMIC确认晶圆产能分配',
+        date:sig.effectiveDate||'—',
+        severity:Math.abs(actual-forecast)/Math.max(actual,1)>0.3?'高':Math.abs(actual-forecast)/Math.max(actual,1)>0.15?'中':'低',
+        suggestion:types[i%types.length]==='良率波动'?'检查FT/AB/CP各委外良率数据':types[i%types.length]==='需求激增'?'确认客户增单，同步增加Wafer投片':types[i%types.length]==='委外交货延期'?'核实委外供应商OTD，调整供应计划':types[i%types.length]==='Push-out'?'更新交付计划并释放Wafer产能':'与晶圆供应商确认产能分配',
         status:'待处理'
       });
-      });
-    }
+    });
+    // What-If：基于预测数据
     demandPlanData.whatIfResults=(demandPlanData.forecasts||[]).slice(0,5).map(f=>({
       material:f.material,process:f.process,supplier:f.supplier||'—',
       base:Math.round(f.totalForecast),scenarioVal:Math.round(f.totalForecast),
