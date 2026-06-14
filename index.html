@@ -7150,7 +7150,7 @@ function renderDpStatistical(skipAuto){
         material:m.code,materialName:m.name||m.code,process:proc,
         supplier:supName,model:modelName,
         horizon,seasonLen,history:cleanData,smoothed:result.smoothed||[],
-        futureMonths:Array.from({length:horizon},(_,h)=>'W'+(h+27)),
+        futureMonths:Array.from({length:horizon},(_,h)=>'M'+(h+1)),
         forecast:result.forecast,mape:result.mape,mae:result.mae,
         rmse:result.rmse||0,bias:result.bias||0,totalForecast,
         propagation:prop,waferEquivalent:waferEq,yieldRate:yieldProd,
@@ -7173,7 +7173,7 @@ function renderDpStatistical(skipAuto){
     '<div class="summary-card green"><div class="lbl">⚪ 等效Wafer总需求</div><div class="num" style="color:var(--success)">'+waferTotal.toLocaleString()+'</div><div class="sub-text">经AB/CP/BP委外级联折算(片)</div></div>';
 
   if(fc.length){
-    const labels=[];for(let i=0;i<fc[0].history.length;i++)labels.push('W'+(i+1));
+    const labels=[];for(let i=0;i<fc[0].history.length;i++)labels.push('M'+(i+1));
     const colors=['#2563eb','#10b981','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899','#14b8a6'];
     if(window.dpStatChartInstance){window.dpStatChartInstance.destroy();}
     const ctx=document.getElementById('dpStatChart');
@@ -7205,7 +7205,7 @@ function renderDpStatistical(skipAuto){
       const pred=f.smoothed[i]||0;const errPct=Math.abs(v-pred)/Math.max(v,1)*100;
       const prop=f.propagation?f.propagation[f.process]||0:0;
       const yieldRate=f.yieldRate||SEMI_YIELD[f.process]*100;
-      html+='<tr><td>W'+(f.history.length-18+i+1)+'</td><td>'+f.material+'</td><td>'+f.process+'</td><td>'+sup+'</td><td>'+v.toLocaleString()+'</td><td>'+Math.round(pred).toLocaleString()+'</td><td>'+(errPct?errPct.toFixed(1)+'%':'0%')+'</td><td>'+(prop?prop.toLocaleString():'—')+'</td><td>'+(yieldRate?yieldRate.toFixed(1):'—')+'</td></tr>';
+      html+='<tr><td>M'+(i+1)+'</td><td>'+f.material+'</td><td>'+f.process+'</td><td>'+sup+'</td><td>'+v.toLocaleString()+'</td><td>'+Math.round(pred).toLocaleString()+'</td><td>'+(errPct?errPct.toFixed(1)+'%':'0%')+'</td><td>'+(prop?prop.toLocaleString():'—')+'</td><td>'+(yieldRate?yieldRate.toFixed(1):'—')+'</td></tr>';
     });
   });
   document.getElementById('dpHistoryTable').querySelector('tbody').innerHTML=html;
@@ -7497,7 +7497,7 @@ function renderDpPromotion(skipAuto){
         });
         demandPlanData.commitmentPipeline.push({
           customer:cust, material:mats[i%mats.length],
-          week:'W'+(27+i), hard, flexible, forecast,
+          week:'M'+(i+1), hard, flexible, forecast,
           waferEq:Math.round(dpWaferEq(hard))
         });
       });
