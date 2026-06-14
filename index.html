@@ -6971,7 +6971,9 @@ const DP_PROC_LABELS = {FT:'FT成品(ASE/PTI)',AB:'AB封装(京元/矽格)',CP:'
 const DP_PROC_UNITS = {FT:'颗',AB:'颗',CP:'片',BP:'片',Wafer:'片'};
 function dpWaferEq(ftQty){
   const prop = propagateDemand(ftQty);
-  return prop.Wafer || 0;
+  if(prop.Wafer) return prop.Wafer;
+  // BOM链未配置到Wafer时的兜底估算：AB→CP标准用量120, 良率0.95
+  return ftQty > 0 ? Math.round(ftQty / 120 / 0.95) : 0;
 }
 function dpProcessIcon(proc){
   return {FT:'✅',AB:'📦',CP:'💠',BP:'💠',Wafer:'⚪'}[proc]||'❓';
