@@ -1620,6 +1620,20 @@ function init() {
       localStorage.setItem('_data_ver','v5');
     }
   }catch(e){}
+  // v6迁移：彻底清理所有残留的客户订单/历史销售/需求数据，解决旧数据残留问题
+  try{
+    if(localStorage.getItem('_data_ver')!=='v6'){
+      const d=JSON.parse(localStorage.getItem(STORAGE_KEY_MASTER)||'{}');
+      d.customerOrders=[];
+      d.salesHistory=[];
+      d.demands=[];
+      d.demandHistory=[];
+      localStorage.setItem(STORAGE_KEY_MASTER,JSON.stringify(d));
+      localStorage.removeItem('ic_scm_lastFusion');
+      localStorage.removeItem('ic_scm_dp_cleared');
+      localStorage.setItem('_data_ver','v6');
+    }
+  }catch(e){}
   const d = new Date();
   d.setDate(d.getDate() + 30);
   document.getElementById('mrpDueDate').value = d.toISOString().split('T')[0];
@@ -2579,16 +2593,8 @@ function loadSampleData() {
     { code:'CUST-002', name:'展讯通信', contact:'李工', phone:'139****5678', creditlevel:'A', paymentTerms:'N45', products:'IC-1000-FT' },
     { code:'CUST-003', name:'中兴微电子', contact:'王总', phone:'136****9012', creditlevel:'AA', paymentTerms:'N30', products:'IC-1000-FT' }
   ];
-  appData.demands = [
-    { orderType:'独立需求', orderNo:'ORD001', material:'IC-1000-FT', quantity:120000, unit:'颗', demandDate:'2026-07-31', priority:'高', customer:'华为海思' },
-    { orderType:'独立需求', orderNo:'ORD002', material:'IC-1000-FT', quantity:180000, unit:'颗', demandDate:'2026-08-31', priority:'中', customer:'展讯通信' },
-    { orderType:'独立需求', orderNo:'ORD003', material:'IC-1000-FT', quantity:80000, unit:'颗', demandDate:'2026-09-30', priority:'中', customer:'中兴微电子' }
-  ];
-  appData.demandHistory = [
-    { time:'2026-06-01 09:00', orderNo:'ORD001', type:'新建', content:'创建订单 ORD001, 数量120000, 需求日2026-07-31' },
-    { time:'2026-06-01 09:05', orderNo:'ORD002', type:'新建', content:'创建订单 ORD002, 数量180000, 需求日2026-08-31' },
-    { time:'2026-06-05 14:30', orderNo:'ORD003', type:'新建', content:'创建订单 ORD003, 数量80000, 需求日2026-09-30' }
-  ];
+  appData.demands = [];
+  appData.demandHistory = [];
   showToast('✅ 示例数据加载完成！','success');
   renderAllMasterdata();
   renderDemand();
@@ -2663,13 +2669,13 @@ function renderAllMasterdata() {
   saveMasterdataToStorage();
 }
 
-function deleteMaterial(idx) { appData.materials.splice(idx,1); renderAllMasterdata(); }
-function deleteBom(idx) { appData.boms.splice(idx,1); appData.bom = appData.boms; renderAllMasterdata(); }
-function deleteRouting(idx) { appData.routings.splice(idx,1); renderAllMasterdata(); }
-function deleteSupplier(idx) { appData.suppliers.splice(idx,1); renderAllMasterdata(); }
-function deleteInventory(idx) { appData.inventory.splice(idx,1); renderAllMasterdata(); }
+function deleteMaterial(idx) { appData.materials.splice(idx,1); saveMasterdataToStorage(); renderAllMasterdata(); }
+function deleteBom(idx) { appData.boms.splice(idx,1); appData.bom = appData.boms; saveMasterdataToStorage(); renderAllMasterdata(); }
+function deleteRouting(idx) { appData.routings.splice(idx,1); saveMasterdataToStorage(); renderAllMasterdata(); }
+function deleteSupplier(idx) { appData.suppliers.splice(idx,1); saveMasterdataToStorage(); renderAllMasterdata(); }
+function deleteInventory(idx) { appData.inventory.splice(idx,1); saveMasterdataToStorage(); renderAllMasterdata(); }
 function deleteDemand(idx) { appData.demands.splice(idx,1); saveMasterdataToStorage(); renderDemand(); updateDashboard(); }
-function deletePrpo(idx) { appData.prpo.splice(idx,1); renderAllMasterdata(); showToast('✅ 已删除','success'); }
+function deletePrpo(idx) { appData.prpo.splice(idx,1); saveMasterdataToStorage(); renderAllMasterdata(); showToast('✅ 已删除','success'); }
 
 // ======================== 主数据编辑功能 ========================
 function editMaterial(idx) {
@@ -2851,7 +2857,7 @@ function saveNewSupplier() {
 }
 
 // ======================== 客户CRUD ========================
-function deleteCustomer(idx) { appData.customers.splice(idx,1); renderAllMasterdata(); }
+function deleteCustomer(idx) { appData.customers.splice(idx,1); saveMasterdataToStorage(); renderAllMasterdata(); }
 function openAddCustomerModal() {
   openModal('<div class="modal-title">新增客户 <button class="modal-close" onclick="closeModal()">×</button></div>'+
     '<div class="grid-2"><div class="form-group"><label>客户编码</label><input id="formCustCode" placeholder="如 CUST-001"></div>'+
@@ -2973,7 +2979,7 @@ function saveEditWip() {
 function deleteWip(idx) {
   if(!appData.wip||!appData.wip[idx]) return;
   appData.wip.splice(idx,1);
-  renderAllMasterdata();showToast('✅ 在制记录已删除','success');
+  saveMasterdataToStorage(); renderAllMasterdata();showToast('✅ 在制记录已删除','success');
 }
 function openAddPrpoModal() {
   const matOpts=appData.materials.map(m=>'<option value="'+m.code+'">'+m.code+' - '+m.name+'（'+m.unit+'）</option>').join('');
@@ -3521,7 +3527,7 @@ function renderConfigTables(){
   document.querySelectorAll('#bomConfigTable .editable').forEach(el=>{el.addEventListener('change',function(){const idx=parseInt(this.dataset.bomIdx),field=this.dataset.field;if(!isNaN(idx)&&appData.bom[idx])appData.bom[idx][field]=field==='usage'||field==='scrap'?parseFloat(this.value)||0:this.value;});});
   document.querySelectorAll('#leadTimeTable .editable').forEach(el=>{el.addEventListener('change',function(){const idx=parseInt(this.dataset.ltIdx),field=this.dataset.field;if(!isNaN(idx)&&appData.leadTimes[idx]){if(field==='prod'||field==='trans'||field==='inspect')appData.leadTimes[idx][field]=parseInt(this.value)||0;else appData.leadTimes[idx][field]=this.value;}});});
 }
-function deleteMrpBom(idx){if(appData.bom.length<=1){showToast('至少保留一条BOM记录','warning');return;}appData.bom.splice(idx,1);appData.boms=appData.bom;renderConfigTables();}
+function deleteMrpBom(idx){if(appData.bom.length<=1){showToast('至少保留一条BOM记录','warning');return;}appData.bom.splice(idx,1);appData.boms=appData.bom;saveMasterdataToStorage();renderConfigTables();}
 function saveAllParams(){
   document.querySelectorAll('#bomConfigTable .editable').forEach(el=>{const idx=parseInt(el.dataset.bomIdx),field=el.dataset.field;if(!isNaN(idx)&&appData.bom[idx])appData.bom[idx][field]=field==='usage'||field==='scrap'?parseFloat(el.value)||0:el.value;});
   document.querySelectorAll('#leadTimeTable .editable').forEach(el=>{const idx=parseInt(el.dataset.ltIdx),field=el.dataset.field;if(!isNaN(idx)&&appData.leadTimes[idx]){if(field==='prod'||field==='trans'||field==='inspect')appData.leadTimes[idx][field]=parseInt(el.value)||0;else appData.leadTimes[idx][field]=el.value;}});
