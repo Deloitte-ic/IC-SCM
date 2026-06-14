@@ -1622,6 +1622,8 @@ function fallbackToLocal(){
     saveMasterdataToStorage();
   } else {
     if(!appData.demands||!appData.demands.length) loadSampleDemands();
+    if(!appData.customerOrders||!appData.customerOrders.length) loadSampleDemands();
+    if(!appData.salesHistory||!appData.salesHistory.length) loadSampleDemands();
     renderAllMasterdata();
     renderDemand();
     refreshOrderSelect();
@@ -3899,7 +3901,9 @@ function saveMasterdataToStorage(){
       inventory: appData.inventory||[],
       wip: appData.wip||[],
       demands: appData.demands||[],
-      prpo: appData.prpo||[]
+      prpo: appData.prpo||[],
+      customerOrders: appData.customerOrders||[],
+      salesHistory: appData.salesHistory||[]
     };
     localStorage.setItem(STORAGE_KEY_MASTER,JSON.stringify(data));
   }catch(e){}
@@ -3922,6 +3926,8 @@ function loadMasterdataFromStorage(){
     appData.wip=data.wip||[];
     appData.demands=data.demands||[];
     appData.prpo=data.prpo||[];
+    appData.customerOrders=data.customerOrders||[];
+    appData.salesHistory=data.salesHistory||[];
     return true;
   }catch(e){return false;}
 }
