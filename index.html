@@ -1065,7 +1065,7 @@ tbody tr:hover td{background:var(--primary-bg)}
             <div class="card-title">📋 客户承诺列表 <span class="tag">Customer Commitment List</span></div>
             <button class="btn btn-sm btn-primary" onclick="openDpNewPromoModal()">➕ 新建承诺</button>
           </div>
-          <div class="table-wrapper"><table id="dpPromoTable"><thead><tr><th>承诺ID</th><th>客户</th><th>物料</th><th>承诺等级</th><th>数量</th><th>等效Wafer(片)</th><th>需求周</th><th>预测基线(颗)</th><th>信号</th><th>OTIF(%)</th><th>状态</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+          <div class="table-wrapper"><table id="dpPromoTable"><thead><tr><th>承诺ID</th><th>客户</th><th>物料</th><th>承诺等级</th><th>数量</th><th>等效Wafer(片)</th><th>预测基线(颗)</th><th>信号</th><th>OTIF(%)</th><th>状态</th><th>操作</th></tr></thead><tbody></tbody></table></div>
         </div>
       </div>
 
@@ -7796,7 +7796,7 @@ function renderDpPromotion(skipAuto){
     const stColor=c.status==='已确认'?'var(--success)':'var(--warning)';
     const fcVal = c.fcBaseline || 0;
     const sigIcon = c.hasSignal ? '📡' : '';
-    html+='<tr><td>'+c.id+'</td><td>'+c.customer+'</td><td>'+c.material+'</td><td><span style="color:'+(c.hard>0?'var(--danger)':'var(--gray-400)')+'">Hard</span></td><td>'+c.total.toLocaleString()+'</td><td style="font-weight:600;color:var(--primary)">'+(c.waferEquivalent||0).toLocaleString()+'</td><td>W'+(26+i)+'</td><td style="color:var(--primary)">'+(fcVal>0?fcVal.toLocaleString():'—')+'</td><td style="text-align:center">'+sigIcon+'</td><td style="font-weight:600">'+c.otif+'%</td><td style="color:'+stColor+';font-weight:600">'+c.status+'</td><td><button class="btn btn-sm btn-outline" onclick="editDpPromo('+i+')">✏️</button></td></tr>';
+    html+='<tr><td>'+c.id+'</td><td>'+c.customer+'</td><td>'+c.material+'</td><td><span style="color:'+(c.hard>0?'var(--danger)':'var(--gray-400)')+'">Hard</span></td><td>'+c.total.toLocaleString()+'</td><td style="font-weight:600;color:var(--primary)">'+(c.waferEquivalent||0).toLocaleString()+'</td><td style="color:var(--primary)">'+(fcVal>0?fcVal.toLocaleString():'—')+'</td><td style="text-align:center">'+sigIcon+'</td><td style="font-weight:600">'+c.otif+'%</td><td style="color:'+stColor+';font-weight:600">'+c.status+'</td><td><button class="btn btn-sm btn-outline" onclick="editDpPromo('+i+')">✏️</button></td></tr>';
   });
   document.getElementById('dpPromoTable').querySelector('tbody').innerHTML=html;
 }
