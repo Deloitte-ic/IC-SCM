@@ -474,7 +474,7 @@ tbody tr:hover td{background:var(--primary-bg)}
               <button class="btn btn-sm btn-outline" onclick="genSampleSalesHistory()">🔄 生成示例数据</button>
             </div>
           </div>
-          <div class="table-wrapper" style="max-height:300px"><table id="salesHistoryTable"><thead><tr><th>日期</th><th>物料编码</th><th>制程</th><th>客户</th><th>数量</th><th>单位</th><th>订单号</th><th>来源</th></tr></thead><tbody></tbody></table></div>
+          <div class="table-wrapper" style="max-height:300px"><table id="salesHistoryTable"><thead><tr><th>订单号</th><th>日期</th><th>物料编码</th><th>客户</th><th>数量</th><th>单位</th><th>来源</th></tr></thead><tbody></tbody></table></div>
         </div>
         <div class="card">
           <div class="card-title">📊 历史销售趋势 <span class="tag">按物料+月份聚合</span></div>
@@ -3065,9 +3065,9 @@ function renderSalesHistory(){
   // 明细表
   let html='';
   appData.salesHistory.forEach(s=>{
-    html+='<tr><td>'+s.recordDate+'</td><td>'+escapeHtml(s.material)+'</td><td><span class="tag-status tag-cyan">'+escapeHtml(s.process||'')+'</span></td><td>'+escapeHtml(s.customer||'')+'</td><td class="font-bold">'+(s.quantity||0).toLocaleString()+'</td><td>'+escapeHtml(s.unit||'颗')+'</td><td>'+escapeHtml(s.orderNo||'')+'</td><td>'+escapeHtml(s.source||'')+'</td></tr>';
+    html+='<tr><td>'+escapeHtml(s.orderNo||'')+'</td><td>'+s.recordDate+'</td><td>'+escapeHtml(s.material)+'</td><td>'+escapeHtml(s.customer||'')+'</td><td class="font-bold">'+(s.quantity||0).toLocaleString()+'</td><td>'+escapeHtml(s.unit||'颗')+'</td><td>'+escapeHtml(s.source||'')+'</td></tr>';
   });
-  document.querySelector('#salesHistoryTable tbody').innerHTML=html||'<tr><td colspan="8" style="text-align:center;color:var(--gray-400)">暂无历史销售数据，可导入Excel或生成示例数据</td></tr>';
+  document.querySelector('#salesHistoryTable tbody').innerHTML=html||'<tr><td colspan="7" style="text-align:center;color:var(--gray-400)">暂无历史销售数据，可导入Excel或生成示例数据</td></tr>';
   // 月聚合表
   const agg={};
   appData.salesHistory.forEach(s=>{
