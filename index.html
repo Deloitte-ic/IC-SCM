@@ -7539,7 +7539,7 @@ function renderDpConsensus(skipAuto){
     if(document.getElementById('dpRollingWindowLabel')) document.getElementById('dpRollingWindowLabel').textContent = winLabel;
     if(document.getElementById('dpWaferConstraintLabel')) document.getElementById('dpWaferConstraintLabel').textContent = waferConstraint.toLocaleString() + ' 片';
     // 更新标题中的周期数
-    const horizon = parseInt(document.getElementById('dpConsensusHorizon')?.value) || 18;
+    horizon = parseInt(document.getElementById('dpConsensusHorizon')?.value) || 18;
     const titleEl = document.getElementById('dpConsensusTitleText');
     if(titleEl) titleEl.textContent = horizon;
     const tagEl = document.getElementById('dpConsensusTitleTag');
