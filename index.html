@@ -917,7 +917,7 @@ tbody tr:hover td{background:var(--primary-bg)}
                     <option value="croston">📉 Croston</option>
                   </select>
                 </div>
-                <div class="form-group"><label>滚动周期(周)</label><input type="number" id="dpForecastHorizon" value="18" min="4" max="52" style="width:100%;padding:4px 6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px"></div>
+                <div class="form-group"><label>滚动周期(周)</label><input type="number" id="dpForecastHorizon" value="4" min="4" max="52" style="width:100%;padding:4px 6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px"></div>
               </div>
               <div class="grid-2" style="margin-bottom:8px">
                 <div class="form-group"><label>制程层级预测</label>
@@ -933,8 +933,8 @@ tbody tr:hover td{background:var(--primary-bg)}
                 <div class="form-group"><label>季节性</label>
                   <select id="dpSeasonLength" style="width:100%;padding:4px 6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px">
                     <option value="4">4周(月)</option>
-                    <option value="13">13周(季)</option>
-                    <option value="52" selected>52周(年)</option>
+                    <option value="13" selected>13周(季)</option>
+                    <option value="52">52周(年)</option>
                   </select>
                 </div>
               </div>
@@ -7047,8 +7047,8 @@ function renderDpStatistical(skipAuto){
     const supplierMap={FT:'ASE/PTI',AB:'京元/矽格',CP:'SPIL/Amkor',BP:'京元/硅品',Wafer:'TSMC/SMIC'};
     const level=document.getElementById('dpProcessLevel')?.value||'all';
     const filtered=level==='all'?mats:mats.filter(m=>m.processCode===level);
-    const horizon=parseInt(document.getElementById('dpForecastHorizon')?.value||18);
-    const seasonLen=parseInt(document.getElementById('dpSeasonLength')?.value||52);
+    const horizon=parseInt(document.getElementById('dpForecastHorizon')?.value||4);
+    const seasonLen=parseInt(document.getElementById('dpSeasonLength')?.value||13);
     const yieldFactor=document.getElementById('dpYieldAuto')?.checked!==false;
     
     // 从实际需求按月聚合构建历史数据
@@ -7192,8 +7192,8 @@ function runDpForecast(){
 }
 function runDpModelComparison(){
   if(!demandPlanData.forecasts.length) runDpForecast();
-  const seasonLen=parseInt(document.getElementById('dpSeasonLength')?.value||52);
-  const horizon=parseInt(document.getElementById('dpForecastHorizon')?.value||18);
+  const seasonLen=parseInt(document.getElementById('dpSeasonLength')?.value||13);
+  const horizon=parseInt(document.getElementById('dpForecastHorizon')?.value||4);
   const mats=demandPlanData.forecasts.map(f=>f.material);
   let html='<h3>📊 多模型对比（含委外良率因子）</h3>';
   html+='<div class="table-wrapper"><table><thead><tr><th>物料</th><th>制程</th><th>委外供应商</th><th>Holt-Winters</th><th>α/β/γ</th><th>SMA MAPE</th><th>窗口</th><th>零值比</th><th>推荐</th></tr></thead><tbody>';
