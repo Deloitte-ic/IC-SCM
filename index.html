@@ -1030,9 +1030,11 @@ tbody tr:hover td{background:var(--primary-bg)}
         </div>
         <div class="card">
           <div class="card-header">
-            <div class="card-title">📋 18周滚动版本 <span class="tag">18-Week Rolling w/ Wafer Constraint</span></div>
-            <div style="display:flex;gap:6px;align-items:center;font-size:11px">
-              <span style="color:var(--gray-400)">当前滚动:</span>
+            <div class="card-title">📋 <span id="dpConsensusTitleText">18</span>周滚动版本 <span class="tag" id="dpConsensusTitleTag">18-Week Rolling w/ Wafer Constraint</span></div>
+            <div style="display:flex;gap:6px;align-items:center;font-size:11px;flex-wrap:wrap">
+              <span style="color:var(--gray-400)">滚动周期:</span>
+              <input type="number" id="dpConsensusHorizon" value="18" min="4" max="52" style="width:45px;padding:2px 4px;border:1px solid var(--gray-300);border-radius:3px;font-size:11px;text-align:center" onchange="onDpConsensusHorizonChange()"> 周
+              <span style="color:var(--gray-400);margin-left:4px">| 当前滚动:</span>
               <span id="dpRollingWindowLabel" style="font-weight:600">W26-W43 (2026)</span>
               <span style="color:var(--gray-400);margin-left:8px">| 可用晶圆约束:</span>
               <span id="dpWaferConstraintLabel" style="font-weight:600;color:var(--primary)">—</span>
@@ -1643,6 +1645,13 @@ function init() {
   // 加载数据来源偏好
   loadDataSourcePreference();
   updateDataSourceUI();
+  
+  // 加载滚动共识周期默认值
+  const savedH = localStorage.getItem('ic_scm_dp_consensus_horizon');
+  if(savedH) {
+    const el = document.getElementById('dpConsensusHorizon');
+    if(el) el.value = savedH;
+  }
   
   if(dataSourceMode === 'sap'){
     // SAP模式：异步从SAP同步数据
@@ -7476,11 +7485,12 @@ function renderDpConsensus(skipAuto){
     const sensingAdjWafer = activeSignals.reduce((s, sig) => s + (sig.waferImpact||0), 0);
     // Wafer约束线 = DP统计的90%（作为参考约束，实际应来自Supply数据）
     const waferConstraint = Math.round(dpWaferTotal * 0.9) || 10000;
-    // 滚动窗口：从当前周推算18周
+    // 滚动窗口：从输入读取周期（默认18周）
+    const horizon = parseInt(document.getElementById('dpConsensusHorizon')?.value) || 18;
     const now = new Date();
     const cwk = getWeekKey(now.toISOString().substring(0,10));
     const cwn = cwk % 100, cy = Math.floor(cwk/100);
-    const ewn = cwn + 17;
+    const ewn = cwn + horizon - 1;
     const winLabel = 'W'+cwn+'-W'+(ewn>52?(ewn-52)+'(+1y)':ewn)+' ('+cy+')';
     // === 四个阶段 ===
     // Stage1: FT统计预测 — 直接来自DP Tab1
@@ -7528,12 +7538,21 @@ function renderDpConsensus(skipAuto){
     ];
     if(document.getElementById('dpRollingWindowLabel')) document.getElementById('dpRollingWindowLabel').textContent = winLabel;
     if(document.getElementById('dpWaferConstraintLabel')) document.getElementById('dpWaferConstraintLabel').textContent = waferConstraint.toLocaleString() + ' 片';
+    // 更新标题中的周期数
+    const horizon = parseInt(document.getElementById('dpConsensusHorizon')?.value) || 18;
+    const titleEl = document.getElementById('dpConsensusTitleText');
+    if(titleEl) titleEl.textContent = horizon;
+    const tagEl = document.getElementById('dpConsensusTitleTag');
+    if(tagEl) tagEl.textContent = horizon + '-Week Rolling w/ Wafer Constraint';
+    // 更新顶部描述
+    const descEl = document.querySelector('#tab-dp-consensus > div[style*="background:#f0f7ff"]');
+    if(descEl) descEl.innerHTML = '🤝 <strong>IC设计' + horizon + '周滚动共识</strong>：FT成品需求共识 → 经AB/CP/BP委外级联 → 晶圆采购约束 → 按Wafer缺口反向调整';
   }
   const waferConstraint=parseInt(demandPlanData.workflowStages[0]?.waferLimit)||11000;
   document.getElementById('dpConsensusCards').innerHTML=
     '<div class="summary-card blue"><div class="lbl">📋 工作流阶段</div><div class="num" style="color:var(--primary)">'+demandPlanData.workflowStages.length+'</div><div class="sub-text">FT→Wafer共识流</div></div>'+
-    '<div class="summary-card green"><div class="lbl">📦 滚动版本</div><div class="num" style="color:var(--success)">'+demandPlanData.consensusVersions.length+'</div><div class="sub-text">18周滚动(含Wafer约束)</div></div>'+
-    '<div class="summary-card red"><div class="lbl">⚪ Wafer约束线</div><div class="num" style="color:var(--danger)">'+waferConstraint.toLocaleString()+'</div><div class="sub-text">晶圆可用量(片)/18周</div></div>';
+    '<div class="summary-card green"><div class="lbl">📦 滚动版本</div><div class="num" style="color:var(--success)">'+demandPlanData.consensusVersions.length+'</div><div class="sub-text">'+horizon+'周滚动(含Wafer约束)</div></div>'+
+    '<div class="summary-card red"><div class="lbl">⚪ Wafer约束线</div><div class="num" style="color:var(--danger)">'+waferConstraint.toLocaleString()+'</div><div class="sub-text">晶圆可用量(片)/'+horizon+'周</div></div>';
 
   const stageLabels=['FT统计预测','客户承诺评审','供应能力评审','审批发布'];
   const waferVals=demandPlanData.workflowStages.map(s=>parseInt(s.waferFc)||0);
@@ -7593,15 +7612,23 @@ function runDpConsensusReview(){
   }
   renderDpConsensus();showToast('📋 晶圆约束评审完成，待审批发布','success');
 }
+// 滚动周期变更时保存并重渲染
+function onDpConsensusHorizonChange(){
+  const v = document.getElementById('dpConsensusHorizon')?.value;
+  if(v) localStorage.setItem('ic_scm_dp_consensus_horizon', v);
+  renderDpConsensus();
+}
 function approveDpConsensus(){
   if(demandPlanData.workflowStages[3]){
     demandPlanData.workflowStages[3].waferFc=demandPlanData.workflowStages[2].waferFc;
     demandPlanData.workflowStages[3].status='✅ 已完成';
   }
-  renderDpConsensus();showToast('✅ 18周滚动共识(含晶圆约束)已审批发布','success');
+  const h = parseInt(document.getElementById('dpConsensusHorizon')?.value) || 18;
+  renderDpConsensus();showToast('✅ '+h+'周滚动共识(含晶圆约束)已审批发布','success');
 }
 function openDpNewVersionModal(){
-  const html='<h3>➕ 新建18周滚动版本</h3><div style="margin:12px 0"><label style="font-size:13px;font-weight:600">名称：</label><input type="text" id="newVerName" value="滚动V'+((demandPlanData.consensusVersions.length||0)+1)+'" style="width:100%;padding:8px;margin:6px 0;border:1px solid var(--gray-300);border-radius:6px"></div><div style="margin:12px 0"><label style="font-size:13px;font-weight:600">产品族：</label><select id="newVerFamily" style="width:100%;padding:8px;border:1px solid var(--gray-300);border-radius:6px"><option value="IC-1000系列">IC-1000系列</option><option value="IC-2000系列">IC-2000系列</option></select></div><div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-sm btn-primary" onclick="saveDpNewVersion()">💾 保存</button><button class="btn btn-sm btn-outline" onclick="closeModal()">取消</button></div>';
+  const h = parseInt(document.getElementById('dpConsensusHorizon')?.value) || 18;
+  const html='<h3>➕ 新建'+h+'周滚动版本</h3><div style="margin:12px 0"><label style="font-size:13px;font-weight:600">名称：</label><input type="text" id="newVerName" value="滚动V'+((demandPlanData.consensusVersions.length||0)+1)+'" style="width:100%;padding:8px;margin:6px 0;border:1px solid var(--gray-300);border-radius:6px"></div><div style="margin:12px 0"><label style="font-size:13px;font-weight:600">产品族：</label><select id="newVerFamily" style="width:100%;padding:8px;border:1px solid var(--gray-300);border-radius:6px"><option value="IC-1000系列">IC-1000系列</option><option value="IC-2000系列">IC-2000系列</option></select></div><div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-sm btn-primary" onclick="saveDpNewVersion()">💾 保存</button><button class="btn btn-sm btn-outline" onclick="closeModal()">取消</button></div>';
   openModal(html);
 }
 function saveDpNewVersion(){
