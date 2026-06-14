@@ -1113,6 +1113,7 @@ tbody tr:hover td{background:var(--primary-bg)}
         <div class="tab" data-tab="sp-deployment" onclick="switchSupplyPlanTab('sp-deployment')">📦 投料分配&amp;在制追踪</div>
         <div class="tab" data-tab="sp-matching" onclick="switchSupplyPlanTab('sp-matching')">🔄 供需匹配&amp;缺口分析</div>
         <div class="tab" data-tab="sp-ctm" onclick="switchSupplyPlanTab('sp-ctm')">🎯 晶圆级ATP/CTP</div>
+        <div class="tab" data-tab="sp-mrp" onclick="switchSupplyPlanTab('sp-mrp')">🧮 MRP物料需求计划</div>
       </div>
 
       <!-- ==================== Tab 1: 晶圆供应&委外网络 ==================== -->
@@ -1233,6 +1234,63 @@ tbody tr:hover td{background:var(--primary-bg)}
             </div>
           </div>
           <div class="table-wrapper"><table id="spCtmCommitTable"><thead><tr><th>订单号</th><th>成品</th><th>数量</th><th>请求日期</th><th>承诺日期</th><th>承诺数量</th><th>等效Wafer消耗</th><th>状态</th></tr></thead><tbody></tbody></table></div>
+        </div>
+      </div>
+      <!-- ==================== Tab 6: MRP物料需求计划 ==================== -->
+      <div class="tab-content" id="tab-sp-mrp">
+        <div class="card">
+          <div class="card-title">🎯 MRP运算条件</div>
+          <div class="grid-3">
+            <div class="form-group">
+              <label>选择需求订单</label>
+              <select id="spMrpOrderSelect" onchange="onSpMrpOrderSelect()"><option value="">-- 选择订单 --</option><option value="__manual__">📝 手动输入</option></select>
+            </div>
+            <div class="form-group">
+              <label>需求数量<span style="color:var(--danger)">*</span></label>
+              <input type="number" id="spMrpQuantity" min="1" value="120000">
+            </div>
+            <div class="form-group">
+              <label>需求日期<span style="color:var(--danger)">*</span></label>
+              <input type="date" id="spMrpDueDate">
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:8px">
+            <button class="btn btn-primary btn-lg" onclick="executeSpMrp()">🧮 执行MRP运算</button>
+            <button class="btn btn-outline" onclick="resetSpMrp()">↻ 重置</button>
+          </div>
+        </div>
+        <div id="spMrpResultArea" style="display:none">
+          <div class="result-summary" id="spMrpSummary"></div>
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">📊 MRP运算结果表 <span class="tag" id="spMrpOrderInfo"></span></div>
+              <div class="card-actions">
+                <button class="btn btn-sm btn-success" onclick="exportMRPResult()">📥 导出Excel</button>
+              </div>
+            </div>
+            <div class="table-wrapper" style="max-height:400px;overflow-y:auto"><table id="spMrpResultTable"><thead><tr>
+              <th>层级</th><th>制程</th><th>物料编码</th><th>物料名称</th><th>需求日期</th><th>建议动作</th><th>供应商</th><th>需求类型</th><th>单位</th><th>净需求</th><th>损耗率</th><th>毛需求</th><th>可用库存</th><th>WIP</th><th>WIP到货日</th><th>Open PR</th><th>Open PR到货日</th><th>Open PO</th><th>Open PO到货日</th><th>净待补</th><th>PlOrd到货日</th><th>PlOrd下单日</th>
+            </tr></thead><tbody></tbody></table></div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">📋 采购/委外建议清单 <span class="tag" id="spMrpProcurementCount">0项</span></div>
+              <div class="card-actions">
+                <button class="btn btn-sm btn-success" onclick="exportProcurementList()">📥 导出Excel</button>
+              </div>
+            </div>
+            <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap">
+              <span style="display:inline-flex;align-items:center;gap:4px;font-size:12px"><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#f59e0b"></span> 采购</span>
+              <span style="display:inline-flex;align-items:center;gap:4px;font-size:12px"><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#3b82f6"></span> 委外</span>
+            </div>
+            <div class="table-wrapper" style="max-height:300px;overflow-y:auto"><table id="spMrpProcurementTable"><thead><tr>
+              <th>物料编码</th><th>物料名称</th><th>制程</th><th>净待补</th><th>单位</th><th>PlOrd到货日</th><th>PlOrd下单日</th><th>PlOrd号</th><th>供应商</th><th>类型</th>
+            </tr></thead><tbody></tbody></table></div>
+          </div>
+        </div>
+        <div class="empty-state" id="spMrpEmpty">
+          <span class="icon">📊</span>
+          <div class="text">请设置条件并执行MRP运算</div>
         </div>
       </div>
     </div>
@@ -6132,10 +6190,11 @@ function switchSupplyPlanTab(tab){
   if(tab==='sp-deployment') renderSpDeployment();
   if(tab==='sp-matching') renderSpMatching();
   if(tab==='sp-ctm') renderSpCtm();
+  if(tab==='sp-mrp') renderSpMrp();
 }
 
 function updateSupplyPlan(){
-  renderSpNetwork(); renderSpProduction(); renderSpDeployment(); renderSpMatching(); renderSpCtm();
+  renderSpNetwork(); renderSpProduction(); renderSpDeployment(); renderSpMatching(); renderSpCtm(); renderSpMrp();
 }
 
 // 辅助：制程名称映射
@@ -6881,6 +6940,130 @@ function exportSpReport(section){
   }
   const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='SCM_SemiSupply_'+section+'_'+(new Date().toISOString().split('T')[0])+'.csv';a.click();showToast('📥 报告已导出','success');
+}
+
+// ==================== Supply - MRP物料需求计划 Tab ====================
+function renderSpMrp(){
+  // 初始化订单选择
+  const sel=document.getElementById('spMrpOrderSelect');
+  if(!sel) return;
+  // 更新客户订单选项
+  sel.innerHTML='<option value="">-- 选择订单 --</option><option value="__manual__">📝 手动输入</option>';
+  appData.demands.forEach((d,i)=>{
+    if(d.material && d.quantity){
+      const opt=document.createElement('option');
+      opt.value='demand_'+i;
+      opt.textContent=d.orderNo||('DEM-'+i)+' | '+d.material+' | '+(d.quantity||0).toLocaleString()+'颗 | '+(d.demandDate||'—');
+      sel.appendChild(opt);
+    }
+  });
+  // 默认日期
+  const dateInput=document.getElementById('spMrpDueDate');
+  if(!dateInput.value) dateInput.value=new Date(Date.now()+30*86400000).toISOString().split('T')[0];
+}
+function onSpMrpOrderSelect(){
+  const sel=document.getElementById('spMrpOrderSelect'),val=sel.value;
+  if(val==='__manual__') return;
+  if(val.startsWith('demand_')){
+    const idx=parseInt(val.replace('demand_',''));
+    const order=appData.demands[idx];
+    if(order){
+      document.getElementById('spMrpQuantity').value=order.quantity||0;
+      document.getElementById('spMrpDueDate').value=order.demandDate||'';
+    }
+  }
+}
+function executeSpMrp(){
+  const qtyInput=document.getElementById('spMrpQuantity'),dateInput=document.getElementById('spMrpDueDate');
+  let demandQty=parseInt(qtyInput.value);
+  if(isNaN(demandQty)||demandQty<=0){showToast('请输入有效的需求数量','error');return;}
+  let dueDate=dateInput.value;
+  if(!dueDate){showToast('请选择需求日期','error');return;}
+  // 将值填入原始MRP表单并执行
+  document.getElementById('mrpQuantity').value=demandQty;
+  document.getElementById('mrpDueDate').value=dueDate;
+  document.getElementById('mrpOrderSelect').value='custom';
+  executeMRP();
+  // 将原始MRP结果映射到sp-mrp表
+  renderSpMrpResult();
+}
+function renderSpMrpResult(){
+  const results=appData.mrpResult;
+  if(!results||!results.length){
+    document.getElementById('spMrpResultArea').style.display='none';
+    document.getElementById('spMrpEmpty').style.display='block';
+    return;
+  }
+  document.getElementById('spMrpEmpty').style.display='none';
+  document.getElementById('spMrpResultArea').style.display='block';
+  
+  // 汇总卡片
+  const procOrder=['FT','AB','CP','BP','Wafer'];
+  const procGroups={};
+  results.forEach(r=>{
+    const p=r.process||'其他';
+    if(!procGroups[p])procGroups[p]={netReq:0,grossReq:0,stock:0,wip:0};
+    procGroups[p].netReq+=r.netReq;
+    procGroups[p].grossReq+=r.grossReq;
+    procGroups[p].stock+=r.stock;
+    procGroups[p].wip+=r.wipAvailable;
+  });
+  const shortItems=results.filter(r=>r.netRemaining>0);
+  const sum=(p,k)=>(procGroups[p]?procGroups[p][k]:0);
+  let summaryHtml='';
+  summaryHtml+='<div class="summary-card blue"><div class="lbl" style="font-size:11px">📦 总净需求</div><div class="num" style="font-size:16px;color:var(--primary)">'+procOrder.reduce((s,p)=>s+sum(p,'netReq'),0).toLocaleString()+'</div><div style="display:flex;flex-wrap:wrap;gap:6px;font-size:11px;color:var(--gray-500);margin-top:4px">'+procOrder.filter(p=>procGroups[p]).map(p=>'<span style="white-space:nowrap">'+p+'&nbsp;'+sum(p,'netReq').toLocaleString()+'</span>').join('｜')+'</div></div>';
+  summaryHtml+='<div class="summary-card blue"><div class="lbl" style="font-size:11px">📊 总毛需求</div><div class="num" style="font-size:16px;color:var(--primary)">'+procOrder.reduce((s,p)=>s+sum(p,'grossReq'),0).toLocaleString()+'</div><div style="display:flex;flex-wrap:wrap;gap:6px;font-size:11px;color:var(--gray-500);margin-top:4px">'+procOrder.filter(p=>procGroups[p]).map(p=>'<span style="white-space:nowrap">'+p+'&nbsp;'+sum(p,'grossReq').toLocaleString()+'</span>').join('｜')+'</div></div>';
+  summaryHtml+='<div class="summary-card green"><div class="lbl" style="font-size:11px">🏭 可用库存</div><div class="num" style="font-size:16px;color:var(--success)">'+procOrder.reduce((s,p)=>s+sum(p,'stock'),0).toLocaleString()+'</div><div style="display:flex;flex-wrap:wrap;gap:6px;font-size:11px;color:var(--gray-500);margin-top:4px">'+procOrder.filter(p=>procGroups[p]).map(p=>'<span style="white-space:nowrap">'+p+'&nbsp;'+sum(p,'stock').toLocaleString()+'</span>').join('｜')+'</div></div>';
+  summaryHtml+='<div class="summary-card cyan"><div class="lbl" style="font-size:11px">🚚 WIP可用</div><div class="num" style="font-size:16px;color:var(--info)">'+procOrder.reduce((s,p)=>s+sum(p,'wip'),0).toLocaleString()+'</div><div style="display:flex;flex-wrap:wrap;gap:6px;font-size:11px;color:var(--gray-500);margin-top:4px">'+procOrder.filter(p=>procGroups[p]).map(p=>'<span style="white-space:nowrap">'+p+'&nbsp;'+sum(p,'wip').toLocaleString()+'</span>').join('｜')+'</div></div>';
+  summaryHtml+='<div class="summary-card '+(shortItems.length>0?'red':'green')+'"><div class="lbl">⚠️ 待补制程数</div><div class="num" style="color:'+(shortItems.length>0?'var(--danger)':'var(--success)')+'">'+shortItems.length+'</div></div>';
+  document.getElementById('spMrpSummary').innerHTML=summaryHtml;
+  
+  const orderInfo=document.getElementById('spMrpOrderInfo');
+  const sel=document.getElementById('spMrpOrderSelect');
+  if(sel.value==='__manual__') orderInfo.textContent='自定义需求';
+  else if(sel.value.startsWith('demand_')) orderInfo.textContent=sel.options[sel.selectedIndex].textContent;
+  else orderInfo.textContent='总需求 '+results.reduce((s,r)=>s+r.netReq,0).toLocaleString()+'颗';
+  
+  // 22列结果表
+  let treeColor=0;
+  const treeBgs=['#f3f7ff','#fff8ee'];
+  let tableHtml='';
+  results.forEach((r,idx)=>{
+    if(r.level===0){
+      if(idx>0)tableHtml+='<tr style="background:none"><td colspan="22" style="height:6px;border-top:2px solid var(--gray-300);padding:0"></td></tr>';
+      treeColor=idx;
+    }
+    const bg=r.level===0?treeBgs[treeColor%2]:'';
+    const indent=r.level>0?'└─ '+('　'.repeat(r.level-1)):'▶';
+    const actionColor=r.action&&r.action.includes('采购')?'var(--warning)':'var(--info)';
+    const gapColor=r.netRemaining>0?'color:var(--danger);font-weight:600':'color:var(--success)';
+    const wipArrival=r.wipAvailable>0?(r.wipArrival||'—'):'—';
+    tableHtml+='<tr style="background:'+bg+'"><td>'+indent+' L'+r.level+'</td><td>'+r.process+'</td><td>'+r.matCode+'</td><td>'+r.matName+'</td><td>'+(r.demandDate||'—')+'</td><td><span style="color:'+actionColor+';font-weight:600">'+(r.action||'—')+'</span></td><td>'+(r.supplier||'—')+'</td><td>'+r.demandType+'</td><td>'+r.unit+'</td><td>'+r.netReq.toLocaleString()+'</td><td>'+(r.scrapRate||0)+'%</td><td>'+r.grossReq.toLocaleString()+'</td><td>'+r.stock.toLocaleString()+'</td><td>'+r.wipAvailable.toLocaleString()+'</td><td>'+wipArrival+'</td><td>'+(r.prAvailable>0?r.prAvailable.toLocaleString():'0')+'</td><td>'+(r.prArrival||'—')+'</td><td>'+(r.poAvailable>0?r.poAvailable.toLocaleString():'0')+'</td><td>'+(r.poArrival||'—')+'</td><td><span style="'+gapColor+'">'+r.netRemaining.toLocaleString()+'</span></td><td>'+(r.netRemaining>0?r.plannedArrival:'—')+'</td><td>'+(r.plannedOrderDate||'—')+'</td></tr>';
+  });
+  document.querySelector('#spMrpResultTable tbody').innerHTML=tableHtml;
+  
+  // 采购/委外建议清单
+  renderSpMrpProcurement(results);
+}
+function renderSpMrpProcurement(results){
+  const purchaseItems=results.filter(r=>r.netRemaining>0&&r.action&&r.action.includes('采购'));
+  const outsourcedItems=results.filter(r=>r.netRemaining>0&&(!r.action||!r.action.includes('采购')));
+  const allItems=[...purchaseItems,...outsourcedItems];
+  document.getElementById('spMrpProcurementCount').textContent=allItems.length+'项';
+  let html='';
+  allItems.forEach(r=>{
+    const isPurchase=r.action&&r.action.includes('采购');
+    html+='<tr><td>'+r.matCode+'</td><td>'+r.matName+'</td><td>'+r.process+'</td><td>'+r.netRemaining.toLocaleString()+'</td><td>'+r.unit+'</td><td>'+(r.plannedArrival||'—')+'</td><td>'+(r.plannedOrderDate||'—')+'</td><td>PLO-'+r.process+'-'+String(Math.abs(r.matCode.split('').reduce((a,c)=>a*31+c.charCodeAt(0),0)%1000)).padStart(3,'0')+'</td><td>'+(r.supplier||'—')+'</td><td><span class="tag" style="background:'+(isPurchase?'#fef3c7;color:#92400e':'#dbeafe;color:#1e40af')+'">'+(isPurchase?'采购':'委外')+'</span></td></tr>';
+  });
+  document.querySelector('#spMrpProcurementTable tbody').innerHTML=html||'<tr><td colspan="10" class="empty-state">暂无待补项</td></tr>';
+}
+function resetSpMrp(){
+  document.getElementById('spMrpResultArea').style.display='none';
+  document.getElementById('spMrpEmpty').style.display='block';
+  document.querySelector('#spMrpResultTable tbody').innerHTML='';
+  document.querySelector('#spMrpProcurementTable tbody').innerHTML='';
+  document.getElementById('spMrpSummary').innerHTML='';
+  document.getElementById('spMrpOrderInfo').textContent='';
 }
 
 // ==================== Demand（需求计划）= SAP IBP Demand Planning 半导体全面对标 ====================
