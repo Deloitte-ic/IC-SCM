@@ -472,7 +472,6 @@ tbody tr:hover td{background:var(--primary-bg)}
               <button class="btn btn-sm btn-outline" onclick="importToType('salesHistory')">📥 导入历史销售</button>
               <input type="file" id="importFile_salesHistory" accept=".xlsx,.xls" onchange="handleTypeImport(event,'salesHistory')" style="display:none">
               <button class="btn btn-sm btn-primary" onclick="createSalesHistory()">➕ 手工创建</button>
-              <button class="btn btn-sm btn-outline" onclick="genSampleSalesHistory()">🔄 生成示例数据</button>
             </div>
           </div>
           <div class="table-wrapper" style="max-height:300px"><table id="salesHistoryTable"><thead><tr><th>订单号</th><th>日期</th><th>物料编码</th><th>客户</th><th>数量</th><th>单位</th><th>来源</th><th>操作</th></tr></thead><tbody></tbody></table></div>
@@ -1590,6 +1589,16 @@ async function syncFromSap(){
 
 // ======================== 初始化 ========================
 function init() {
+  // v2迁移：清空历史销售（用户确认全删）
+  try{
+    const v=localStorage.getItem('_sh_ver');
+    if(v!=='v2'){
+      const d=JSON.parse(localStorage.getItem(STORAGE_KEY_MASTER)||'{}');
+      d.salesHistory=[];
+      localStorage.setItem(STORAGE_KEY_MASTER,JSON.stringify(d));
+      localStorage.setItem('_sh_ver','v2');
+    }
+  }catch(e){}
   const d = new Date();
   d.setDate(d.getDate() + 30);
   document.getElementById('mrpDueDate').value = d.toISOString().split('T')[0];
