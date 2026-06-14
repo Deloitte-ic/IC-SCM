@@ -7292,46 +7292,80 @@ function saveDpForecastVersion(){
 }
 
 // ==================== Tab 2: Commitment Sensing（委外级联承诺感知） ====================
+// 基于统计预测 vs 实际客户订单，生成真实的承诺感知信号
+function createSensingSignal(fc, beforeVal, afterVal, source, level, status, customers, waferImpact, confidence){
+  const gap = afterVal - beforeVal;
+  return {
+    id: 'SIG-'+String(demandPlanData.sensingSignals.length+1).padStart(3,'0'),
+    material: fc.material, process: fc.process,
+    customer: (customers||[]).join('/') || '—',
+    source, beforeVal, afterVal, changeVal: Math.round(gap),
+    confidence: confidence || Math.min(95, Math.max(50, Math.round(100-Math.abs(gap)/(beforeVal||1)*50))),
+    waferImpact: waferImpact || Math.ceil(Math.abs(gap||afterVal)/120/(SEMI_YIELD[fc.process]||0.95)),
+    validUntil: '—', status: status||'活跃', level
+  };
+}
 function renderDpSensing(skipAuto){
   if(!skipAuto && !demandPlanData.sensingSignals.length){
-    // 如果用户已手动清空DP数据，跳过自动生成
     if(localStorage.getItem('ic_scm_dp_cleared')==='1'){
       renderEmptyDpState('dpSensingCards', 'dpSensingAdjustTable', 'dpSensingChart', 'dpSensingChartInstance');
       const sigTable = document.getElementById('dpSignalTable');
       if(sigTable) sigTable.querySelector('tbody').innerHTML = '<tr><td colspan="20" style="text-align:center;color:var(--gray-400);padding:20px">数据已被清空，等待手动触发</td></tr>';
       return;
     }
-    const hasRealDemands = appData.demands.length > 0;
-    // 没有真实需求数据时跳过自动生成
-    if(!hasRealDemands) {
-      renderEmptyDpState('dpSensingCards', 'dpSensingAdjustTable', 'dpSignalTable', 'dpSensingChart', 'dpSensingChartInstance');
+    const hasForecasts = demandPlanData.forecasts.length > 0;
+    if(!hasForecasts) {
+      renderEmptyDpState('dpSensingCards', ['dpSensingAdjustTable','dpSignalTable'], 'dpSensingChart', 'dpSensingChartInstance');
       return;
     }
-    
-    // 从实际需求数据生成承诺信号
-    const customers = appData.customers.length ? appData.customers.map(c => c.name || c.code) : [];
-    const procs = ['FT','AB','CP','BP','Wafer'];
-    const sources = ['Hard承诺变更','Flexible变更','Forecast调整','订单Pull-in','Wafer Bank水位'];
-    appData.demands.slice(0,8).forEach((d,i)=>{
-      const mat = appData.materials.find(m => m.code === d.material);
-      const proc = mat?.processCode || 'FT';
-      const baseline = d.quantity || 5000;
-      const pctAdj = (Math.random()>0.5?1:-1)*Math.round(Math.random()*8+2);
-      const adjustQt = Math.round(baseline*pctAdj/100);
-      const waferImpact = Math.abs(Math.round(adjustQt/120/(SEMI_YIELD[proc]||0.95)));
-      demandPlanData.sensingSignals.push({
-        id:'SIG-'+String(i+1).padStart(3,'0'), material:d.material, process:proc,
-        customer:d.customer||(customers[i%customers.length]||'客户'),
-        source:sources[i%sources.length],
-        beforeVal:baseline, afterVal:baseline+adjustQt, changeVal:adjustQt,
-        confidence:Math.round(70+Math.random()*25),
-        waferImpact, validUntil:'2026-0'+(7+Math.floor(i/2))+'-'+(10+Math.floor(Math.random()*15)),
-        status:i%3===0?'活跃':'已应用', level:['Hard','Flexible','Forecast'][i%3]
-      });
+    // 按物料+周聚合客户订单（仅已确认）
+    const orderByWeek = {};
+    appData.customerOrders.forEach(o => {
+      if(o.status !== '已确认') return;
+      const wk = getWeekKey(o.demandDate);
+      const key = o.material + '|' + wk;
+      if(!orderByWeek[key]) orderByWeek[key] = {material:o.material, week:wk, hard:0, flexible:0, forecastAmt:0, total:0, customers:[]};
+      if(o.orderType === 'Hard') orderByWeek[key].hard += o.quantity;
+      else if(o.orderType === 'Flexible') orderByWeek[key].flexible += o.quantity;
+      else if(o.orderType === 'Forecast') orderByWeek[key].forecastAmt += o.quantity;
+      orderByWeek[key].total += o.quantity;
+      if(o.customer && !orderByWeek[key].customers.includes(o.customer)) orderByWeek[key].customers.push(o.customer);
+    });
+    // 逐物料分析：统计预测值 vs 实际客户承诺
+    demandPlanData.forecasts.forEach(fc => {
+      const matOrders = Object.values(orderByWeek).filter(o => o.material === fc.material);
+      const fcTotal = fc.totalForecast || 0;
+      // 汇总该物料的客户订单承诺（Hard + Flexible×0.8）
+      const hardQty = matOrders.reduce((s,o) => s + o.hard, 0);
+      const flexQty = matOrders.reduce((s,o) => s + o.flexible, 0);
+      const foreQty = matOrders.reduce((s,o) => s + o.forecastAmt, 0);
+      const weightedCommit = hardQty + flexQty * 0.8;
+      const gap = weightedCommit - fcTotal;
+      const allCusts = [...new Set(matOrders.flatMap(o => o.customers))];
+      if(!matOrders.length || (hardQty===0 && flexQty===0 && foreQty===0)){
+        // 有预测但无客户订单 → Forecast级信号
+        if(fcTotal > 0){
+          const sig = createSensingSignal(fc, fcTotal, 0, 'Forecast调整(无订单)', 'Forecast', '活跃', ['—'], 0, 50);
+          demandPlanData.sensingSignals.push(sig);
+          demandPlanData.sensingResults.push({
+            material:fc.material, process:fc.process, baseline:Math.round(fcTotal),
+            source:'Forecast调整(无订单)', adjustQt:Math.round(-fcTotal), adjustedVal:0,
+            waferImpact:sig.waferImpact, type:'负信号', signalType:'Forecast调整'
+          });
+        }
+        return;
+      }
+      const waferImpact = Math.ceil(Math.abs(gap||weightedCommit)/120/(SEMI_YIELD[fc.process]||0.95));
+      // 判断信号等级：Hard承诺占主导→Hard级；Flexible主导→Flexible级；其余Forecast级
+      const level = hardQty >= weightedCommit*0.4 ? 'Hard' : flexQty >= weightedCommit*0.3 ? 'Flexible' : 'Forecast';
+      const source = level === 'Hard' ? '客户Hard承诺变更' : level === 'Flexible' ? 'Flexible承诺变更' : '客户Forecast调整';
+      const confidence = Math.min(95, Math.max(50, Math.round(100-Math.abs(gap)/(fcTotal||1)*60)));
+      const sig = createSensingSignal(fc, fcTotal, weightedCommit, source, level, '活跃', allCusts, waferImpact, confidence);
+      demandPlanData.sensingSignals.push(sig);
       demandPlanData.sensingResults.push({
-        material:d.material, process:proc, baseline, source:sources[i%sources.length],
-        adjustQt, adjustedVal:baseline+adjustQt, waferImpact,
-        type:adjustQt>0?'正信号':'负信号', signalType:sources[i%sources.length]
+        material:fc.material, process:fc.process, baseline:Math.round(fcTotal),
+        source, adjustQt:Math.round(gap), adjustedVal:Math.round(weightedCommit),
+        waferImpact, type:gap>=0?'正信号':'负信号', signalType:source
       });
     });
   }
@@ -7339,7 +7373,7 @@ function renderDpSensing(skipAuto){
   const activeSig=demandPlanData.sensingSignals.filter(s=>s.status==='活跃').length;
   const totalWaferImpact=demandPlanData.sensingSignals.reduce((s,sig)=>s+(sig.waferImpact||0),0);
   document.getElementById('dpSensingCards').innerHTML=
-    '<div class="summary-card blue"><div class="lbl">📡 委外级联信号</div><div class="num" style="color:var(--primary)">'+totalSig+'</div><div class="sub-text">含Hard/Flexible/Forecast</div></div>'+
+    '<div class="summary-card blue"><div class="lbl">📡 委外级联信号</div><div class="num" style="color:var(--primary)">'+totalSig+'</div><div class="sub-text">基于DP统计预测 vs 客户订单(Requirement)</div></div>'+
     '<div class="summary-card '+(activeSig>0?'yellow':'green')+'"><div class="lbl">🟢 待处理</div><div class="num" style="color:'+(activeSig>0?'var(--warning)':'var(--success)')+'">'+activeSig+'</div><div class="sub-text">需关注</div></div>'+
     '<div class="summary-card green"><div class="lbl">⚪ 晶圆影响合计</div><div class="num" style="color:var(--success)">'+(totalWaferImpact>0?'+':'')+totalWaferImpact.toLocaleString()+'</div><div class="sub-text">等效晶圆(片)</div></div>';
 
@@ -7361,7 +7395,7 @@ function renderDpSensing(skipAuto){
 
   const srcFilter=document.getElementById('dpSignalSource')?.value||'all';
   const filtered=srcFilter==='all'?demandPlanData.sensingSignals:
-    demandPlanData.sensingSignals.filter(s=>(srcFilter==='hard'&&s.level==='Hard')||(srcFilter==='flexible'&&s.level==='Flexible')||(srcFilter==='forecast'&&s.level==='Forecast')||(srcFilter==='order'&&(s.source.includes('订单')||s.source.includes('Pull')||s.source.includes('Push')))||(srcFilter==='wafer'&&s.source.includes('Wafer')));
+    demandPlanData.sensingSignals.filter(s=>(srcFilter==='hard'&&s.level==='Hard')||(srcFilter==='flexible'&&s.level==='Flexible')||(srcFilter==='forecast'&&s.level==='Forecast')||(srcFilter==='order'&&(s.source.includes('承诺')||s.source.includes('客户')))||(srcFilter==='wafer'&&s.source.includes('Wafer')));
   html='';filtered.forEach((s,i)=>{
     const levColor=s.level==='Hard'?'var(--danger)':s.level==='Flexible'?'var(--warning)':'var(--info)';
     const idx=demandPlanData.sensingSignals.indexOf(s);
@@ -7379,9 +7413,31 @@ function openDpSignalConfig(){
 }
 function applyDpSignal(idx){
   const s=demandPlanData.sensingSignals[idx];
-  if(!s)return;
-  showToast('📡 信号 '+s.id+' 已应用（'+s.process+' '+s.level+'），影响晶圆 '+s.waferImpact.toLocaleString()+' 片','success');
-  s.status='已应用';renderDpSensing();
+  if(!s || s.status==='已应用') return;
+  // 1) 找到对应的DP forecast条目
+  const fc = demandPlanData.forecasts.find(f => f.material === s.material);
+  if(!fc){ showToast('⚠️ 未找到物料 '+s.material+' 的DP预测数据','error'); return; }
+  // 2) 计算调整量并级联传导
+  const adjustment = s.changeVal || 0; // 正=上调，负=下调
+  const cascadeResult = propagateDemand(Math.abs(fc.totalForecast + adjustment));
+  // 3) 更新forecast: 按比例调整各预测期数值
+  const oldTotal = fc.totalForecast || 1;
+  const ratio = (fc.totalForecast + adjustment) / oldTotal;
+  fc.forecast = fc.forecast.map(v => Math.max(0, Math.round(v * ratio)));
+  fc.totalForecast = Math.round(fc.totalForecast + adjustment);
+  fc.propagation = cascadeResult;
+  fc.waferEquivalent = cascadeResult.Wafer || 0;
+  const adjustedFc = fc.totalForecast;
+  // 4) 更新sensingResults中对应的条目
+  const sr = demandPlanData.sensingResults.find(r => r.material === s.material);
+  if(sr){
+    sr.adjustedVal = adjustedFc;
+  }
+  // 5) 标记信号已应用
+  s.status = '已应用';
+  showToast('📡 信号 '+s.id+' 已应用 — '+s.material+' 预测从 '+s.beforeVal.toLocaleString()+' 调整为 '+adjustedFc.toLocaleString()
+    +'，级联Wafer影响 '+cascadeResult.Wafer.toLocaleString()+' 片','success');
+  renderDpSensing();
 }
 
 // ==================== Tab 3: Rolling Consensus（晶圆约束18周滚动共识） ====================
