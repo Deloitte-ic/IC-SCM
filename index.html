@@ -7186,6 +7186,7 @@ function renderDpStatistical(skipAuto){
 }
 
 function runDpForecast(){
+  localStorage.removeItem('ic_scm_dp_cleared');
   demandPlanData.forecasts=[];renderDpStatistical();
   const waferTotal=demandPlanData.forecasts.reduce((s,f)=>s+(f.waferEquivalent||0),0);
   showToast('🔮 IC设计全链路预测完成！等效晶圆总需求：'+waferTotal.toLocaleString()+' 片','success');
