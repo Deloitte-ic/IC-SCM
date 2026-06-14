@@ -7472,6 +7472,7 @@ function applyDpSignal(idx){
 // ==================== Tab 3: Rolling Consensus（晶圆约束18周滚动共识） ====================
 // 从DP统计预测(Tab1) + 承诺感知信号(Tab2) 驱动，非Mock数据
 function renderDpConsensus(skipAuto){
+  let horizon = parseInt(document.getElementById('dpConsensusHorizon')?.value) || 18;
   if(!skipAuto && !demandPlanData.workflowStages.length){
     if(localStorage.getItem('ic_scm_dp_cleared')==='1'){
       renderEmptyDpState('dpConsensusCards', ['dpWorkflowTable','dpVersionTable'], 'dpConsensusChart', 'dpConsensusChartInstance');
@@ -7496,7 +7497,7 @@ function renderDpConsensus(skipAuto){
     // Wafer约束线 = DP统计的90%（作为参考约束，实际应来自Supply数据）
     const waferConstraint = Math.round(dpWaferTotal * 0.9) || 10000;
     // 滚动窗口：从输入读取周期（默认18周）
-    const horizon = parseInt(document.getElementById('dpConsensusHorizon')?.value) || 18;
+    horizon = parseInt(document.getElementById('dpConsensusHorizon')?.value) || 18;
     const now = new Date();
     const cwk = getWeekKey(now.toISOString().substring(0,10));
     const cwn = cwk % 100, cy = Math.floor(cwk/100);
