@@ -254,34 +254,29 @@ tbody tr:hover td{background:var(--primary-bg)}
   </div>
   <nav class="sidebar-nav" id="sidebarNav">
     <div class="nav-group">
-      <div class="nav-group-title">Master Data</div>
       <div class="nav-item active" data-section="masterdata" onclick="switchSection('masterdata')">
         <span class="nav-icon">📦</span><span class="nav-text">Master Data</span>
       </div>
     </div>
     <div class="nav-group">
-      <div class="nav-group-title">Business Data</div>
       <div class="nav-item" data-section="business" onclick="switchSection('business')">
         <span class="nav-icon">📊</span><span class="nav-text">Business Data</span>
       </div>
     </div>
     <div class="nav-group">
-      <div class="nav-group-title">Requirement Management</div>
       <div class="nav-item" data-section="demand" onclick="switchSection('demand')">
-        <span class="nav-icon">📊</span><span class="nav-text">Requirement Management</span>
+        <span class="nav-icon">📊</span><span class="nav-text">Requirement</span>
       </div>
       <div class="nav-item" data-section="demandplan" onclick="switchSection('demandplan')">
         <span class="nav-icon">📈</span><span class="nav-text">Demand Planning</span>
       </div>
     </div>
     <div class="nav-group">
-      <div class="nav-group-title">Supply</div>
       <div class="nav-item" data-section="supplyplan" onclick="switchSection('supplyplan')">
         <span class="nav-icon">🌐</span><span class="nav-text">Supply</span>
       </div>
     </div>
     <div class="nav-group">
-      <div class="nav-group-title">S&OP</div>
       <div class="nav-item" data-section="collaboration" onclick="switchSection('collaboration')">
         <span class="nav-icon">🤝</span><span class="nav-text">S&OP</span>
       </div>
@@ -1655,7 +1650,7 @@ function switchSection(id) {
   const titles = {
     masterdata:'📦 Master Data',
     business:'📊 Business Data',
-    demand:'📊 Requirement Management',
+    demand:'📊 Requirement',
     demandplan:'📈 Demand Planning',
     supplyplan:'🌐 Supply',
     collaboration:'🤝 S&OP'
@@ -1663,7 +1658,7 @@ function switchSection(id) {
   const breadcrumbs = {
     masterdata:'Master Data',
     business:'Business Data',
-    demand:'Requirement Management',
+    demand:'Requirement',
     demandplan:'Demand Planning',
     supplyplan:'Supply',
     collaboration:'S&OP'
