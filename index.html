@@ -204,6 +204,7 @@ tbody tr:hover td{background:var(--primary-bg)}
 .tag-red{background:#fef2f2;color:#991b1b}
 .tag-yellow{background:#fffbeb;color:#92400e}
 .tag-blue{background:var(--primary-bg);color:var(--primary-dark)}
+.tag-gray{background:#f3f4f6;color:#6b7280}
 .tag-purple{background:#f3e8ff;color:#6d28d9}
 .tag-cyan{background:#ecfeff;color:#0e7490}
 .tag-indigo{background:#eef2ff;color:#3730a3}
@@ -266,6 +267,9 @@ tbody tr:hover td{background:var(--primary-bg)}
     </div>
     <div class="nav-group">
       <div class="nav-group-title">Demand</div>
+      <div class="nav-item" data-section="demand" onclick="switchSection('demand')">
+        <span class="nav-icon">📊</span><span class="nav-text">需求数据管理</span>
+      </div>
       <div class="nav-item" data-section="demandplan" onclick="switchSection('demandplan')">
         <span class="nav-icon">📈</span><span class="nav-text">Demand Planning（需求计划）</span>
       </div>
@@ -444,23 +448,85 @@ tbody tr:hover td{background:var(--primary-bg)}
     <!-- ==================== 需求预测 ==================== -->
     <div class="section" id="section-demand">
       <div class="tabs" id="demandTabs">
-        <div class="tab active" data-tab="demand-forecast" onclick="switchDemandTab('demand-forecast')">🔮 预测模型</div>
-        <div class="tab" data-tab="demand-entry" onclick="switchDemandTab('demand-entry')">📝 订单/预测结果</div>
+        <div class="tab active" data-tab="demand-forecast" onclick="switchDemandTab('demand-forecast')">🔮 统计预测</div>
+        <div class="tab" data-tab="demand-orders" onclick="switchDemandTab('demand-orders')">📝 客户订单</div>
+        <div class="tab" data-tab="demand-history" onclick="switchDemandTab('demand-history')">📜 历史销售</div>
+        <div class="tab" data-tab="demand-fusion" onclick="switchDemandTab('demand-fusion')">⚡ 需求融合</div>
         <div class="tab" data-tab="demand-summary" onclick="switchDemandTab('demand-summary')">📊 需求汇总</div>
         <div class="tab" data-tab="demand-trend" onclick="switchDemandTab('demand-trend')">📈 趋势分析</div>
       </div>
 
-      <div class="tab-content" id="tab-demand-entry">
+      <div class="tab-content" id="tab-demand-orders">
+        <div class="result-summary" id="orderSummaryCards"></div>
         <div class="card">
           <div class="card-header">
-            <div class="card-title">📝 Independent Demand</div>
-            <div style="display:flex;gap:8px">
-              <button class="btn btn-sm btn-outline" onclick="importToType('demand')">📥 导入</button>
-              <input type="file" id="importFile_demand" accept=".xlsx,.xls" onchange="handleTypeImport(event,'demand')" style="display:none">
-              <button class="btn btn-sm btn-success" onclick="openAddDemandModal()">➕ 新增</button>
+            <div class="card-title">📝 客户订单管理 <span class="tag">Hard/Flexible/Forecast</span></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-sm btn-outline" onclick="importToType('customerOrders')">📥 导入订单</button>
+              <input type="file" id="importFile_customerOrders" accept=".xlsx,.xls" onchange="handleTypeImport(event,'customerOrders')" style="display:none">
+              <button class="btn btn-sm btn-success" onclick="openAddOrderModal()">➕ 新增订单</button>
+              <button class="btn btn-sm btn-outline" onclick="exportCustomerOrders()">📤 导出</button>
             </div>
           </div>
-          <div class="table-wrapper"><table id="demandTable"><thead><tr><th>订单类型</th><th>订单号</th><th>物料编码</th><th>数量</th><th>单位</th><th>需求日期</th><th>客户</th><th>优先级</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+          <div class="table-wrapper" style="max-height:400px"><table id="customerOrderTable"><thead><tr><th>订单号</th><th>物料编码</th><th>订单类型</th><th>数量</th><th>单位</th><th>需求日期</th><th>客户</th><th>优先级</th><th>状态</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+        </div>
+      </div>
+
+      <div class="tab-content" id="tab-demand-history">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">📜 历史销售数据 <span class="tag">训练预测模型</span></div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-sm btn-outline" onclick="importToType('salesHistory')">📥 导入历史销售</button>
+              <input type="file" id="importFile_salesHistory" accept=".xlsx,.xls" onchange="handleTypeImport(event,'salesHistory')" style="display:none">
+              <button class="btn btn-sm btn-outline" onclick="genSampleSalesHistory()">🔄 生成示例数据</button>
+            </div>
+          </div>
+          <div class="table-wrapper" style="max-height:300px"><table id="salesHistoryTable"><thead><tr><th>日期</th><th>物料编码</th><th>制程</th><th>客户</th><th>数量</th><th>单位</th><th>订单号</th><th>来源</th></tr></thead><tbody></tbody></table></div>
+        </div>
+        <div class="card">
+          <div class="card-title">📊 历史销售趋势 <span class="tag">按物料+月份聚合</span></div>
+          <div class="chart-container" style="height:260px"><canvas id="salesHistoryChart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">📋 月聚合数据</div>
+          <div class="table-wrapper" style="max-height:200px"><table id="salesHistoryAggTable"><thead><tr><th>月份</th><th>物料</th><th>制程</th><th>总量</th><th>订单数</th></tr></thead><tbody></tbody></table></div>
+        </div>
+      </div>
+
+      <div class="tab-content" id="tab-demand-fusion">
+        <div class="result-summary" id="fusionSummaryCards"></div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">⚡ 需求融合引擎 <span class="tag">客户订单 + 统计预测 → 总需求</span></div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <label style="font-size:12px;display:flex;align-items:center;gap:4px">
+                <input type="checkbox" id="fusionIncludeOrders" checked> 含客户订单
+              </label>
+              <label style="font-size:12px;display:flex;align-items:center;gap:4px">
+                <input type="checkbox" id="fusionIncludeForecast" checked> 含统计预测
+              </label>
+              <label style="font-size:12px;display:flex;align-items:center;gap:4px">
+                Forecast权重: <input type="number" id="fusionForecastWeight" value="0.7" min="0" max="1" step="0.1" style="width:60px;padding:2px 4px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px">
+              </label>
+              <button class="btn btn-sm btn-primary" onclick="runDemandFusion()">⚡ 执行融合</button>
+              <button class="btn btn-sm btn-success" onclick="pushFusionToDemands()" id="pushFusionBtn" style="display:none">📥 推送至Demands（供MRP使用）</button>
+            </div>
+          </div>
+          <div class="chart-container" style="height:260px"><canvas id="fusionChart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">📋 融合结果明细 <span class="tag">按物料+月份</span></div>
+          <div class="table-wrapper" style="max-height:350px"><table id="fusionResultTable"><thead><tr><th>月份</th><th>物料</th><th>订单量</th><th>预测量</th><th>融合量</th><th>单位</th><th>制程</th><th>等效Wafer(片)</th></tr></thead><tbody></tbody></table></div>
+        </div>
+        <div class="card">
+          <div class="card-title">📖 融合规则说明</div>
+          <div style="font-size:13px;color:var(--gray-600);line-height:1.8">
+            <p>• <strong>Hard订单</strong>：刚性不可取消，直接纳入总需求</p>
+            <p>• <strong>Flexible订单</strong>：可协商调整，按系数（默认0.8）纳入总需求</p>
+            <p>• <strong>统计预测</strong>：当预测 > 订单总量时，超出部分作为Buffer纳入</p>
+            <p>• <strong>最终公式</strong>：总需求 = Hard + Flexible×0.8 + max(0, 预测 − (Hard+Flexible×0.8)) × 权重</p>
+          </div>
         </div>
       </div>
 
@@ -1342,8 +1408,11 @@ const appData = {
   customers: [],      // 客户
   inventory: [],      // 库存
   wip: [],            // 在途
-  demands: [],        // 独立需求
+  demands: [],        // 需求融合结果（订单+预测融合后）
   demandHistory: [],  // 需求变更历史
+  customerOrders: [], // 客户订单（含hard/flexible/forecast类型）
+  salesHistory: [],   // 历史销售实际数据（用于训练预测）
+  forecastOutput: [], // 统计预测输出版本列表
   mrpResult: [],      // MRP运算结果
   mrpDetails: [],     // 运算明细
   plannedOrders: [],  // 用户创建的计划订单
@@ -1922,10 +1991,16 @@ function handleTypeImport(event,type){
           case 'wip': parseWipSheet(data,sheetName); break;
           case 'prpo': parsePrpoSheet(data,sheetName); break;
           case 'demand': parseDemandSheet(data,sheetName); break;
+          case 'customerOrders': parseCustomerOrderSheet(data,sheetName); break;
+          case 'salesHistory': parseSalesHistorySheet(data,sheetName); break;
         }
       });
       if(type==='demand'){
         renderDemand();updateDashboard();
+      }else if(type==='customerOrders'){
+        saveMasterdataToStorage();renderCustomerOrders();
+      }else if(type==='salesHistory'){
+        saveMasterdataToStorage();renderSalesHistory();
       }else{
         renderAllMasterdata();
         saveMasterdataToStorage();
@@ -3086,17 +3161,36 @@ function switchDemandTab(tab){
   document.querySelectorAll('#section-demand .tab-content').forEach(t=>t.classList.remove('active'));
   document.querySelector('#demandTabs .tab[data-tab="'+tab+'"]').classList.add('active');
   document.getElementById('tab-'+tab).classList.add('active');
+  if(tab==='demand-orders')renderCustomerOrders();
+  if(tab==='demand-history')renderSalesHistory();
+  if(tab==='demand-fusion')renderFusionView();
   if(tab==='demand-summary')renderDemandSummary();
   if(tab==='demand-trend')renderDemandTrend();
   if(tab==='demand-forecast')renderDemandForecast();
+}
+function renderCustomerOrders(){
+  const totalQty=appData.customerOrders.reduce((s,d)=>s+d.quantity,0), totalOrders=appData.customerOrders.length,
+    hardCnt=appData.customerOrders.filter(o=>o.orderType==='Hard').length,
+    flexibleCnt=appData.customerOrders.filter(o=>o.orderType==='Flexible').length;
+  document.getElementById('orderSummaryCards').innerHTML=
+    '<div class="summary-card blue"><div class="lbl">📦 总订单量</div><div class="num" style="color:var(--primary)">'+totalQty.toLocaleString()+'</div><div class="sub-text">'+totalOrders+' 笔</div></div>'+
+    '<div class="summary-card red"><div class="lbl">🔴 Hard刚性</div><div class="num" style="color:var(--danger)">'+hardCnt+'</div><div class="sub-text">不可取消</div></div>'+
+    '<div class="summary-card yellow"><div class="lbl">🟡 Flexible柔性</div><div class="num" style="color:var(--warning)">'+flexibleCnt+'</div><div class="sub-text">可协商调整</div></div>';
+  let html='';
+  appData.customerOrders.forEach((d,i)=>{
+    const pColor=d.priority==='高'?'tag-red':d.priority==='中'?'tag-yellow':'tag-blue';
+    const typeColor=d.orderType==='Hard'?'tag-red':d.orderType==='Flexible'?'tag-yellow':'tag-blue';
+    const stColor=d.status==='已确认'?'tag-green':d.status==='待确认'?'tag-yellow':'tag-gray';
+    html+='<tr><td>'+escapeHtml(d.orderNo)+'</td><td>'+escapeHtml(d.material)+'</td><td><span class="tag-status '+typeColor+'">'+escapeHtml(d.orderType)+'</span></td><td class="font-bold">'+d.quantity.toLocaleString()+'</td><td>'+escapeHtml(d.unit||'颗')+'</td><td>'+d.demandDate+'</td><td>'+escapeHtml(d.customer||'')+'</td><td><span class="tag-status '+pColor+'">'+d.priority+'</span></td><td><span class="tag-status '+stColor+'">'+d.status+'</span></td><td><button class="btn btn-sm btn-outline" onclick="editCustomerOrder('+i+')">✏️</button><button class="btn btn-sm btn-outline" onclick="deleteCustomerOrder('+i+')">🗑️</button></td></tr>';
+  });
+  document.querySelector('#customerOrderTable tbody').innerHTML=html||'<tr><td colspan="10" style="text-align:center;color:var(--gray-400)">暂无客户订单，请导入或新建</td></tr>';
 }
 function renderDemand(){
   let html='';
   appData.demands.forEach((d,i)=>{
     const pColor=d.priority==='高'?'tag-red':d.priority==='中'?'tag-yellow':'tag-blue';
-    html+='<tr><td><span class="tag-status tag-blue">'+escapeHtml(d.orderType||'独立需求')+'</span></td><td>'+d.orderNo+'</td><td>'+d.material+'</td><td class="font-bold">'+d.quantity.toLocaleString()+'</td><td>'+escapeHtml(d.unit||'颗')+'</td><td>'+d.demandDate+'</td><td>'+escapeHtml(d.customer||'')+'</td><td><span class="tag-status '+pColor+'">'+d.priority+'</span></td><td><button class="btn btn-sm btn-outline" onclick="editDemand('+i+')">✏️</button><button class="btn btn-sm btn-outline" onclick="deleteDemand('+i+')">🗑️</button></td></tr>';
+    html+='<tr><td><span class="tag-status tag-blue">'+escapeHtml(d.orderType||'融合需求')+'</span></td><td>'+d.orderNo+'</td><td>'+d.material+'</td><td class="font-bold">'+d.quantity.toLocaleString()+'</td><td>'+escapeHtml(d.unit||'颗')+'</td><td>'+d.demandDate+'</td><td>'+escapeHtml(d.customer||'')+'</td><td><span class="tag-status '+pColor+'">'+d.priority+'</span></td></tr>';
   });
-  document.querySelector('#demandTable tbody').innerHTML=html||'<tr><td colspan="9" style="text-align:center;color:var(--gray-400)">暂无需求数据</td></tr>';
   renderDemandSummary();renderDemandTrend();
   saveMasterdataToStorage();
 }
@@ -3127,7 +3221,330 @@ function renderDemandTrend(){
   demandChartInstance=new Chart(ctx,{type:'line',data:{labels,datasets:[{label:'需求量',data,borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.1)',fill:true,tension:.4,pointBackgroundColor:'#2563eb',pointRadius:5,pointHoverRadius:8}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{callback:v=>v.toLocaleString()}}}}});
 }
 
-// ======================== 需求预测 (Holt-Winters + IBP业务封装) ========================
+// ======================== 历史销售数据 ========================
+let salesHistoryChartInstance = null;
+function renderSalesHistory(){
+  // 明细表
+  let html='';
+  appData.salesHistory.forEach(s=>{
+    html+='<tr><td>'+s.recordDate+'</td><td>'+escapeHtml(s.material)+'</td><td><span class="tag-status tag-cyan">'+escapeHtml(s.process||'')+'</span></td><td>'+escapeHtml(s.customer||'')+'</td><td class="font-bold">'+(s.quantity||0).toLocaleString()+'</td><td>'+escapeHtml(s.unit||'颗')+'</td><td>'+escapeHtml(s.orderNo||'')+'</td><td>'+escapeHtml(s.source||'')+'</td></tr>';
+  });
+  document.querySelector('#salesHistoryTable tbody').innerHTML=html||'<tr><td colspan="8" style="text-align:center;color:var(--gray-400)">暂无历史销售数据，可导入Excel或生成示例数据</td></tr>';
+  // 月聚合表
+  const agg={};
+  appData.salesHistory.forEach(s=>{
+    const month=s.recordDate.substring(0,7);
+    const key=s.material+'|'+month;
+    if(!agg[key]){agg[key]={material:s.material,process:s.process||'',month, qty:0, cnt:0};}
+    agg[key].qty+=s.quantity||0;
+    agg[key].cnt++;
+  });
+  let ahtml='';
+  Object.keys(agg).sort().forEach(key=>{
+    const a=agg[key];
+    ahtml+='<tr><td>'+a.month+'</td><td>'+escapeHtml(a.material)+'</td><td><span class="tag-status tag-cyan">'+escapeHtml(a.process)+'</span></td><td class="font-bold">'+a.qty.toLocaleString()+'</td><td>'+a.cnt+'</td></tr>';
+  });
+  document.querySelector('#salesHistoryAggTable tbody').innerHTML=ahtml||'<tr><td colspan="5" style="text-align:center;color:var(--gray-400)">暂无数据</td></tr>';
+  // 图表
+  if(salesHistoryChartInstance){salesHistoryChartInstance.destroy();salesHistoryChartInstance=null;}
+  const byMonth={};
+  appData.salesHistory.forEach(s=>{
+    const m=s.recordDate.substring(0,7);
+    byMonth[m]=(byMonth[m]||0)+(s.quantity||0);
+  });
+  const months=Object.keys(byMonth).sort();
+  if(months.length<2) return;
+  const ctx=document.getElementById('salesHistoryChart');
+  if(!ctx) return;
+  salesHistoryChartInstance=new Chart(ctx.getContext('2d'),{
+    type:'line',
+    data:{labels:months,datasets:[{label:'历史销售',data:months.map(m=>byMonth[m]),borderColor:'#059669',backgroundColor:'rgba(5,150,105,.12)',fill:true,tension:.3,pointRadius:3}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true,ticks:{callback:v=>v.toLocaleString()}}}}
+  });
+}
+function genSampleSalesHistory(){
+  if(appData.salesHistory.length>0 && !confirm('已有历史销售数据，生成示例将覆盖。确认？')) return;
+  appData.salesHistory=[];
+  const shMats=[{code:'IC-1000-FT',process:'FT',base:8000,vol:0.2,cust:'华为海思'},{code:'IC-1000-FT',process:'FT',base:6000,vol:0.18,cust:'展讯通信'},{code:'IC-1000-FT',process:'FT',base:4000,vol:0.22,cust:'中兴微电子'}];
+  let idx=0;
+  const sd=new Date('2025-07-01');
+  for(let w=0;w<60;w++){
+    shMats.forEach(m=>{
+      const d=new Date(sd);d.setDate(d.getDate()+w*7);
+      const f=1+0.25*Math.sin((w+26)*Math.PI/26)+0.1*Math.sin((w+13)*Math.PI/13);
+      const qty=Math.max(1000,Math.round(m.base*f*(1+m.vol*(Math.random()-0.5))));
+      appData.salesHistory.push({recordDate:d.toISOString().substring(0,10),material:m.code,process:m.process,customer:m.cust,quantity:qty,unit:'颗',orderNo:'SH-'+String(++idx).padStart(4,'0'),source:'SAP'});
+    });
+  }
+  saveMasterdataToStorage();renderSalesHistory();
+  showToast('✅ 已生成60周示例历史销售数据（'+appData.salesHistory.length+'条）','success');
+}
+
+// ======================== 客户订单 CRUD ========================
+function openAddOrderModal(){
+  const matOpts=appData.materials.length?appData.materials.map(m=>'<option value="'+m.code+'">'+m.code+' - '+m.name+'</option>').join(''):'<option value="IC-1000-FT">IC-1000-FT</option>';
+  const custs=appData.customers.length?appData.customers.map(c=>'<option value="'+(c.name||c.code)+'">'+(c.name||c.code)+'</option>').join(''):'<option value="华为海思">华为海思</option><option value="展讯通信">展讯通信</option><option value="中兴微电子">中兴微电子</option>';
+  openModal('<div class="modal-title">➕ 新增客户订单 <button class="modal-close" onclick="closeModal()">×</button></div>'+
+    '<div class="grid-2"><div class="form-group"><label>订单号</label><input id="newOrdNo" value="ORD'+String(appData.customerOrders.length+1).padStart(3,'0')+'"></div>'+
+    '<div class="form-group"><label>物料</label><select id="newOrdMat">'+matOpts+'</select></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>订单类型</label><select id="newOrdType"><option value="Hard">🔴 Hard - 刚性</option><option value="Flexible">🟡 Flexible - 柔性</option><option value="Forecast">🔵 Forecast - 预测</option></select></div>'+
+    '<div class="form-group"><label>数量</label><input type="number" id="newOrdQty" value="50000" min="0"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>需求日期</label><input type="date" id="newOrdDate" value="2026-09-30"></div>'+
+    '<div class="form-group"><label>客户</label><select id="newOrdCust">'+custs+'</select></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>优先级</label><select id="newOrdPri"><option value="高">🔴 高</option><option value="中" selected>🟡 中</option><option value="低">🔵 低</option></select></div>'+
+    '<div class="form-group"><label>状态</label><select id="newOrdStatus"><option value="草稿">草稿</option><option value="待确认">待确认</option><option value="已确认" selected>已确认</option></select></div></div>'+
+    '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveNewOrder()">保存</button></div>');
+}
+function saveNewOrder(){
+  const orderNo=document.getElementById('newOrdNo').value.trim();
+  const mat=document.getElementById('newOrdMat').value;
+  const orderType=document.getElementById('newOrdType').value;
+  const qty=parseFloat(document.getElementById('newOrdQty').value)||0;
+  const demandDate=document.getElementById('newOrdDate').value;
+  const customer=document.getElementById('newOrdCust').value;
+  const priority=document.getElementById('newOrdPri').value;
+  const status=document.getElementById('newOrdStatus').value;
+  if(!orderNo||!mat||!qty){showToast('请填写完整信息','error');return;}
+  appData.customerOrders.push({orderNo,material:mat,orderType,quantity:qty,unit:'颗',demandDate,customer,priority,status});
+  closeModal();saveMasterdataToStorage();renderCustomerOrders();
+  showToast('✅ 客户订单已新增','success');
+}
+function editCustomerOrder(idx){
+  const o=appData.customerOrders[idx];if(!o)return;
+  const matOpts=appData.materials.length?appData.materials.map(m=>'<option value="'+m.code+'"'+(m.code===o.material?' selected':'')+'>'+m.code+' - '+m.name+'</option>').join(''):'<option value="IC-1000-FT">IC-1000-FT</option>';
+  const custs=appData.customers.length?appData.customers.map(c=>'<option value="'+(c.name||c.code)+'"'+((c.name||c.code)===o.customer?' selected':'')+'>'+(c.name||c.code)+'</option>').join(''):'<option value="华为海思">华为海思</option>';
+  openModal('<div class="modal-title">✏️ 编辑订单 '+o.orderNo+' <button class="modal-close" onclick="closeModal()">×</button></div>'+
+    '<div class="grid-2"><div class="form-group"><label>订单号</label><input id="editOrdNo" value="'+escapeHtml(o.orderNo)+'"></div>'+
+    '<div class="form-group"><label>物料</label><select id="editOrdMat">'+matOpts+'</select></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>订单类型</label><select id="editOrdType"><option value="Hard"'+(o.orderType==='Hard'?' selected':'')+'>Hard</option><option value="Flexible"'+(o.orderType==='Flexible'?' selected':'')+'>Flexible</option><option value="Forecast"'+(o.orderType==='Forecast'?' selected':'')+'>Forecast</option></select></div>'+
+    '<div class="form-group"><label>数量</label><input type="number" id="editOrdQty" value="'+(o.quantity||0)+'" min="0"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>需求日期</label><input type="date" id="editOrdDate" value="'+(o.demandDate||'')+'"></div>'+
+    '<div class="form-group"><label>客户</label><select id="editOrdCust">'+custs+'</select></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>优先级</label><select id="editOrdPri"><option value="高"'+(o.priority==='高'?' selected':'')+'>高</option><option value="中"'+(o.priority==='中'?' selected':'')+'>中</option><option value="低"'+(o.priority==='低'?' selected':'')+'>低</option></select></div>'+
+    '<div class="form-group"><label>状态</label><select id="editOrdStatus"><option value="草稿"'+(o.status==='草稿'?' selected':'')+'>草稿</option><option value="待确认"'+(o.status==='待确认'?' selected':'')+'>待确认</option><option value="已确认"'+(o.status==='已确认'?' selected':'')+'>已确认</option></select></div></div>'+
+    '<input type="hidden" id="editOrdIdx" value="'+idx+'">'+
+    '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveEditOrder()">更新</button></div>');
+}
+function saveEditOrder(){
+  const idx=parseInt(document.getElementById('editOrdIdx').value);
+  if(isNaN(idx)||!appData.customerOrders[idx])return;
+  appData.customerOrders[idx]={
+    orderNo:document.getElementById('editOrdNo').value.trim(),
+    material:document.getElementById('editOrdMat').value,
+    orderType:document.getElementById('editOrdType').value,
+    quantity:parseFloat(document.getElementById('editOrdQty').value)||0,
+    unit:'颗',
+    demandDate:document.getElementById('editOrdDate').value,
+    customer:document.getElementById('editOrdCust').value,
+    priority:document.getElementById('editOrdPri').value,
+    status:document.getElementById('editOrdStatus').value
+  };
+  closeModal();saveMasterdataToStorage();renderCustomerOrders();
+  showToast('✅ 客户订单已更新','success');
+}
+function deleteCustomerOrder(idx){
+  if(!confirm('确定删除该客户订单？')) return;
+  appData.customerOrders.splice(idx,1);
+  saveMasterdataToStorage();renderCustomerOrders();
+  showToast('🗑️ 已删除','info');
+}
+function exportCustomerOrders(){
+  if(!appData.customerOrders.length){showToast('无数据可导出','error');return;}
+  const arr=appData.customerOrders.map(o=>({订单号:o.orderNo,物料编码:o.material,订单类型:o.orderType,数量:o.quantity,单位:o.unit||'颗',需求日期:o.demandDate,客户:o.customer,优先级:o.priority,状态:o.status}));
+  const ws=XLSX.utils.json_to_sheet(arr);
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'客户订单');
+  XLSX.writeFile(wb,'客户订单_'+new Date().toISOString().substring(0,10)+'.xlsx');
+  showToast('📤 导出成功','success');
+}
+// 兼容旧版demand编辑（仍保留，用于fusion结果查看）
+function deleteDemand(idx) { appData.demands.splice(idx,1); renderDemand(); updateDashboard(); }
+
+// ======================== 需求融合引擎 ========================
+let fusionChartInstance = null;
+let lastFusionResult = null;
+function renderFusionView(){
+  if(lastFusionResult){
+    displayFusionResult(lastFusionResult);
+  } else {
+    document.getElementById('fusionChart').parentElement.innerHTML='<div style="text-align:center;padding:60px;color:var(--gray-400)">点击「执行融合」生成需求融合结果</div>';
+    document.getElementById('fusionResultTable').querySelector('tbody').innerHTML='';
+    document.getElementById('pushFusionBtn').style.display='none';
+  }
+}
+function runDemandFusion(){
+  const includeOrders=document.getElementById('fusionIncludeOrders').checked;
+  const includeForecast=document.getElementById('fusionIncludeForecast').checked;
+  const fWeight=parseFloat(document.getElementById('fusionForecastWeight').value)||0.7;
+  // STEP 1: 按物料+月份聚合客户订单
+  const orderByMonth={};
+  appData.customerOrders.forEach(o=>{
+    if(!includeOrders) return;
+    const month=o.demandDate.substring(0,7);
+    const key=o.material+'|'+month;
+    if(!orderByMonth[key]) orderByMonth[key]={material:o.material,month,hard:0,flexible:0,forecast:0,total:0};
+    if(o.orderType==='Hard' && o.status==='已确认') orderByMonth[key].hard+=o.quantity;
+    else if(o.orderType==='Flexible' && (o.status==='已确认'||o.status==='待确认')) orderByMonth[key].flexible+=o.quantity;
+    else if(o.orderType==='Forecast' && o.status==='已确认') orderByMonth[key].forecast+=o.quantity;
+    orderByMonth[key].total+=o.quantity;
+  });
+  // STEP 2: 统计预测结果（从lastForecastResult取）
+  const forecastByMonth={};
+  if(includeForecast && lastForecastResult && lastForecastResult.forecastPeriods){
+    lastForecastResult.forecastPeriods.forEach((p,i)=>{
+      const val=Math.round(lastForecastResult.forecast[i]||0);
+      const mat=appData.materials.length?appData.materials[0].code:'IC-1000-FT';
+      const key=mat+'|'+p;
+      forecastByMonth[key]=(forecastByMonth[key]||0)+val;
+    });
+  }
+  // STEP 3: 融合 = Hard + Flexible*0.8 + max(0, 预测 - (Hard+Flexible*0.8)) * 权重
+  const fusion={};
+  const FLEX_RATE=0.8;
+  // 合并所有key
+  const allKeys=new Set([...Object.keys(orderByMonth),...Object.keys(forecastByMonth)]);
+  let totalOrder=0, totalForecast=0, totalFusion=0;
+  allKeys.forEach(key=>{
+    const [mat,month]=key.split('|');
+    const o=orderByMonth[key];
+    const fVal=forecastByMonth[key]||0;
+    const orderBase=o ? (o.hard + o.flexible*FLEX_RATE) : 0;
+    const orderTotal=o ? o.total : 0;
+    const forecastBuffer=Math.max(0, fVal - orderBase) * fWeight;
+    const fused=Math.round(orderBase + forecastBuffer);
+    fusion[key]={material:mat,month,orderQty:orderTotal,orderBase:Math.round(orderBase),forecastQty:Math.round(fVal),fusedQty:fused};
+    totalOrder+=orderTotal;totalForecast+=fVal;totalFusion+=fused;
+  });
+  // STEP 4: 结果展示
+  lastFusionResult=fusion;
+  // 卡片
+  document.getElementById('fusionSummaryCards').innerHTML=
+    '<div class="summary-card blue"><div class="lbl">📦 融合总需求</div><div class="num" style="color:var(--primary)">'+totalFusion.toLocaleString()+'</div><div class="sub-text">'+allKeys.size+' 个月份-物料组合</div></div>'+
+    '<div class="summary-card red"><div class="lbl">🔴 订单总量</div><div class="num" style="color:var(--danger)">'+totalOrder.toLocaleString()+'</div></div>'+
+    '<div class="summary-card green"><div class="lbl">📊 预测总量</div><div class="num" style="color:var(--success)">'+totalForecast.toLocaleString()+'</div></div>';
+  displayFusionResult(fusion);
+  document.getElementById('pushFusionBtn').style.display='inline-flex';
+  showToast('⚡ 需求融合完成，共 '+allKeys.size+' 个组合','success');
+}
+function displayFusionResult(fusion){
+  const keys=Object.keys(fusion).sort();
+  if(fusionChartInstance){fusionChartInstance.destroy();fusionChartInstance=null;}
+  const ctx=document.getElementById('fusionChart');
+  if(ctx && keys.length){
+    const labels=keys.map(k=>k.split('|')[1]);
+    const orderData=keys.map(k=>fusion[k].orderQty);
+    const forecastData=keys.map(k=>fusion[k].forecastQty);
+    const fusedData=keys.map(k=>fusion[k].fusedQty);
+    fusionChartInstance=new Chart(ctx.getContext('2d'),{
+      type:'bar',data:{labels,
+        datasets:[
+          {label:'🔴 订单量',data:orderData,backgroundColor:'rgba(239,68,68,.6)',borderRadius:3},
+          {label:'📊 预测量',data:forecastData,backgroundColor:'rgba(245,158,11,.6)',borderRadius:3},
+          {label:'⚡ 融合量',data:fusedData,backgroundColor:'rgba(37,99,235,.6)',borderRadius:3}
+        ]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true,ticks:{callback:v=>v.toLocaleString()}}}}
+    });
+  }
+  let html='';
+  keys.forEach(k=>{
+    const f=fusion[k];
+    const mat=appData.materials.find(m=>m.code===f.material);
+    const process=mat?mat.processCode:'';
+    const waferEq=process?Math.round(dpWaferEq(f.fusedQty)):'—';
+    html+='<tr><td>'+f.month+'</td><td>'+escapeHtml(f.material)+'</td><td class="font-bold" style="color:var(--danger)">'+f.orderQty.toLocaleString()+'</td><td class="font-bold" style="color:var(--warning)">'+f.forecastQty.toLocaleString()+'</td><td class="font-bold" style="color:var(--primary)">'+f.fusedQty.toLocaleString()+'</td><td>颗</td><td>'+(process||'FT')+'</td><td>'+(typeof waferEq==='number'?waferEq.toLocaleString():waferEq)+'</td></tr>';
+  });
+  document.getElementById('fusionResultTable').querySelector('tbody').innerHTML=html||'<tr><td colspan="8" style="text-align:center;color:var(--gray-400)">无融合结果</td></tr>';
+}
+function pushFusionToDemands(){
+  if(!lastFusionResult||!Object.keys(lastFusionResult).length){showToast('请先执行融合','error');return;}
+  appData.demands=[];
+  const keys=Object.keys(lastFusionResult).sort();
+  keys.forEach(k=>{
+    const f=lastFusionResult[k];
+    appData.demands.push({
+      orderType:'融合需求', orderNo:'FUSION-'+f.month+'-'+f.material,
+      material:f.material, quantity:f.fusedQty, unit:'颗',
+      demandDate:f.month+'-01', customer:'', priority:'中'
+    });
+  });
+  saveMasterdataToStorage();
+  showToast('📥 已推送 '+appData.demands.length+' 条融合结果至Demands（MRP可用）','success');
+  document.getElementById('pushFusionBtn').textContent='✅ 已推送';
+}
+
+// ======================== 导入解析函数（客户订单 + 历史销售） ========================
+function parseCustomerOrderSheet(data,sheetName){
+  const h=data[0].map(c=>String(c).trim().toLowerCase());
+  const noIdx=h.findIndex(c=>/订单号|单号|orderno|order_no|ord/.test(c));
+  const matIdx=h.findIndex(c=>/物料|编码|material|code/.test(c));
+  const typeIdx=h.findIndex(c=>/订单类型|类型|ordertype|type|hard|flexible|forecast/i.test(c));
+  const qtyIdx=h.findIndex(c=>/数量|qty|quantity/.test(c));
+  const dateIdx=h.findIndex(c=>/需求日期|日期|demanddate|date/.test(c));
+  const custIdx=h.findIndex(c=>/客户|customer/.test(c));
+  const priIdx=h.findIndex(c=>/优先级|priority|pri/.test(c));
+  const stIdx=h.findIndex(c=>/状态|status/.test(c));
+  let cnt=0;
+  for(let i=1;i<data.length;i++){
+    const r=data[i];if(!r||!r[0])continue;
+    const orderNo=r[noIdx]?String(r[noIdx]).trim():'ORD'+String(appData.customerOrders.length+cnt+1).padStart(3,'0');
+    const matCode=r[matIdx]?String(r[matIdx]).trim():'';
+    if(!matCode) continue;
+    let orderType='Hard';
+    if(typeIdx>=0){const t=String(r[typeIdx]).trim().toLowerCase();orderType=t.includes('flex')?'Flexible':t.includes('forecast')||t.includes('预')?'Forecast':'Hard';}
+    const qty=parseFloat(r[qtyIdx])||0;
+    if(!qty) continue;
+    let demandDate='';
+    if(dateIdx>=0&&r[dateIdx]){
+      const v=Number(r[dateIdx]);
+      demandDate=(!isNaN(v)&&v>40000&&v<200000)?new Date(Math.floor(v-25569)*86400*1000).toISOString().split('T')[0]:String(r[dateIdx]).trim();
+    }
+    const customer=custIdx>=0?String(r[custIdx]).trim():'';
+    const priority=priIdx>=0?String(r[priIdx]).trim():'中';
+    const status=stIdx>=0?String(r[stIdx]).trim():'已确认';
+    const entry={orderNo,material:matCode,orderType,quantity:qty,unit:'颗',demandDate,customer,priority,status};
+    const existIdx=appData.customerOrders.findIndex(o=>o.orderNo===orderNo&&o.material===matCode);
+    if(existIdx>=0) appData.customerOrders[existIdx]=entry;
+    else appData.customerOrders.push(entry);
+    cnt++;
+  }
+  showToast('✅ 客户订单导入完成，共 '+(cnt>0?'更新/新增 '+cnt+' 条':'0 条（请检查表头格式）'),cnt>0?'success':'error');
+}
+function parseSalesHistorySheet(data,sheetName){
+  const h=data[0].map(c=>String(c).trim().toLowerCase());
+  const dateIdx=h.findIndex(c=>/日期|时间|date|recorddate|record_date/.test(c));
+  const matIdx=h.findIndex(c=>/物料|编码|material|code/.test(c));
+  const procIdx=h.findIndex(c=>/制程|process/.test(c));
+  const custIdx=h.findIndex(c=>/客户|customer/.test(c));
+  const qtyIdx=h.findIndex(c=>/数量|qty|quantity/.test(c));
+  const unitIdx=h.findIndex(c=>/单位|unit/.test(c));
+  const orderIdx=h.findIndex(c=>/订单号|单号|orderno|order_no/.test(c));
+  const srcIdx=h.findIndex(c=>/来源|source/.test(c));
+  let cnt=0;
+  for(let i=1;i<data.length;i++){
+    const r=data[i];if(!r||!r[0])continue;
+    const matCode=matIdx>=0?String(r[matIdx]).trim():'';
+    if(!matCode) continue;
+    const qty=parseFloat(r[qtyIdx])||0;
+    if(!qty) continue;
+    let recordDate='';
+    if(dateIdx>=0&&r[dateIdx]){
+      const v=Number(r[dateIdx]);
+      recordDate=(!isNaN(v)&&v>40000&&v<200000)?new Date(Math.floor(v-25569)*86400*1000).toISOString().split('T')[0]:String(r[dateIdx]).trim();
+    } else recordDate=new Date().toISOString().substring(0,10);
+    const entry={
+      recordDate,
+      material:matCode,
+      process:procIdx>=0?String(r[procIdx]).trim():'FT',
+      customer:custIdx>=0?String(r[custIdx]).trim():'',
+      quantity:qty,
+      unit:unitIdx>=0?String(r[unitIdx]).trim():'颗',
+      orderNo:orderIdx>=0?String(r[orderIdx]).trim():'SH-'+String(appData.salesHistory.length+cnt+1).padStart(4,'0'),
+      source:srcIdx>=0?String(r[srcIdx]).trim():'Excel'
+    };
+    appData.salesHistory.push(entry);
+    cnt++;
+  }
+  showToast('✅ 历史销售导入完成，共 '+cnt+' 条',cnt>0?'success':'error');
+}
 let forecastChartInstance = null;
 let lastForecastResult = null;
 const STORAGE_KEY_FORECAST_VERSIONS = 'ic_scm_forecast_versions';
@@ -4601,18 +5018,54 @@ function loadMasterdataFromStorage(){
   }catch(e){return false;}
 }
 
-// 加载默认需求数据（独立需求，不通过主数据导入）
+// 加载默认需求数据（三层分离：customerOrders + salesHistory → demands融合）
 function loadSampleDemands(){
-  appData.demands = [
-    { orderType:'独立需求', orderNo:'ORD001', material:'IC-1000-FT', quantity:120000, unit:'颗', demandDate:'2026-07-31', priority:'高', customer:'华为海思' },
-    { orderType:'独立需求', orderNo:'ORD002', material:'IC-1000-FT', quantity:180000, unit:'颗', demandDate:'2026-08-31', priority:'中', customer:'展讯通信' },
-    { orderType:'独立需求', orderNo:'ORD003', material:'IC-1000-FT', quantity:80000, unit:'颗', demandDate:'2026-09-30', priority:'中', customer:'中兴微电子' }
+  // 客户订单（Hard/Flexible/Forecast三层）
+  appData.customerOrders = [
+    { orderNo:'ORD001', material:'IC-1000-FT', orderType:'Hard', quantity:120000, unit:'颗', demandDate:'2026-07-31', customer:'华为海思', priority:'高', status:'已确认' },
+    { orderNo:'ORD002', material:'IC-1000-FT', orderType:'Hard', quantity:80000, unit:'颗', demandDate:'2026-08-31', customer:'展讯通信', priority:'高', status:'已确认' },
+    { orderNo:'ORD003', material:'IC-1000-FT', orderType:'Flexible', quantity:60000, unit:'颗', demandDate:'2026-08-31', customer:'展讯通信', priority:'中', status:'待确认' },
+    { orderNo:'ORD004', material:'IC-1000-FT', orderType:'Forecast', quantity:50000, unit:'颗', demandDate:'2026-09-30', customer:'中兴微电子', priority:'低', status:'草稿' },
+    { orderNo:'ORD005', material:'IC-1000-FT', orderType:'Hard', quantity:40000, unit:'颗', demandDate:'2026-09-30', customer:'汇顶科技', priority:'中', status:'已确认' }
   ];
-  appData.demandHistory = [
-    { time:'2026-06-01 09:00', orderNo:'ORD001', type:'新建', content:'创建订单 ORD001, 数量120000, 需求日2026-07-31' },
-    { time:'2026-06-01 09:05', orderNo:'ORD002', type:'新建', content:'创建订单 ORD002, 数量180000, 需求日2026-08-31' },
-    { time:'2026-06-05 14:30', orderNo:'ORD003', type:'新建', content:'创建订单 ORD003, 数量80000, 需求日2026-09-30' }
+  // 历史销售数据（52周带季节性趋势，用于模型训练）
+  appData.salesHistory = [];
+  const shMats = [
+    { code:'IC-1000-FT', process:'FT', base:8000, vol:0.2, cust:'华为海思' },
+    { code:'IC-1000-FT', process:'FT', base:6000, vol:0.18, cust:'展讯通信' }
   ];
+  let shIdx=0;
+  const startDate = new Date('2025-07-01');
+  for(let w=0; w<52; w++){
+    shMats.forEach(m=>{
+      const d = new Date(startDate);
+      d.setDate(d.getDate() + w*7);
+      const f = 1 + 0.25*Math.sin((w+26)*Math.PI/26) + 0.1*Math.sin((w+13)*Math.PI/13);
+      const qty = Math.max(1000, Math.round(m.base * f * (1 + m.vol*(Math.random()-0.5))));
+      appData.salesHistory.push({
+        recordDate: d.toISOString().substring(0,10),
+        material: m.code, process: m.process,
+        customer: m.cust, quantity: qty, unit:'颗',
+        orderNo: 'SH-' + String(++shIdx).padStart(4,'0'),
+        source: 'SAP'
+      });
+    });
+  }
+  // 融合后的初始demands（供MRP使用）
+  appData.demands = appData.customerOrders.filter(o=>o.status==='已确认').map(o=>({
+    orderType: o.orderType+'订单', orderNo: o.orderNo,
+    material: o.material, quantity: o.quantity,
+    unit: o.unit, demandDate: o.demandDate,
+    customer: o.customer, priority: o.priority
+  }));
+  // 兼容旧版本历史记录
+  if(!appData.demandHistory||!appData.demandHistory.length){
+    appData.demandHistory = [
+      { time:'2026-06-01 09:00', orderNo:'ORD001', type:'新建', content:'创建Hard订单 ORD001, 数量120000' },
+      { time:'2026-06-01 09:05', orderNo:'ORD002', type:'新建', content:'创建Hard订单 ORD002, 数量80000' },
+      { time:'2026-06-05 14:30', orderNo:'ORD003', type:'新建', content:'创建Flexible订单 ORD003, 数量60000' }
+    ];
+  }
 }
 
 // ======================== 计划订单 localStorage 持久化 ========================
