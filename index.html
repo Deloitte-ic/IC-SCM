@@ -1589,14 +1589,14 @@ async function syncFromSap(){
 
 // ======================== 初始化 ========================
 function init() {
-  // v3迁移：清空所有示例污染数据（customerOrders + salesHistory），用户手动导入的数据不受影响
+  // v4迁移：修复v3被loadSampleDemands反向填充的bug，配合loadSampleDemands中的_skipCO逻辑彻底清空
   try{
-    if(localStorage.getItem('_data_ver')!=='v3'){
+    if(localStorage.getItem('_data_ver')!=='v4'){
       const d=JSON.parse(localStorage.getItem(STORAGE_KEY_MASTER)||'{}');
       d.customerOrders=[];
       d.salesHistory=[];
       localStorage.setItem(STORAGE_KEY_MASTER,JSON.stringify(d));
-      localStorage.setItem('_data_ver','v3');
+      localStorage.setItem('_data_ver','v4');
     }
   }catch(e){}
   const d = new Date();
@@ -4005,7 +4005,10 @@ function loadMasterdataFromStorage(){
 // 加载默认需求数据（三层分离：customerOrders + salesHistory → demands融合）
 function loadSampleDemands(){
   // 仅在数组为空时填充示例数据，绝不覆盖用户已有数据
-  if(!appData.customerOrders||!appData.customerOrders.length){
+  // v3及以上版本：已执行清空迁移，不重新填充客户订单和历史销售示例数据
+  const _ver = (()=>{try{return localStorage.getItem('_data_ver')}catch(e){return ''}})();
+  const _skipCO = _ver && _ver >= 'v3';
+  if(!_skipCO && (!appData.customerOrders||!appData.customerOrders.length)){
     appData.customerOrders = [
       { orderNo:'ORD001', material:'IC-1000-FT', orderType:'Hard', quantity:120000, unit:'颗', demandDate:'2026-07-31', customer:'华为海思', priority:'高', status:'已确认' },
       { orderNo:'ORD002', material:'IC-1000-FT', orderType:'Hard', quantity:80000, unit:'颗', demandDate:'2026-08-31', customer:'展讯通信', priority:'高', status:'已确认' },
@@ -4014,7 +4017,7 @@ function loadSampleDemands(){
       { orderNo:'ORD005', material:'IC-1000-FT', orderType:'Hard', quantity:40000, unit:'颗', demandDate:'2026-09-30', customer:'汇顶科技', priority:'中', status:'已确认' }
     ];
   }
-  if(!appData.salesHistory||!appData.salesHistory.length){
+  if(!_skipCO && (!appData.salesHistory||!appData.salesHistory.length)){
     appData.salesHistory = [];
     const shMats = [
       { code:'IC-1000-FT', process:'FT', base:8000, vol:0.2, cust:'华为海思' },
