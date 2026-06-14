@@ -6858,10 +6858,16 @@ function propagateDemand(ftQty){
     {parent:'BP',child:'Wafer',usage:1,scrap:5}
   ];
   let result={FT:ftQty,AB:0,CP:0,BP:0,Wafer:0};
-  for(const b of usage){
-    const yieldVal=SEMI_YIELD[b.child]||0.95;
-    const scrapFactor=1+b.scrap/100;
-    result[b.child]=Math.ceil(result[b.parent]*b.usage*scrapFactor/yieldVal);
+  // 按制程依赖顺序处理，保证父节点先于子节点计算（用户BOM条目顺序可能任意）
+  const procOrder=['FT','AB','CP','BP'];
+  for(const p of procOrder){
+    for(const b of usage){
+      if(b.parent===p){
+        const yieldVal=SEMI_YIELD[b.child]||0.95;
+        const scrapFactor=1+b.scrap/100;
+        result[b.child]=Math.ceil((result[b.parent]||0)*b.usage*scrapFactor/yieldVal);
+      }
+    }
   }
   return result;
 }
