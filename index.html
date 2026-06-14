@@ -471,6 +471,7 @@ tbody tr:hover td{background:var(--primary-bg)}
             <div style="display:flex;gap:8px">
               <button class="btn btn-sm btn-outline" onclick="importToType('salesHistory')">📥 导入历史销售</button>
               <input type="file" id="importFile_salesHistory" accept=".xlsx,.xls" onchange="handleTypeImport(event,'salesHistory')" style="display:none">
+              <button class="btn btn-sm btn-primary" onclick="createSalesHistory()">➕ 手工创建</button>
               <button class="btn btn-sm btn-outline" onclick="genSampleSalesHistory()">🔄 生成示例数据</button>
             </div>
           </div>
@@ -3101,6 +3102,34 @@ function renderSalesHistory(){
     data:{labels:months,datasets:[{label:'历史销售',data:months.map(m=>byMonth[m]),borderColor:'#059669',backgroundColor:'rgba(5,150,105,.12)',fill:true,tension:.3,pointRadius:3}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true,ticks:{callback:v=>v.toLocaleString()}}}}
   });
+}
+function createSalesHistory(){
+  openModal('<div class="modal-title">➕ 新建历史销售记录 <button class="modal-close" onclick="closeModal()">×</button></div>'+
+    '<div class="grid-2"><div class="form-group"><label>订单号</label><input id="newShNo" value=""></div>'+
+    '<div class="form-group"><label>日期</label><input type="date" id="newShDate"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>物料编码</label><input id="newShMat" value="IC-1000-FT"></div>'+
+    '<div class="form-group"><label>客户</label><input id="newShCust" value=""></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>数量</label><input type="number" id="newShQty" value="1000" min="0"></div>'+
+    '<div class="form-group"><label>单位</label><input id="newShUnit" value="颗"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>来源</label><input id="newShSrc" value="手动录入"></div></div>'+
+    '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveNewSalesHistory()">创建</button></div>');
+}
+function saveNewSalesHistory(){
+  const orderNo=document.getElementById('newShNo').value.trim();
+  const recordDate=document.getElementById('newShDate').value;
+  const material=document.getElementById('newShMat').value.trim();
+  const customer=document.getElementById('newShCust').value.trim();
+  const quantity=parseFloat(document.getElementById('newShQty').value)||0;
+  const unit=document.getElementById('newShUnit').value.trim()||'颗';
+  const source=document.getElementById('newShSrc').value.trim();
+  if(!recordDate||!material){showToast('请填写日期和物料编码','error');return;}
+  if(!quantity){showToast('数量必须大于0','error');return;}
+  appData.salesHistory.push({
+    orderNo:orderNo||('SH-'+recordDate+'-'+material),
+    recordDate,material,customer,quantity,unit,source
+  });
+  closeModal();saveMasterdataToStorage();renderSalesHistory();
+  showToast('✅ 历史销售记录已创建','success');
 }
 function editSalesHistory(idx){
   const s=appData.salesHistory[idx];if(!s)return;
