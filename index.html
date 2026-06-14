@@ -502,8 +502,8 @@ tbody tr:hover td{background:var(--primary-bg)}
           <div class="chart-container" style="height:260px"><canvas id="fusionChart"></canvas></div>
         </div>
         <div class="card">
-          <div class="card-title">📋 融合结果明细 <span class="tag">按物料+月份</span></div>
-          <div class="table-wrapper" style="max-height:350px"><table id="fusionResultTable"><thead><tr><th>月份</th><th>物料</th><th>订单量</th><th>预测量</th><th>融合量</th><th>单位</th><th>等效Wafer(片)</th></tr></thead><tbody></tbody></table></div>
+          <div class="card-title">📋 融合结果明细 <span class="tag">按物料+周</span></div>
+          <div class="table-wrapper" style="max-height:350px"><table id="fusionResultTable"><thead><tr><th>周(周一)</th><th>物料</th><th>订单量</th><th>预测量</th><th>融合量</th><th>单位</th><th>等效Wafer(片)</th></tr></thead><tbody></tbody></table></div>
         </div>
         <div class="card">
           <div class="card-title">📖 融合规则说明</div>
@@ -3316,29 +3316,30 @@ function renderFusionView(){
 }
 function runDemandFusion(){
   const includeOrders=document.getElementById('fusionIncludeOrders').checked;
-  // STEP 1: 按物料+月份聚合客户订单
-  const orderByMonth={};
+  // STEP 1: 按物料+周聚合客户订单
+  const orderByWeek={};
   appData.customerOrders.forEach(o=>{
     if(!includeOrders) return;
-    const month=o.demandDate.substring(0,7);
-    const key=o.material+'|'+month;
-    if(!orderByMonth[key]) orderByMonth[key]={material:o.material,month,hard:0,flexible:0,forecast:0,total:0};
-    if(o.orderType==='Hard' && o.status==='已确认') orderByMonth[key].hard+=o.quantity;
-    else if(o.orderType==='Flexible' && (o.status==='已确认'||o.status==='待确认')) orderByMonth[key].flexible+=o.quantity;
-    else if(o.orderType==='Forecast' && o.status==='已确认') orderByMonth[key].forecast+=o.quantity;
-    orderByMonth[key].total+=o.quantity;
+    const wk=getWeekKey(o.demandDate);
+    const key=o.material+'|'+wk;
+    if(!orderByWeek[key]) orderByWeek[key]={material:o.material,week:wk,hard:0,flexible:0,forecast:0,total:0};
+    if(o.orderType==='Hard' && o.status==='已确认') orderByWeek[key].hard+=o.quantity;
+    else if(o.orderType==='Flexible' && (o.status==='已确认'||o.status==='待确认')) orderByWeek[key].flexible+=o.quantity;
+    else if(o.orderType==='Forecast' && o.status==='已确认') orderByWeek[key].forecast+=o.quantity;
+    orderByWeek[key].total+=o.quantity;
   });
   // STEP 2: 融合 = Hard + Flexible×0.8
   const fusion={};
   const FLEX_RATE=0.8;
-  const allKeys=Object.keys(orderByMonth);
+  const allKeys=Object.keys(orderByWeek);
   let totalOrder=0, totalFusion=0;
   allKeys.forEach(key=>{
-    const [mat,month]=key.split('|');
-    const o=orderByMonth[key];
+    const [mat,wk]=key.split('|');
+    const o=orderByWeek[key];
     const orderBase=o.hard + o.flexible*FLEX_RATE;
     const fused=Math.round(orderBase);
-    fusion[key]={material:mat,month,orderQty:o.total,orderBase:Math.round(orderBase),forecastQty:0,fusedQty:fused};
+    const dateStr=weekKeyToDate(parseInt(wk));
+    fusion[key]={material:mat,week:parseInt(wk),weekDate:dateStr,orderQty:o.total,orderBase:Math.round(orderBase),forecastQty:0,fusedQty:fused};
     totalOrder+=o.total;totalFusion+=fused;
   });
   // STEP 4: 结果展示
@@ -3346,22 +3347,26 @@ function runDemandFusion(){
   localStorage.setItem('ic_scm_lastFusion', JSON.stringify(fusion));
   // 卡片
   document.getElementById('fusionSummaryCards').innerHTML=
-    '<div class="summary-card blue"><div class="lbl">📦 融合总需求</div><div class="num" style="color:var(--primary)">'+totalFusion.toLocaleString()+'</div><div class="sub-text">'+allKeys.size+' 个月份-物料组合</div></div>'+
+    '<div class="summary-card blue"><div class="lbl">📦 融合总需求</div><div class="num" style="color:var(--primary)">'+totalFusion.toLocaleString()+'</div><div class="sub-text">'+allKeys.length+' 个周-物料组合</div></div>'+
     '<div class="summary-card red"><div class="lbl">🔴 订单总量</div><div class="num" style="color:var(--danger)">'+totalOrder.toLocaleString()+'</div></div>';
   displayFusionResult(fusion);
   document.getElementById('pushFusionBtn').style.display='inline-flex';
-  showToast('⚡ 需求融合完成，共 '+allKeys.size+' 个组合','success');
+  showToast('⚡ 需求融合完成，共 '+allKeys.length+' 个组合','success');
 }
 function displayFusionResult(fusion){
-  const keys=Object.keys(fusion).sort();
+  const keys=Object.keys(fusion).sort((a,b)=>{
+    const [ma,wa]=a.split('|');const [mb,wb]=b.split('|');
+    return parseInt(wa)-parseInt(wb) || ma.localeCompare(mb);
+  });
+  // 取周键作为显示标签（如 2026-W25）
+  const weekLabels=keys.map(k=>{const wk=parseInt(k.split('|')[1]);return Math.floor(wk/100)+'-W'+String(wk%100).padStart(2,'0');});
   if(fusionChartInstance){fusionChartInstance.destroy();fusionChartInstance=null;}
   const ctx=document.getElementById('fusionChart');
   if(ctx && keys.length){
-    const labels=keys.map(k=>k.split('|')[1]);
     const orderData=keys.map(k=>fusion[k].orderQty);
     const fusedData=keys.map(k=>fusion[k].fusedQty);
     fusionChartInstance=new Chart(ctx.getContext('2d'),{
-      type:'bar',data:{labels,
+      type:'bar',data:{labels:weekLabels,
         datasets:[
           {label:'🔴 订单量',data:orderData,backgroundColor:'rgba(239,68,68,.6)',borderRadius:3},
           {label:'⚡ 融合量',data:fusedData,backgroundColor:'rgba(37,99,235,.6)',borderRadius:3}
@@ -3375,25 +3380,28 @@ function displayFusionResult(fusion){
     const mat=appData.materials.find(m=>m.code===f.material);
     const process=mat?mat.processCode:'';
     const waferEq=process?Math.round(dpWaferEq(f.fusedQty)):'—';
-    html+='<tr><td>'+f.month+'</td><td>'+escapeHtml(f.material)+'</td><td class="font-bold" style="color:var(--danger)">'+f.orderQty.toLocaleString()+'</td><td class="font-bold" style="color:var(--warning)">'+f.forecastQty.toLocaleString()+'</td><td class="font-bold" style="color:var(--primary)">'+f.fusedQty.toLocaleString()+'</td><td>颗</td><td>'+(typeof waferEq==='number'?waferEq.toLocaleString():waferEq)+'</td></tr>';
+    html+='<tr><td>'+f.weekDate+'</td><td>'+escapeHtml(f.material)+'</td><td class="font-bold" style="color:var(--danger)">'+f.orderQty.toLocaleString()+'</td><td class="font-bold" style="color:var(--warning)">'+f.forecastQty.toLocaleString()+'</td><td class="font-bold" style="color:var(--primary)">'+f.fusedQty.toLocaleString()+'</td><td>颗</td><td>'+(typeof waferEq==='number'?waferEq.toLocaleString():waferEq)+'</td></tr>';
   });
   document.getElementById('fusionResultTable').querySelector('tbody').innerHTML=html||'<tr><td colspan="7" style="text-align:center;color:var(--gray-400)">无融合结果</td></tr>';
 }
 function pushFusionToDemands(){
   if(!lastFusionResult||!Object.keys(lastFusionResult).length){showToast('请先执行融合','error');return;}
   appData.demands=[];
-  const keys=Object.keys(lastFusionResult).sort();
+  const keys=Object.keys(lastFusionResult).sort((a,b)=>{
+    const [ma,wa]=a.split('|');const [mb,wb]=b.split('|');
+    return parseInt(wa)-parseInt(wb) || ma.localeCompare(mb);
+  });
   keys.forEach(k=>{
     const f=lastFusionResult[k];
     appData.demands.push({
-      orderType:'融合需求', orderNo:'FUSION-'+f.month+'-'+f.material,
+      orderType:'融合需求', orderNo:'FUSION-W'+f.week+'-'+f.material,
       material:f.material, quantity:f.fusedQty, unit:'颗',
-      demandDate:f.month+'-01', customer:'', priority:'中'
+      demandDate:f.weekDate, customer:'', priority:'中'
     });
   });
   saveMasterdataToStorage();
   localStorage.removeItem('ic_scm_dp_cleared');
-  showToast('📥 已推送 '+appData.demands.length+' 条融合结果至Demands（MRP可用）','success');
+  showToast('📥 已推送 '+appData.demands.length+' 条融合结果至Demands（DP/MRP可用）','success');
   document.getElementById('pushFusionBtn').textContent='✅ 已推送';
 }
 
@@ -7039,6 +7047,15 @@ function getWeekKey(dateStr){
   const diff=d-start;
   const week=Math.ceil((diff+1)/(7*86400000));
   return year*100+week;
+}
+
+// 周键转回日期（周一）
+function weekKeyToDate(weekKey){
+  const year=Math.floor(weekKey/100),week=weekKey%100;
+  const d=new Date(year,0,1+(week-1)*7);
+  const day=d.getDay();
+  d.setDate(d.getDate()-(day===0?6:day-1));
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 }
 
 // ==================== Tab 1: Statistical Forecasting（IC设计委外全链路预测） ====================
