@@ -7221,7 +7221,7 @@ function renderDpStatistical(skipAuto){
     });
     // 追加未来预测期（即便历史部分周为0，预测值不应为0）
     f.forecast.forEach((v,i)=>{
-      const wIdx=histStart+18+i;
+      const wIdx=f.history.length+i;
       html+='<tr style="background:#f0f7ff"><td><strong>W'+(wIdx+1)+' ▶️</strong></td><td>'+f.material+'</td><td>'+f.process+'</td><td>'+sup+'</td><td>—</td><td style="font-weight:600;color:var(--primary)">'+Math.round(v).toLocaleString()+'</td><td>—</td><td>—</td><td>'+(yieldRate?yieldRate.toFixed(1):'—')+'</td></tr>';
     });
   });
