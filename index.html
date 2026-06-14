@@ -3400,6 +3400,11 @@ function pushFusionToDemands(){
     });
   });
   saveMasterdataToStorage();
+  // 清除DP缓存，下次打开DP时用新数据重新计算
+  demandPlanData.forecasts=[];
+  demandPlanData.forecastVersions=[];
+  demandPlanData.accuracyRecords=[];
+  demandPlanData.historyRecords=[];
   localStorage.removeItem('ic_scm_dp_cleared');
   showToast('📥 已推送 '+appData.demands.length+' 条融合结果至Demands（DP/MRP可用）','success');
   document.getElementById('pushFusionBtn').textContent='✅ 已推送';
