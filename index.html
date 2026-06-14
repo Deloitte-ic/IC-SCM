@@ -1608,6 +1608,18 @@ function init() {
       localStorage.setItem('_data_ver','v4');
     }
   }catch(e){}
+  // v5迁移：清理因deleteDemand未持久化造成的demands残留旧数据
+  try{
+    if(localStorage.getItem('_data_ver')!=='v5'){
+      const d=JSON.parse(localStorage.getItem(STORAGE_KEY_MASTER)||'{}');
+      d.demands=[];
+      d.demandHistory=[];
+      localStorage.setItem(STORAGE_KEY_MASTER,JSON.stringify(d));
+      localStorage.removeItem('ic_scm_lastFusion');
+      localStorage.removeItem('ic_scm_dp_cleared');
+      localStorage.setItem('_data_ver','v5');
+    }
+  }catch(e){}
   const d = new Date();
   d.setDate(d.getDate() + 30);
   document.getElementById('mrpDueDate').value = d.toISOString().split('T')[0];
@@ -2656,7 +2668,7 @@ function deleteBom(idx) { appData.boms.splice(idx,1); appData.bom = appData.boms
 function deleteRouting(idx) { appData.routings.splice(idx,1); renderAllMasterdata(); }
 function deleteSupplier(idx) { appData.suppliers.splice(idx,1); renderAllMasterdata(); }
 function deleteInventory(idx) { appData.inventory.splice(idx,1); renderAllMasterdata(); }
-function deleteDemand(idx) { appData.demands.splice(idx,1); renderDemand(); updateDashboard(); }
+function deleteDemand(idx) { appData.demands.splice(idx,1); saveMasterdataToStorage(); renderDemand(); updateDashboard(); }
 function deletePrpo(idx) { appData.prpo.splice(idx,1); renderAllMasterdata(); showToast('✅ 已删除','success'); }
 
 // ======================== 主数据编辑功能 ========================
@@ -3276,7 +3288,7 @@ function exportCustomerOrders(){
   showToast('📤 导出成功','success');
 }
 // 兼容旧版demand编辑（仍保留，用于fusion结果查看）
-function deleteDemand(idx) { appData.demands.splice(idx,1); renderDemand(); updateDashboard(); }
+function deleteDemand(idx) { appData.demands.splice(idx,1); saveMasterdataToStorage(); renderDemand(); updateDashboard(); }
 
 // ======================== 需求融合引擎 ========================
 let fusionChartInstance = null;
