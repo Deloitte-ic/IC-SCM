@@ -863,16 +863,16 @@ tbody tr:hover td{background:var(--primary-bg)}
 
     <!-- ==================== Demand（需求计划）= IC设计企业多层级需求计划 半导体委外版 ==================== -->
     <div class="section" id="section-demandplan">
-      <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:6px;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-sm btn-outline-danger" onclick="clearAllDemandPlanData()" style="font-size:11px;white-space:nowrap" title="删除所有Tab下已生成的数据">🗑️ 删除数据</button>
-      </div>
-      <div class="tabs" id="demandPlanTabs">
-        <div class="tab active" data-tab="dp-statistical" onclick="switchDemandPlanTab('dp-statistical')">📊 统计预测 <span style="font-size:10px;color:var(--gray-400)">FT↓Wafer</span></div>
-        <div class="tab" data-tab="dp-sensing" onclick="switchDemandPlanTab('dp-sensing')">📡 承诺感知 <span style="font-size:10px;color:var(--gray-400)">委外级联</span></div>
-        <div class="tab" data-tab="dp-consensus" onclick="switchDemandPlanTab('dp-consensus')">🤝 滚动共识 <span style="font-size:10px;color:var(--gray-400)">晶圆约束</span></div>
-        <div class="tab" data-tab="dp-promotion" onclick="switchDemandPlanTab('dp-promotion')">📋 客户承诺 <span style="font-size:10px;color:var(--gray-400)">产能博弈</span></div>
-        <div class="tab" data-tab="dp-npi" onclick="switchDemandPlanTab('dp-npi')">🔄 NPI生命周期 <span style="font-size:10px;color:var(--gray-400)">良率学习</span></div>
-        <div class="tab" data-tab="dp-analytics" onclick="switchDemandPlanTab('dp-analytics')">📈 需求分析 <span style="font-size:10px;color:var(--gray-400)">委外维度</span></div>
+      <div class="tabs" id="demandPlanTabs" style="display:flex;align-items:center;gap:0;border-bottom:2px solid var(--gray-200);margin-bottom:14px;overflow-x:auto">
+        <div class="tab active" data-tab="dp-statistical" onclick="switchDemandPlanTab('dp-statistical')" style="flex-shrink:0">📊 统计预测 <span style="font-size:10px;color:var(--gray-400)">FT↓Wafer</span></div>
+        <div class="tab" data-tab="dp-sensing" onclick="switchDemandPlanTab('dp-sensing')" style="flex-shrink:0">📡 承诺感知 <span style="font-size:10px;color:var(--gray-400)">委外级联</span></div>
+        <div class="tab" data-tab="dp-consensus" onclick="switchDemandPlanTab('dp-consensus')" style="flex-shrink:0">🤝 滚动共识 <span style="font-size:10px;color:var(--gray-400)">晶圆约束</span></div>
+        <div class="tab" data-tab="dp-promotion" onclick="switchDemandPlanTab('dp-promotion')" style="flex-shrink:0">📋 客户承诺 <span style="font-size:10px;color:var(--gray-400)">产能博弈</span></div>
+        <div class="tab" data-tab="dp-npi" onclick="switchDemandPlanTab('dp-npi')" style="flex-shrink:0">🔄 NPI生命周期 <span style="font-size:10px;color:var(--gray-400)">良率学习</span></div>
+        <div class="tab" data-tab="dp-analytics" onclick="switchDemandPlanTab('dp-analytics')" style="flex-shrink:0">📈 需求分析 <span style="font-size:10px;color:var(--gray-400)">委外维度</span></div>
+        <div style="margin-left:auto;flex-shrink:0;padding-left:8px">
+          <button class="btn btn-sm btn-outline-danger" onclick="clearAllDemandPlanData()" style="font-size:10px;padding:2px 8px;white-space:nowrap" title="删除所有Tab下已生成的数据">🗑️ 删除</button>
+        </div>
       </div>
 
       <!-- 制程级联信息栏 -->
@@ -1019,7 +1019,7 @@ tbody tr:hover td{background:var(--primary-bg)}
           </div>
           <div class="card">
             <div class="card-title">📋 共识工作流 <span class="tag">FT→Wafer Workflow</span></div>
-            <div class="table-wrapper" style="max-height:260px"><table id="dpWorkflowTable"><thead><tr><th>阶段</th><th>负责人</th><th>FT成品(颗)</th><th>经委外级联</th><th>等效Wafer(片)</th><th>Wafer约束</th><th>缺口</th><th>状态</th></tr></thead><tbody></tbody></table></div>
+            <div class="table-wrapper" style="max-height:260px"><table id="dpWorkflowTable"><thead><tr><th>阶段</th><th>负责人</th><th>FT成品(颗)</th><th>经委外级联</th><th>等效Wafer(片)</th><th>Wafer约束</th><th>缺口</th><th>状态</th><th>操作</th></tr></thead><tbody></tbody></table></div>
           </div>
         </div>
         <div class="card">
@@ -7500,7 +7500,7 @@ function renderDpConsensus(skipAuto){
       {stage:'供应能力评审', owner:'供应链',
         ftFc: s3Ft.toLocaleString()+'颗', cascade:'→Wafer约束',
         waferFc: String(s3Wafer), waferLimit: String(waferConstraint),
-        gap: s3Gap>0?String(s3Gap):'0', status:'📋 待开始'},
+        gap: s3Gap>0?String(s3Gap):'0', status: activeSignals.length>0?'📋 待开始':'⏳ 进行中'},
       {stage:'审批发布', owner:'需求总监',
         ftFc: s4Ft.toLocaleString()+'颗', cascade:'→最终共识',
         waferFc: String(s4Wafer), waferLimit: String(waferConstraint),
@@ -7549,11 +7549,14 @@ function renderDpConsensus(skipAuto){
       options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true,ticks:{callback:v=>v.toLocaleString()}}}}
     });
   }
-  let html='';demandPlanData.workflowStages.forEach(s=>{
+  let html='';demandPlanData.workflowStages.forEach((s,i)=>{
     const gapVal=parseInt(s.gap)||0;
     const gapColor=gapVal>0?'var(--danger)':'var(--success)';
     const stColor=s.status.includes('完成')?'var(--success)':s.status.includes('进行')?'var(--primary)':'var(--gray-400)';
-    html+='<tr><td style="font-weight:600">'+s.stage+'</td><td>'+s.owner+'</td><td>'+s.ftFc+'</td><td>'+s.cascade+'</td><td style="font-weight:600;color:var(--primary)">'+s.waferFc+'</td><td style="font-weight:600">'+s.waferLimit+'</td><td style="color:'+gapColor+';font-weight:600">'+(gapVal>0?'+'+gapVal:'0')+'</td><td><span style="color:'+stColor+';font-weight:600">'+s.status+'</span></td></tr>';
+    let btnHtml='—';
+    if(s.status.includes('进行')) btnHtml='<button class="btn btn-sm btn-success" onclick="approveWorkflowStage('+i+')">✅ 审核通过</button>';
+    if(i===3 && s.status.includes('进行')) btnHtml='<button class="btn btn-sm btn-success" onclick="approveWorkflowStage('+i+')">✅ 审批发布</button>';
+    html+='<tr><td style="font-weight:600">'+s.stage+'</td><td>'+s.owner+'</td><td>'+s.ftFc+'</td><td>'+s.cascade+'</td><td style="font-weight:600;color:var(--primary)">'+s.waferFc+'</td><td style="font-weight:600">'+s.waferLimit+'</td><td style="color:'+gapColor+';font-weight:600">'+(gapVal>0?'+'+gapVal:'0')+'</td><td><span style="color:'+stColor+';font-weight:600">'+s.status+'</span></td><td>'+btnHtml+'</td></tr>';
   });
   document.getElementById('dpWorkflowTable').querySelector('tbody').innerHTML=html;
 
@@ -7626,6 +7629,26 @@ function saveDpNewVersion(){
 function approveDpVersion(idx){
   if(demandPlanData.consensusVersions[idx])demandPlanData.consensusVersions[idx].status='已发布';
   renderDpConsensus();showToast('✅ 版本已发布','success');
+}
+function approveWorkflowStage(idx){
+  if(!demandPlanData.workflowStages[idx]) return;
+  demandPlanData.workflowStages[idx].status='✅ 已完成';
+  if(idx+1 < demandPlanData.workflowStages.length){
+    // 解锁下一阶段
+    const next = demandPlanData.workflowStages[idx+1];
+    if(next.status==='📋 待开始' || next.status==='📋 待评审'){
+      next.status='⏳ 进行中';
+    }
+  }
+  // 第四阶段审批发布 → 同时审批所有"审批中"的版本
+  if(idx===3){
+    demandPlanData.consensusVersions.forEach(v => {
+      if(v.status==='审批中') v.status='已发布';
+    });
+  }
+  renderDpConsensus();
+  const stageName = demandPlanData.workflowStages[idx].stage;
+  showToast('✅ 「'+stageName+'」已审核通过','success');
 }
 
 // ==================== Tab 4: Customer Commitment（晶圆博弈客户承诺） ====================
