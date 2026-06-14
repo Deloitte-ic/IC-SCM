@@ -6902,9 +6902,9 @@ function clearAllDemandPlanData(){
   // 清空版本选择下拉
   const sel = document.getElementById('dpVersionSelect');
   if(sel) sel.innerHTML = '<option value="">— 无保存版本 —</option>';
-  // 重新渲染所有Tab（空状态）
-  renderDpStatistical(); renderDpSensing(); renderDpConsensus();
-  renderDpPromotion(); renderDpNpi(); renderDpAnalytics();
+  // 重新渲染所有Tab（空状态，阻止自动重新生成）
+  renderDpStatistical(true); renderDpSensing(true); renderDpConsensus(true);
+  renderDpPromotion(true); renderDpNpi(true); renderDpAnalytics(true);
   updateDpDataSource();
   showToast('🗑️ Demand Planning所有数据已清除','info');
 }
@@ -6993,8 +6993,8 @@ function dpAutoSelectModel(data,seasonLen,horizon){
 }
 
 // ==================== Tab 1: Statistical Forecasting（IC设计委外全链路预测） ====================
-function renderDpStatistical(){
-  if(!demandPlanData.forecasts.length){
+function renderDpStatistical(skipAuto){
+  if(!skipAuto && !demandPlanData.forecasts.length){
     // 从实际appData.demands构建需求历史
     const hasRealDemands = appData.demands.length > 0;
     const realMats = appData.materials.length ? appData.materials : [];
@@ -7192,8 +7192,8 @@ function saveDpForecastVersion(){
 }
 
 // ==================== Tab 2: Commitment Sensing（委外级联承诺感知） ====================
-function renderDpSensing(){
-  if(!demandPlanData.sensingSignals.length){
+function renderDpSensing(skipAuto){
+  if(!skipAuto && !demandPlanData.sensingSignals.length){
     const hasRealDemands = appData.demands.length > 0;
     const hasRealCusts = appData.customers.length > 0;
     
@@ -7303,8 +7303,8 @@ function applyDpSignal(idx){
 }
 
 // ==================== Tab 3: Rolling Consensus（晶圆约束18周滚动共识） ====================
-function renderDpConsensus(){
-  if(!demandPlanData.workflowStages.length){
+function renderDpConsensus(skipAuto){
+  if(!skipAuto && !demandPlanData.workflowStages.length){
     const waferConstraint=demandPlanData.forecasts.reduce((s,f)=>s+(f.waferEquivalent||0),0)||12500;
     demandPlanData.workflowStages=[
       {stage:'FT统计预测',owner:'统计分析',ftFc:'180,000颗',cascade:'→AB/CP/BP',waferFc:String(Math.round(waferConstraint*0.95)),waferLimit:String(Math.round(waferConstraint*0.9)),gap:'—',status:'✅ 已完成'},
@@ -7403,8 +7403,8 @@ function approveDpVersion(idx){
 }
 
 // ==================== Tab 4: Customer Commitment（晶圆博弈客户承诺） ====================
-function renderDpPromotion(){
-  if(!demandPlanData.customerCommitments.length){
+function renderDpPromotion(skipAuto){
+  if(!skipAuto && !demandPlanData.customerCommitments.length){
     const hasRealDemands = appData.demands.length > 0;
     const hasRealCusts = appData.customers.length > 0;
     const mats=appData.materials.length?appData.materials.slice(0,5).map(m=>m.code):['IC-1000-FT','IC-1000-AB','IC-1000-CP','IC-1000-BP','IC-1000-Wafer'];
@@ -7528,8 +7528,8 @@ function editDpPromo(idx){
 }
 
 // ==================== Tab 5: NPI Lifecycle（委外版NPI生命周期） ====================
-function renderDpNpi(){
-  if(!demandPlanData.npiProducts.length){
+function renderDpNpi(skipAuto){
+  if(!skipAuto && !demandPlanData.npiProducts.length){
     const newProducts=[
       {product:'IC-2000-NPU',node:'7nm',start:'2026-07-01',curve:'S-Curve',targetYield:0.85,peak:8000},
       {product:'IC-2000-DSP',node:'7nm',start:'2026-08-01',curve:'S-Curve',targetYield:0.82,peak:6000},
@@ -7652,8 +7652,8 @@ function saveEditDpNpi(idx){
 }
 
 // ==================== Tab 6: Demand Analytics（委外维度需求分析） ====================
-function renderDpAnalytics(){
-  if(!demandPlanData.segmentData.length){
+function renderDpAnalytics(skipAuto){
+  if(!skipAuto && !demandPlanData.segmentData.length){
     const hasRealDemands = appData.demands.length > 0;
     const processLevels=['FT成品','AB封装','CP测试','BP凸块','Wafer晶圆'];
     const processSuppliers=['ASE/PTI','京元/矽格','SPIL/Amkor','京元/硅品','TSMC/SMIC'];
