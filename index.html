@@ -7441,35 +7441,83 @@ function applyDpSignal(idx){
 }
 
 // ==================== Tab 3: Rolling Consensus（晶圆约束18周滚动共识） ====================
+// 从DP统计预测(Tab1) + 承诺感知信号(Tab2) 驱动，非Mock数据
 function renderDpConsensus(skipAuto){
   if(!skipAuto && !demandPlanData.workflowStages.length){
-    // 如果用户已手动清空DP数据，跳过自动生成
     if(localStorage.getItem('ic_scm_dp_cleared')==='1'){
       renderEmptyDpState('dpConsensusCards', ['dpWorkflowTable','dpVersionTable'], 'dpConsensusChart', 'dpConsensusChartInstance');
       document.getElementById('dpRollingWindowLabel').textContent='—';
       document.getElementById('dpWaferConstraintLabel').textContent='—';
       return;
     }
-    // 没有真实需求或预测数据时跳过自动生成
     if(!demandPlanData.forecasts.length && !appData.demands.length) {
       renderEmptyDpState('dpConsensusCards', ['dpWorkflowTable','dpVersionTable'], 'dpConsensusChart', 'dpConsensusChartInstance');
       document.getElementById('dpRollingWindowLabel').textContent='—';
       document.getElementById('dpWaferConstraintLabel').textContent='—';
       return;
     }
-    const waferConstraint=demandPlanData.forecasts.reduce((s,f)=>s+(f.waferEquivalent||0),0)||12500;
-    demandPlanData.workflowStages=[
-      {stage:'FT统计预测',owner:'统计分析',ftFc:'180,000颗',cascade:'→AB/CP/BP',waferFc:String(Math.round(waferConstraint*0.95)),waferLimit:String(Math.round(waferConstraint*0.9)),gap:'—',status:'✅ 已完成'},
-      {stage:'客户承诺评审',owner:'客户经理',ftFc:'195,000颗',cascade:'→委外级联',waferFc:String(Math.round(waferConstraint*1.02)),waferLimit:String(Math.round(waferConstraint*0.9)),gap:String(Math.round(waferConstraint*0.12)),status:'⏳ 进行中'},
-      {stage:'供应能力评审',owner:'供应链',ftFc:'185,000颗',cascade:'→Wafer约束',waferFc:String(Math.round(waferConstraint*0.97)),waferLimit:String(Math.round(waferConstraint*0.9)),gap:String(Math.round(waferConstraint*0.07)),status:'📋 待开始'},
-      {stage:'审批发布',owner:'需求总监',ftFc:'180,000颗',cascade:'→最终共识',waferFc:String(Math.round(waferConstraint*0.95)),waferLimit:String(Math.round(waferConstraint*0.9)),gap:'0',status:'📋 待开始'}
+    // === 从DP统计预测(Tab1)获取基线 ===
+    const fcArr = demandPlanData.forecasts;
+    const dpTotalFc = fcArr.reduce((s,f) => s + (f.totalForecast||0), 0);        // FT总预测(颗)
+    const dpWaferTotal = fcArr.reduce((s,f) => s + (f.waferEquivalent||0), 0);   // 等效晶圆总量(片)
+    // === 从承诺感知信号(Tab2)获取客户调整 ===
+    const activeSignals = demandPlanData.sensingSignals.filter(s => s.status === '活跃');
+    const sensingAdjFt = activeSignals.reduce((s, sig) => s + (sig.changeVal||0), 0);
+    const sensingAdjWafer = activeSignals.reduce((s, sig) => s + (sig.waferImpact||0), 0);
+    // Wafer约束线 = DP统计的90%（作为参考约束，实际应来自Supply数据）
+    const waferConstraint = Math.round(dpWaferTotal * 0.9) || 10000;
+    // 滚动窗口：从当前周推算18周
+    const now = new Date();
+    const cwk = getWeekKey(now.toISOString().substring(0,10));
+    const cwn = cwk % 100, cy = Math.floor(cwk/100);
+    const ewn = cwn + 17;
+    const winLabel = 'W'+cwn+'-W'+(ewn>52?(ewn-52)+'(+1y)':ewn)+' ('+cy+')';
+    // === 四个阶段 ===
+    // Stage1: FT统计预测 — 直接来自DP Tab1
+    const s1Ft = dpTotalFc, s1Wafer = dpWaferTotal;
+    // Stage2: 客户承诺评审 — 纳入承诺感知信号调整
+    const s2Ft = Math.max(0, s1Ft + sensingAdjFt);
+    const s2Wafer = Math.max(0, Math.round(s1Wafer + sensingAdjWafer * 0.8));
+    const s2Gap = Math.max(0, s2Wafer - waferConstraint);
+    // Stage3: 供应能力评审 — 晶圆约束裁剪
+    const ratio3 = waferConstraint / Math.max(1, s2Wafer);
+    const s3Ft = Math.round(s2Ft * Math.min(1, ratio3));
+    const s3Wafer = Math.min(s2Wafer, waferConstraint);
+    const s3Gap = Math.max(0, s2Wafer - waferConstraint);
+    // Stage4: 审批发布 — 最终共识
+    const s4Ft = s3Ft, s4Wafer = s3Wafer;
+    demandPlanData.workflowStages = [
+      {stage:'FT统计预测', owner:'统计分析',
+        ftFc: s1Ft.toLocaleString()+'颗', cascade:'→AB/CP/BP',
+        waferFc: String(s1Wafer), waferLimit: String(waferConstraint),
+        gap: '—', status:'✅ 已完成'},
+      {stage:'客户承诺评审', owner:'客户经理',
+        ftFc: s2Ft.toLocaleString()+'颗', cascade:'→委外级联',
+        waferFc: String(s2Wafer), waferLimit: String(waferConstraint),
+        gap: s2Gap>0?String(s2Gap):'0',
+        status: activeSignals.length>0?'⏳ 进行中':'✅ 已完成'},
+      {stage:'供应能力评审', owner:'供应链',
+        ftFc: s3Ft.toLocaleString()+'颗', cascade:'→Wafer约束',
+        waferFc: String(s3Wafer), waferLimit: String(waferConstraint),
+        gap: s3Gap>0?String(s3Gap):'0', status:'📋 待开始'},
+      {stage:'审批发布', owner:'需求总监',
+        ftFc: s4Ft.toLocaleString()+'颗', cascade:'→最终共识',
+        waferFc: String(s4Wafer), waferLimit: String(waferConstraint),
+        gap: '0', status:'📋 待开始'}
     ];
-    demandPlanData.consensusVersions=[
-      {id:'VER-001',name:'基线V1',family:'IC-1000系列',window:'W26-W43',ftFc:'180,000',waferEq:String(Math.round(waferConstraint*0.98)),waferLimit:String(Math.round(waferConstraint*0.9)),status:'已发布'},
-      {id:'VER-002',name:'客户调整V2',family:'IC-1000系列',window:'W26-W43',ftFc:'195,000',waferEq:String(Math.round(waferConstraint*1.05)),waferLimit:String(Math.round(waferConstraint*0.9)),status:'审批中'}
+    // 共识版本：V1=DP基线, V2=纳入客户调整
+    demandPlanData.consensusVersions = [
+      {id:'VER-001', name:'基线V1', family:'IC-1000系列',
+        window: winLabel, ftFc: s1Ft.toLocaleString(),
+        waferEq: String(s1Wafer), waferLimit: String(waferConstraint),
+        status:'已发布'},
+      {id:'VER-002', name:'客户调整V2', family:'IC-1000系列',
+        window: winLabel, ftFc: s2Ft.toLocaleString(),
+        waferEq: String(s2Wafer), waferLimit: String(waferConstraint),
+        status: activeSignals.length>0?'审批中':'已发布'}
     ];
-    if(document.getElementById('dpRollingWindowLabel'))document.getElementById('dpRollingWindowLabel').textContent='W26-W43 (2026)';
-    if(document.getElementById('dpWaferConstraintLabel'))document.getElementById('dpWaferConstraintLabel').textContent=Math.round(waferConstraint*0.9).toLocaleString()+' 片';
+    if(document.getElementById('dpRollingWindowLabel')) document.getElementById('dpRollingWindowLabel').textContent = winLabel;
+    if(document.getElementById('dpWaferConstraintLabel')) document.getElementById('dpWaferConstraintLabel').textContent = waferConstraint.toLocaleString() + ' 片';
   }
   const waferConstraint=parseInt(demandPlanData.workflowStages[0]?.waferLimit)||11000;
   document.getElementById('dpConsensusCards').innerHTML=
@@ -7507,16 +7555,24 @@ function renderDpConsensus(skipAuto){
   document.getElementById('dpVersionTable').querySelector('tbody').innerHTML=html;
 }
 function submitDpBizAdjust(){
-  const amt=prompt('输入FT成品调整量（正数上调，负数下调）：','+15000');
-  if(!amt)return;
+  const amt = prompt('输入FT成品调整量（正数上调，负数下调）：', '+15000');
+  if(!amt) return;
+  const adjVal = parseInt(amt) || 0;
   if(demandPlanData.workflowStages[1]){
-    const waferImpact=Math.round(Math.abs(parseInt(amt))/120/0.85);
-    demandPlanData.workflowStages[1].ftFc=(190000+parseInt(amt)).toLocaleString()+'颗';
-    demandPlanData.workflowStages[1].waferFc=String(Math.round(parseInt(demandPlanData.workflowStages[0].waferFc)+waferImpact*(parseInt(amt)>0?1:-1)));
-    demandPlanData.workflowStages[1].status='✅ 已完成';
-    demandPlanData.workflowStages[2].status='📋 待评审';
+    // 从Stage0提取真实基线数值
+    const s0FtRaw = parseInt(demandPlanData.workflowStages[0].ftFc.replace(/[^0-9]/g,'')) || 0;
+    const s0WaferRaw = parseInt(demandPlanData.workflowStages[0].waferFc) || 0;
+    const waferImpact = Math.round(Math.abs(adjVal) / 120 / 0.85);
+    const newFt = s0FtRaw + adjVal;
+    const newWafer = s0WaferRaw + waferImpact * (adjVal > 0 ? 1 : -1);
+    demandPlanData.workflowStages[1].ftFc = Math.max(0, newFt).toLocaleString()+'颗';
+    demandPlanData.workflowStages[1].waferFc = String(Math.max(0, newWafer));
+    const waferLimit = parseInt(demandPlanData.workflowStages[1].waferLimit) || 0;
+    demandPlanData.workflowStages[1].gap = newWafer > waferLimit ? String(newWafer - waferLimit) : '0';
+    demandPlanData.workflowStages[1].status = '✅ 已完成';
+    demandPlanData.workflowStages[2].status = '📋 待评审';
   }
-  renderDpConsensus();showToast('✏️ FT调整已提交，影响等效Wafer '+Math.abs(waferImpact)+' 片','success');
+  renderDpConsensus(); showToast('✏️ FT调整已提交，影响等效Wafer '+Math.abs(waferImpact)+' 片','success');
 }
 function runDpConsensusReview(){
   if(demandPlanData.workflowStages[2]){
