@@ -1055,7 +1055,7 @@ tbody tr:hover td{background:var(--primary-bg)}
           </div>
           <div class="card">
             <div class="card-title">📈 承诺Pipeline &amp; 晶圆消耗 <span class="tag">Commitment → Wafer Consumption</span></div>
-            <div class="table-wrapper" style="max-height:240px"><table id="dpPromoUpliftTable"><thead><tr><th>客户</th><th>物料</th><th>Hard(颗)</th><th>Flexible(颗)</th><th>Forecast(颗)</th><th>合计</th><th>等效Wafer(片)</th><th>已分配晶圆</th><th>缺口(片)</th><th>优先级</th></tr></thead><tbody></tbody></table></div>
+            <div class="table-wrapper" style="max-height:240px"><table id="dpPromoUpliftTable"><thead><tr><th>客户</th><th>物料</th><th>Hard(颗)</th><th>Flexible(颗)</th><th>Forecast(颗)</th><th>合计</th><th>预测基线(颗)</th><th>vs预测</th><th>等效Wafer(片)</th><th>已分配晶圆</th><th>缺口(片)</th><th>优先级</th><th>信号</th></tr></thead><tbody></tbody></table></div>
           </div>
         </div>
         <div class="card">
@@ -1063,7 +1063,7 @@ tbody tr:hover td{background:var(--primary-bg)}
             <div class="card-title">📋 客户承诺列表 <span class="tag">Customer Commitment List</span></div>
             <button class="btn btn-sm btn-primary" onclick="openDpNewPromoModal()">➕ 新建承诺</button>
           </div>
-          <div class="table-wrapper"><table id="dpPromoTable"><thead><tr><th>承诺ID</th><th>客户</th><th>物料</th><th>承诺等级</th><th>数量</th><th>等效Wafer(片)</th><th>需求周</th><th>OTIF(%)</th><th>状态</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+          <div class="table-wrapper"><table id="dpPromoTable"><thead><tr><th>承诺ID</th><th>客户</th><th>物料</th><th>承诺等级</th><th>数量</th><th>等效Wafer(片)</th><th>需求周</th><th>预测基线(颗)</th><th>信号</th><th>OTIF(%)</th><th>状态</th><th>操作</th></tr></thead><tbody></tbody></table></div>
         </div>
       </div>
 
@@ -7613,87 +7613,144 @@ function approveDpVersion(idx){
 // ==================== Tab 4: Customer Commitment（晶圆博弈客户承诺） ====================
 function renderDpPromotion(skipAuto){
   if(!skipAuto && !demandPlanData.customerCommitments.length){
-    // 如果用户已手动清空DP数据，跳过自动生成
     if(localStorage.getItem('ic_scm_dp_cleared')==='1'){
       renderEmptyDpState('dpPromoCards', ['dpPromoUpliftTable','dpPromoTable'], 'dpPromoChart', 'dpPromoChartInstance');
       return;
     }
-    const hasRealDemands = appData.demands.length > 0;
-    const hasRealCusts = appData.customers.length > 0;
-    // 没有实际需求或客户数据时跳过
-    if(!hasRealDemands || !hasRealCusts) {
+    const hasOrders = appData.customerOrders.length > 0;
+    const hasCusts = appData.customers.length > 0;
+    if(!hasOrders || !hasCusts) {
       renderEmptyDpState('dpPromoCards', ['dpPromoUpliftTable','dpPromoTable'], 'dpPromoChart', 'dpPromoChartInstance');
       return;
     }
-    const mats=appData.materials.length?appData.materials.slice(0,5).map(m=>m.code):['IC-1000-FT','IC-1000-AB','IC-1000-CP','IC-1000-BP','IC-1000-Wafer'];
-    
-    // 从实际客户和需求分组构建承诺
-    const custNames = appData.customers.map(c => c.name || c.code);
-    custNames.forEach((cust, i)=>{
-        const custDemands = appData.demands.filter(d => d.customer === cust);
-        const totalDemand = custDemands.reduce((s,d) => s+(d.quantity||0), 0);
-        const hard = totalDemand > 0 ? Math.round(totalDemand * 0.6) : Math.round(2000+Math.random()*8000);
-        const flexible = totalDemand > 0 ? Math.round(totalDemand * 0.25) : Math.round(1000+Math.random()*4000);
-        const forecast = totalDemand > 0 ? totalDemand - hard - flexible : Math.round(500+Math.random()*3000);
-        const waferNeed = Math.round(dpWaferEq(hard+flexible));
-        const allocWafer = Math.round(waferNeed*0.85);
-        demandPlanData.customerCommitments.push({
-          id:'CCOM-'+String(i+1).padStart(3,'0'), customer:cust,
-          material: mats[i%mats.length],
-          hard, flexible, forecast, total:hard+flexible+forecast,
-          waferEquivalent:waferNeed, allocatedWafer:allocWafer,
-          gap:Math.max(0, waferNeed-allocWafer),
-          priority:i%3===0?'A':i%3===1?'B':'C',
-          otif:Math.round(85+Math.random()*15), status:i%2===0?'已确认':'待确认'
-        });
-        demandPlanData.commitmentPipeline.push({
-          customer:cust, material:mats[i%mats.length],
-          week:'W'+(i+1), hard, flexible, forecast,
-          waferEq:Math.round(dpWaferEq(hard))
-        });
-      });
+    // ====== 1. 从Requirement客户订单聚合真实Hard/Flexible/Forecast ======
+    const orderGroups = {};
+    appData.customerOrders.forEach(o => {
+      const key = o.customer + '|' + o.material;
+      if(!orderGroups[key]) orderGroups[key] = {customer: o.customer, material: o.material, hard: 0, flexible: 0, forecastAmt: 0};
+      if(o.orderType === 'Hard') orderGroups[key].hard += o.quantity;
+      else if(o.orderType === 'Flexible') orderGroups[key].flexible += o.quantity;
+      else if(o.orderType === 'Forecast') orderGroups[key].forecastAmt += o.quantity;
+    });
+    // ====== 2. 关联DP统计预测(Tab1) — 按物料取预测基线 ======
+    const fcMap = {};
+    demandPlanData.forecasts.forEach(fc => {
+      if(!fcMap[fc.material]) fcMap[fc.material] = {totalForecast: 0, waferEquivalent: 0};
+      fcMap[fc.material].totalForecast += fc.totalForecast || 0;
+      fcMap[fc.material].waferEquivalent += fc.waferEquivalent || 0;
+    });
+    // ====== 3. 关联承诺感知信号(Tab2) — 标记有活跃信号的物料 ======
+    const signalMats = new Set();
+    demandPlanData.sensingSignals.filter(s => s.status === '活跃').forEach(s => signalMats.add(s.material));
+    // ====== 4. 从滚动共识(Tab3)取Wafer约束 ======
+    const waferConstraint = parseInt(demandPlanData.workflowStages[0]?.waferLimit) || 0;
+    // ====== 5. 构建条目并分配晶圆 ======
+    const entries = Object.values(orderGroups).map(g => {
+      const totalComm = g.hard + g.flexible * 0.8;
+      const waferNeed = Math.round(dpWaferEq(g.hard + g.flexible));  // Hard+Flexible需晶圆
+      const fcInfo = fcMap[g.material] || {totalForecast: 0, waferEquivalent: 0};
+      const priority = g.hard >= 50000 ? 'A' : g.hard >= 10000 ? 'B' : 'C';
+      const custObj = appData.customers.find(c => (c.name || c.code) === g.customer);
+      const otif = custObj?.creditLevel === 'AA' ? 98 : custObj?.creditLevel === 'A' ? 95 : 90;
+      return {customer: g.customer, material: g.material, hard: g.hard, flexible: g.flexible,
+        forecastAmt: g.forecastAmt, totalComm, waferNeed, fcBaseline: fcInfo.totalForecast,
+        fcWafer: fcInfo.waferEquivalent, hasSignal: signalMats.has(g.material), priority, otif};
+    });
+    // 按优先级排序分配晶圆
+    entries.sort((a,b) => ({A:0,B:1,C:2}[a.priority]||3) - ({A:0,B:1,C:2}[b.priority]||3));
+    const totalWaferNeed = entries.reduce((s,e) => s + e.waferNeed, 0);
+    const availWafer = waferConstraint > 0 ? waferConstraint : totalWaferNeed;
+    let remaining = availWafer;
+    entries.forEach((e,i,a) => {
+      const share = Math.min(e.waferNeed, Math.round(remaining * (e.waferNeed / Math.max(1, totalWaferNeed))));
+      e.allocatedWafer = Math.min(e.waferNeed, share);
+      e.gap = Math.max(0, e.waferNeed - e.allocatedWafer);
+      remaining -= e.allocatedWafer;
+    });
+    // 再按客户名排序（展示友好）
+    entries.sort((a,b) => a.customer.localeCompare(b.customer));
+    // 写入数据结构 + Pipeline
+    demandPlanData.customerCommitments = entries.map((e,i) => ({
+      id: 'CCOM-'+String(i+1).padStart(3,'0'), customer: e.customer, material: e.material,
+      hard: e.hard, flexible: e.flexible, forecast: e.forecastAmt,
+      total: e.hard + e.flexible + e.forecastAmt,
+      fcBaseline: e.fcBaseline, fcWafer: e.fcWafer,
+      hasSignal: e.hasSignal,
+      waferEquivalent: e.waferNeed, allocatedWafer: e.allocatedWafer,
+      gap: e.gap, priority: e.priority, otif: e.otif, status: '已确认'
+    }));
+    demandPlanData.commitmentPipeline = entries.map(e => ({
+      customer: e.customer, material: e.material,
+      week: 'W'+(26+Math.floor(Math.random()*18)), hard: e.hard,
+      flexible: e.flexible, forecast: e.forecastAmt,
+      waferEq: Math.round(dpWaferEq(e.hard))
+    }));
   }
-  const hardTotal=demandPlanData.customerCommitments.reduce((s,c)=>s+c.hard,0);
-  const flexTotal=demandPlanData.customerCommitments.reduce((s,c)=>s+c.flexible,0);
-  const totalWaferEq=demandPlanData.customerCommitments.reduce((s,c)=>s+(c.waferEquivalent||0),0);
-  document.getElementById('dpPromoCards').innerHTML=
-    '<div class="summary-card blue"><div class="lbl">📋 客户数</div><div class="num" style="color:var(--primary)">'+demandPlanData.customerCommitments.length+'</div><div class="sub-text">含委外级联折算</div></div>'+
+  // ====== 渲染 ======
+  const cons = demandPlanData.customerCommitments;
+  const hardTotal = cons.reduce((s,c) => s+c.hard, 0);
+  const totalWaferEq = cons.reduce((s,c) => s+(c.waferEquivalent||0), 0);
+  const totalAlloc = cons.reduce((s,c) => s+(c.allocatedWafer||0), 0);
+  const totalGap = cons.reduce((s,c) => s+(c.gap||0), 0);
+  const waferLimit = parseInt(demandPlanData.workflowStages[0]?.waferLimit) || 0;
+  document.getElementById('dpPromoCards').innerHTML =
+    '<div class="summary-card blue"><div class="lbl">📋 客户数</div><div class="num" style="color:var(--primary)">'+cons.length+'</div><div class="sub-text">基于Requirement客户订单</div></div>'+
     '<div class="summary-card red"><div class="lbl">🔴 Hard总承诺(颗)</div><div class="num" style="color:var(--danger)">'+hardTotal.toLocaleString()+'</div><div class="sub-text">硬性产量承诺</div></div>'+
-    '<div class="summary-card green"><div class="lbl">⚪ 等效Wafer总需求</div><div class="num" style="color:var(--success)">'+totalWaferEq.toLocaleString()+'</div><div class="sub-text">经AB/CP/BP委外折算(片)</div></div>';
+    '<div class="summary-card '+(totalGap>0?'yellow':'green')+'"><div class="lbl">⚪ 等效Wafer</div><div class="num" style="color:var(--success)">'+totalWaferEq.toLocaleString()+'</div><div class="sub-text">已分配 '+totalAlloc.toLocaleString()+' / 缺口 '+totalGap.toLocaleString()+' 片'+
+    (waferLimit>0?' | 约束线 '+waferLimit.toLocaleString()+' 片':'')+'</div></div>';
 
   if(window.dpPromoChartInstance){window.dpPromoChartInstance.destroy();}
   const ctx=document.getElementById('dpPromoChart');
   if(ctx){
-    const cnames=demandPlanData.customerCommitments.map(c=>c.customer);
-    const hards=demandPlanData.customerCommitments.map(c=>c.hard);
-    const flexs=demandPlanData.customerCommitments.map(c=>c.flexible);
-    const wafers=demandPlanData.customerCommitments.map(c=>c.waferEquivalent||0);
+    const cnames=cons.map(c=>c.customer);
+    const hards=cons.map(c=>c.hard);
+    const flexs=cons.map(c=>c.flexible);
+    const wafers=cons.map(c=>c.waferEquivalent||0);
+    const datasets = [
+      {label:'🔴 Hard(颗)',data:hards,backgroundColor:'rgba(239,68,68,.7)',borderRadius:3},
+      {label:'🟡 Flexible(颗)',data:flexs,backgroundColor:'rgba(245,158,11,.7)',borderRadius:3},
+      {label:'⚪ 等效Wafer(片)',data:wafers,backgroundColor:'rgba(99,102,241,.5)',borderRadius:3}
+    ];
+    if(waferLimit > 0){
+      datasets.push({label:'🔲 Wafer约束线',data:Array(cnames.length).fill(waferLimit),type:'line',
+        borderColor:'#ef4444',borderDash:[6,3],pointRadius:0,fill:false});
+    }
+    // 添加预测基线散点
+    const fcBaselines = cons.map(c => c.fcBaseline || 0);
+    if(fcBaselines.some(v => v > 0)){
+      datasets.push({label:'📊 统计预测基线(颗)',data:fcBaselines,type:'line',
+        borderColor:'#6366f1',borderDash:[4,2],pointRadius:3,pointBackgroundColor:'#6366f1',fill:false});
+    }
     window.dpPromoChartInstance=new Chart(ctx.getContext('2d'),{
-      type:'bar',data:{labels:cnames,
-        datasets:[
-          {label:'🔴 Hard(颗)',data:hards,backgroundColor:'rgba(239,68,68,.7)',borderRadius:3},
-          {label:'🟡 Flexible(颗)',data:flexs,backgroundColor:'rgba(245,158,11,.7)',borderRadius:3},
-          {label:'⚪ 等效Wafer(片)',data:wafers,backgroundColor:'rgba(99,102,241,.5)',borderRadius:3}
-        ]},
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true,ticks:{callback:v=>v.toLocaleString()}}}}
+      type:'bar',data:{labels:cnames, datasets},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{position:'top',labels:{boxWidth:14,font:{size:10}}}},
+        scales:{y:{beginAtZero:true,ticks:{callback:v=>v.toLocaleString()}}}}
     });
   }
-  let html='';demandPlanData.customerCommitments.forEach(c=>{
+  // Table 1: 客户承诺分级
+  let html='';cons.forEach(c=>{
     const priColor=c.priority==='A'?'var(--danger)':c.priority==='B'?'var(--warning)':'var(--info)';
     const gapColor=c.gap>0?'var(--danger)':'var(--success)';
-    html+='<tr><td style="font-weight:600">'+c.customer+'</td><td>'+c.material+'</td><td style="font-weight:600;color:var(--danger)">'+c.hard.toLocaleString()+'</td><td style="color:var(--warning)">'+c.flexible.toLocaleString()+'</td><td style="color:var(--info)">'+c.forecast.toLocaleString()+'</td><td style="font-weight:600">'+c.total.toLocaleString()+'</td><td style="font-weight:600;color:var(--primary)">'+(c.waferEquivalent||0).toLocaleString()+'</td><td>'+((c.allocatedWafer||0).toLocaleString())+'</td><td style="color:'+gapColor+';font-weight:600">'+(c.gap||0).toLocaleString()+'</td><td><span style="color:'+priColor+';font-weight:600">'+c.priority+'</span></td></tr>';
+    const fcVal = c.fcBaseline || 0;
+    const fcPct = fcVal > 0 ? Math.round(c.total / fcVal * 100) : 0;
+    const fcLabel = fcVal > 0 ? (fcPct > 110 ? '🔴超+'+(fcPct-100)+'%' : fcPct < 90 ? '🔵缺'+(100-fcPct)+'%' : '🟢'+fcPct+'%') : '—';
+    const sigIcon = c.hasSignal ? '<span title="有承诺感知信号" style="cursor:help">📡</span>' : '';
+    html+='<tr><td style="font-weight:600">'+c.customer+'</td><td>'+c.material+'</td><td style="font-weight:600;color:var(--danger)">'+c.hard.toLocaleString()+'</td><td style="color:var(--warning)">'+c.flexible.toLocaleString()+'</td><td style="color:var(--info)">'+c.forecast.toLocaleString()+'</td><td style="font-weight:600">'+c.total.toLocaleString()+'</td><td style="color:var(--primary)">'+(fcVal>0?fcVal.toLocaleString():'—')+'</td><td style="font-size:11px">'+fcLabel+'</td><td style="font-weight:600;color:var(--primary)">'+(c.waferEquivalent||0).toLocaleString()+'</td><td>'+((c.allocatedWafer||0).toLocaleString())+'</td><td style="color:'+gapColor+';font-weight:600">'+(c.gap||0).toLocaleString()+'</td><td><span style="color:'+priColor+';font-weight:600">'+c.priority+'</span></td><td style="text-align:center">'+sigIcon+'</td></tr>';
   });
   document.getElementById('dpPromoUpliftTable').querySelector('tbody').innerHTML=html;
-
-  html='';demandPlanData.customerCommitments.forEach((c,i)=>{
+  // Table 2: 客户承诺列表
+  html='';cons.forEach((c,i)=>{
     const stColor=c.status==='已确认'?'var(--success)':'var(--warning)';
-    html+='<tr><td>'+c.id+'</td><td>'+c.customer+'</td><td>'+c.material+'</td><td><span style="color:'+(c.hard>0?'var(--danger)':'var(--gray-400)')+'">Hard</span></td><td>'+c.total.toLocaleString()+'</td><td style="font-weight:600;color:var(--primary)">'+(c.waferEquivalent||0).toLocaleString()+'</td><td>W'+(26+i)+'</td><td style="font-weight:600">'+c.otif+'%</td><td style="color:'+stColor+';font-weight:600">'+c.status+'</td><td><button class="btn btn-sm btn-outline" onclick="editDpPromo('+i+')">✏️</button></td></tr>';
+    const fcVal = c.fcBaseline || 0;
+    const sigIcon = c.hasSignal ? '📡' : '';
+    html+='<tr><td>'+c.id+'</td><td>'+c.customer+'</td><td>'+c.material+'</td><td><span style="color:'+(c.hard>0?'var(--danger)':'var(--gray-400)')+'">Hard</span></td><td>'+c.total.toLocaleString()+'</td><td style="font-weight:600;color:var(--primary)">'+(c.waferEquivalent||0).toLocaleString()+'</td><td>W'+(26+i)+'</td><td style="color:var(--primary)">'+(fcVal>0?fcVal.toLocaleString():'—')+'</td><td style="text-align:center">'+sigIcon+'</td><td style="font-weight:600">'+c.otif+'%</td><td style="color:'+stColor+';font-weight:600">'+c.status+'</td><td><button class="btn btn-sm btn-outline" onclick="editDpPromo('+i+')">✏️</button></td></tr>';
   });
   document.getElementById('dpPromoTable').querySelector('tbody').innerHTML=html;
 }
 function openDpNewPromoModal(){
   const mats=appData.materials.length?appData.materials.map(m=>m.code):['IC-1000-FT'];
-  const custs=['华为海思','展讯通信','中兴微电子','汇顶科技','韦尔半导体'];
+  const custs=appData.customers.length?appData.customers.map(c=>c.name||c.code):['华为海思','展讯通信','中兴微电子'];
   const html='<h3>➕ 新建客户承诺</h3><div class="grid-2" style="margin:10px 0;gap:10px"><div><label style="font-size:12px">客户</label><select id="newPromoMat" style="width:100%;padding:6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px">'+custs.map(c=>'<option value="'+c+'">'+c+'</option>').join('')+'</select></div><div><label style="font-size:12px">物料</label><select id="newPromoMat2" style="width:100%;padding:6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px">'+mats.map(m=>'<option value="'+m+'">'+m+'</option>').join('')+'</select></div></div><div class="grid-2" style="margin:10px 0;gap:10px"><div><label style="font-size:12px">Hard(颗)</label><input type="number" id="newPromoHard" value="5000" min="0" style="width:100%;padding:6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px"></div><div><label style="font-size:12px">Flexible(颗)</label><input type="number" id="newPromoFlex" value="2000" min="0" style="width:100%;padding:6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px"></div></div><div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-sm btn-primary" onclick="saveDpNewPromo()">💾 保存</button><button class="btn btn-sm btn-outline" onclick="closeModal()">取消</button></div>';
   openModal(html);
 }
@@ -7703,19 +7760,24 @@ function saveDpNewPromo(){
   const hard=parseInt(document.getElementById('newPromoHard')?.value)||0;
   const flex=parseInt(document.getElementById('newPromoFlex')?.value)||0;
   const waferNeed=Math.round(dpWaferEq(hard+flex));
+  const waferLimit = parseInt(demandPlanData.workflowStages[0]?.waferLimit) || 0;
+  const allocWafer = waferLimit > 0 ? Math.min(waferNeed, Math.round(waferLimit * 0.15)) : Math.round(waferNeed*0.85);
   demandPlanData.customerCommitments.push({
     id:'CCOM-'+String(demandPlanData.customerCommitments.length+1).padStart(3,'0'),
     customer:cust,material:mat,hard,flexible:flex,forecast:0,
-    total:hard+flex,waferEquivalent:waferNeed,
-    allocatedWafer:Math.round(waferNeed*0.85),gap:Math.round(waferNeed*0.15),
-    priority:hard>5000?'A':'B',otif:95,status:'待确认'
+    total:hard+flex,fcBaseline:0,fcWafer:0,hasSignal:false,
+    waferEquivalent:waferNeed,allocatedWafer:allocWafer,
+    gap:Math.max(0, waferNeed-allocWafer),
+    priority:hard>50000?'A':hard>10000?'B':'C',otif:95,status:'待确认'
   });
   closeModal();renderDpPromotion();showToast('✅ 新建承诺已添加（等效Wafer：'+waferNeed+'片）','success');
 }
 function editDpPromo(idx){
   const c=demandPlanData.customerCommitments[idx];
   if(!c)return;
-  const html='<h3>✏️ 编辑承诺</h3><div style="margin:12px 0;padding:12px;background:var(--gray-50);border-radius:6px;font-size:13px"><strong>客户：</strong>'+c.customer+' | <strong>Hard：</strong>'+c.hard.toLocaleString()+'<br><strong>Flexible：</strong>'+c.flexible.toLocaleString()+' | <strong>等效Wafer：</strong>'+(c.waferEquivalent||0).toLocaleString()+'片<br><strong>已分配晶圆：</strong>'+(c.allocatedWafer||0).toLocaleString()+'片 | <strong>缺口：</strong>'+(c.gap||0).toLocaleString()+'片</div><div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-sm btn-primary" onclick="closeModal()">关闭</button></div>';
+  const fcInfo = c.fcBaseline > 0 ? '<br><strong>统计预测基线：</strong>'+c.fcBaseline.toLocaleString()+'颗' : '';
+  const sigInfo = c.hasSignal ? '<br><span style="color:var(--warning)">📡 有活跃承诺感知信号</span>' : '';
+  const html='<h3>✏️ 编辑承诺</h3><div style="margin:12px 0;padding:12px;background:var(--gray-50);border-radius:6px;font-size:13px"><strong>客户：</strong>'+c.customer+' | <strong>Hard：</strong>'+c.hard.toLocaleString()+'<br><strong>Flexible：</strong>'+c.flexible.toLocaleString()+' | <strong>等效Wafer：</strong>'+(c.waferEquivalent||0).toLocaleString()+'片<br><strong>已分配晶圆：</strong>'+(c.allocatedWafer||0).toLocaleString()+'片 | <strong>缺口：</strong>'+(c.gap||0).toLocaleString()+'片'+fcInfo+sigInfo+'</div><div style="display:flex;gap:8px;margin-top:16px"><button class="btn btn-sm btn-primary" onclick="closeModal()">关闭</button></div>';
   openModal(html);
 }
 
