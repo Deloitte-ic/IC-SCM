@@ -1598,19 +1598,21 @@ async function syncFromSap(){
 
 // ======================== 初始化 ========================
 function init() {
-  // v4迁移：修复v3被loadSampleDemands反向填充的bug，配合loadSampleDemands中的_skipCO逻辑彻底清空
+  // === 版本迁移（阶梯式，精准匹配版本范围，避免高版本重复执行低版本迁移） ===
+  const _ver = localStorage.getItem('_data_ver');
+  // v4迁移：仅当无版本号或版本低于v4时执行
   try{
-    if(localStorage.getItem('_data_ver')!=='v4'){
+    if(!_ver || _ver==='v1' || _ver==='v2' || _ver==='v3'){
       const d=JSON.parse(localStorage.getItem(STORAGE_KEY_MASTER)||'{}');
       d.customerOrders=[];
       d.salesHistory=[];
       localStorage.setItem(STORAGE_KEY_MASTER,JSON.stringify(d));
-      localStorage.setItem('_data_ver','v4');
+      if(!_ver) localStorage.setItem('_data_ver','v4');
     }
   }catch(e){}
-  // v5迁移：清理因deleteDemand未持久化造成的demands残留旧数据
+  // v5迁移：仅当版本为v4时执行
   try{
-    if(localStorage.getItem('_data_ver')!=='v5'){
+    if(localStorage.getItem('_data_ver')==='v4'){
       const d=JSON.parse(localStorage.getItem(STORAGE_KEY_MASTER)||'{}');
       d.demands=[];
       d.demandHistory=[];
@@ -1620,9 +1622,9 @@ function init() {
       localStorage.setItem('_data_ver','v5');
     }
   }catch(e){}
-  // v6迁移：彻底清理所有残留的客户订单/历史销售/需求数据，解决旧数据残留问题
+  // v6迁移：仅当版本为v5时执行
   try{
-    if(localStorage.getItem('_data_ver')!=='v6'){
+    if(localStorage.getItem('_data_ver')==='v5'){
       const d=JSON.parse(localStorage.getItem(STORAGE_KEY_MASTER)||'{}');
       d.customerOrders=[];
       d.salesHistory=[];
