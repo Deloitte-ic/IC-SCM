@@ -503,7 +503,7 @@ tbody tr:hover td{background:var(--primary-bg)}
         </div>
         <div class="card">
           <div class="card-title">📋 融合结果明细 <span class="tag">按物料+月份</span></div>
-          <div class="table-wrapper" style="max-height:350px"><table id="fusionResultTable"><thead><tr><th>月份</th><th>物料</th><th>订单量</th><th>预测量</th><th>融合量</th><th>单位</th><th>制程</th><th>等效Wafer(片)</th></tr></thead><tbody></tbody></table></div>
+          <div class="table-wrapper" style="max-height:350px"><table id="fusionResultTable"><thead><tr><th>月份</th><th>物料</th><th>订单量</th><th>预测量</th><th>融合量</th><th>单位</th><th>等效Wafer(片)</th></tr></thead><tbody></tbody></table></div>
         </div>
         <div class="card">
           <div class="card-title">📖 融合规则说明</div>
@@ -3269,9 +3269,9 @@ function displayFusionResult(fusion){
     const mat=appData.materials.find(m=>m.code===f.material);
     const process=mat?mat.processCode:'';
     const waferEq=process?Math.round(dpWaferEq(f.fusedQty)):'—';
-    html+='<tr><td>'+f.month+'</td><td>'+escapeHtml(f.material)+'</td><td class="font-bold" style="color:var(--danger)">'+f.orderQty.toLocaleString()+'</td><td class="font-bold" style="color:var(--warning)">'+f.forecastQty.toLocaleString()+'</td><td class="font-bold" style="color:var(--primary)">'+f.fusedQty.toLocaleString()+'</td><td>颗</td><td>'+(process||'FT')+'</td><td>'+(typeof waferEq==='number'?waferEq.toLocaleString():waferEq)+'</td></tr>';
+    html+='<tr><td>'+f.month+'</td><td>'+escapeHtml(f.material)+'</td><td class="font-bold" style="color:var(--danger)">'+f.orderQty.toLocaleString()+'</td><td class="font-bold" style="color:var(--warning)">'+f.forecastQty.toLocaleString()+'</td><td class="font-bold" style="color:var(--primary)">'+f.fusedQty.toLocaleString()+'</td><td>颗</td><td>'+(typeof waferEq==='number'?waferEq.toLocaleString():waferEq)+'</td></tr>';
   });
-  document.getElementById('fusionResultTable').querySelector('tbody').innerHTML=html||'<tr><td colspan="8" style="text-align:center;color:var(--gray-400)">无融合结果</td></tr>';
+  document.getElementById('fusionResultTable').querySelector('tbody').innerHTML=html||'<tr><td colspan="7" style="text-align:center;color:var(--gray-400)">无融合结果</td></tr>';
 }
 function pushFusionToDemands(){
   if(!lastFusionResult||!Object.keys(lastFusionResult).length){showToast('请先执行融合','error');return;}
