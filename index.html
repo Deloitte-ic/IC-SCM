@@ -3372,6 +3372,7 @@ function pushFusionToDemands(){
     });
   });
   saveMasterdataToStorage();
+  localStorage.removeItem('ic_scm_dp_cleared');
   showToast('📥 已推送 '+appData.demands.length+' 条融合结果至Demands（MRP可用）','success');
   document.getElementById('pushFusionBtn').textContent='✅ 已推送';
 }
@@ -6906,6 +6907,7 @@ function clearAllDemandPlanData(){
   renderDpStatistical(true); renderDpSensing(true); renderDpConsensus(true);
   renderDpPromotion(true); renderDpNpi(true); renderDpAnalytics(true);
   updateDpDataSource();
+  localStorage.setItem('ic_scm_dp_cleared','1');
   showToast('🗑️ Demand Planning所有数据已清除','info');
 }
 
@@ -7010,6 +7012,17 @@ function dpAutoSelectModel(data,seasonLen,horizon){
 // ==================== Tab 1: Statistical Forecasting（IC设计委外全链路预测） ====================
 function renderDpStatistical(skipAuto){
   if(!skipAuto && !demandPlanData.forecasts.length){
+    // 如果用户已手动清空DP数据，跳过自动生成
+    if(localStorage.getItem('ic_scm_dp_cleared')==='1'){
+      demandPlanData.forecasts = [];
+      document.getElementById('dpStatCards').innerHTML = '<div class="summary-card" style="grid-column:1/-1;background:#fef3c7"><div class="num" style="color:var(--warning);font-size:14px">⚠️ 预测数据已被清空</div><div class="sub-text">如需重新生成，请确保需求管理有数据后点击 <strong>运行预测</strong> 按钮</div></div>';
+      document.getElementById('dpAccuracyTable').querySelector('tbody').innerHTML = '<tr><td colspan="11" style="text-align:center;color:var(--gray-400);padding:20px">数据已被清空，等待手动触发</td></tr>';
+      document.getElementById('dpHistoryTable').querySelector('tbody').innerHTML = '';
+      if(window.dpStatChartInstance){window.dpStatChartInstance.destroy();window.dpStatChartInstance=null;}
+      const we=document.getElementById('dpWaferEquivalent'); if(we) we.textContent='—';
+      const sel=document.getElementById('dpVersionSelect'); if(sel) sel.innerHTML='<option value="">— 无数据 —</option>';
+      return;
+    }
     // 从实际appData.demands构建需求历史
     const hasRealDemands = appData.demands.length > 0;
     // 没有真实需求数据时跳过自动生成，显示空状态
@@ -7215,6 +7228,13 @@ function saveDpForecastVersion(){
 // ==================== Tab 2: Commitment Sensing（委外级联承诺感知） ====================
 function renderDpSensing(skipAuto){
   if(!skipAuto && !demandPlanData.sensingSignals.length){
+    // 如果用户已手动清空DP数据，跳过自动生成
+    if(localStorage.getItem('ic_scm_dp_cleared')==='1'){
+      renderEmptyDpState('dpSensingCards', 'dpSensingAdjustTable', 'dpSensingChart', 'dpSensingChartInstance');
+      const sigTable = document.getElementById('dpSignalTable');
+      if(sigTable) sigTable.querySelector('tbody').innerHTML = '<tr><td colspan="20" style="text-align:center;color:var(--gray-400);padding:20px">数据已被清空，等待手动触发</td></tr>';
+      return;
+    }
     const hasRealDemands = appData.demands.length > 0;
     // 没有真实需求数据时跳过自动生成
     if(!hasRealDemands) {
@@ -7301,6 +7321,13 @@ function applyDpSignal(idx){
 // ==================== Tab 3: Rolling Consensus（晶圆约束18周滚动共识） ====================
 function renderDpConsensus(skipAuto){
   if(!skipAuto && !demandPlanData.workflowStages.length){
+    // 如果用户已手动清空DP数据，跳过自动生成
+    if(localStorage.getItem('ic_scm_dp_cleared')==='1'){
+      renderEmptyDpState('dpConsensusCards', ['dpWorkflowTable','dpVersionTable'], 'dpConsensusChart', 'dpConsensusChartInstance');
+      document.getElementById('dpRollingWindowLabel').textContent='—';
+      document.getElementById('dpWaferConstraintLabel').textContent='—';
+      return;
+    }
     // 没有真实需求或预测数据时跳过自动生成
     if(!demandPlanData.forecasts.length && !appData.demands.length) {
       renderEmptyDpState('dpConsensusCards', ['dpWorkflowTable','dpVersionTable'], 'dpConsensusChart', 'dpConsensusChartInstance');
@@ -7408,6 +7435,11 @@ function approveDpVersion(idx){
 // ==================== Tab 4: Customer Commitment（晶圆博弈客户承诺） ====================
 function renderDpPromotion(skipAuto){
   if(!skipAuto && !demandPlanData.customerCommitments.length){
+    // 如果用户已手动清空DP数据，跳过自动生成
+    if(localStorage.getItem('ic_scm_dp_cleared')==='1'){
+      renderEmptyDpState('dpPromoCards', ['dpPromoUpliftTable','dpPromoTable'], 'dpPromoChart', 'dpPromoChartInstance');
+      return;
+    }
     const hasRealDemands = appData.demands.length > 0;
     const hasRealCusts = appData.customers.length > 0;
     // 没有实际需求或客户数据时跳过
@@ -7512,6 +7544,11 @@ function editDpPromo(idx){
 // ==================== Tab 5: NPI Lifecycle（委外版NPI生命周期） ====================
 function renderDpNpi(skipAuto){
   if(!skipAuto && !demandPlanData.npiProducts.length){
+    // 如果用户已手动清空DP数据，跳过自动生成
+    if(localStorage.getItem('ic_scm_dp_cleared')==='1'){
+      renderEmptyDpState('dpNpiCards', ['dpNpiPlanTable','dpNpiDemandTable'], 'dpNpiChart', 'dpNpiChartInstance');
+      return;
+    }
     // 没有真实需求数据时跳过
     if(!appData.demands.length) {
       renderEmptyDpState('dpNpiCards', ['dpNpiPlanTable','dpNpiDemandTable'], 'dpNpiChart', 'dpNpiChartInstance');
@@ -7641,6 +7678,11 @@ function saveEditDpNpi(idx){
 // ==================== Tab 6: Demand Analytics（委外维度需求分析） ====================
 function renderDpAnalytics(skipAuto){
   if(!skipAuto && !demandPlanData.segmentData.length){
+    // 如果用户已手动清空DP数据，跳过自动生成
+    if(localStorage.getItem('ic_scm_dp_cleared')==='1'){
+      renderEmptyDpState('dpAnalyticsCards', ['dpAnalyticsKpiTable','dpAnomalyTable','dpWhatIfTable'], 'dpAnalyticsSegmentChart', 'dpAnalyticsSegmentChartInstance');
+      return;
+    }
     const hasRealDemands = appData.demands.length > 0;
     // 没有真实需求数据时跳过自动生成
     if(!hasRealDemands) {
