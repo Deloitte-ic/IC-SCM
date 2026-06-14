@@ -7239,12 +7239,14 @@ function renderDpStatistical(skipAuto){
     f.history.slice(-18).forEach((v,i)=>{
       const idx=histStart+i;
       const pred=f.smoothed[idx]||0;const errPct=Math.abs(v-pred)/Math.max(v,1)*100;
-      html+='<tr><td>W'+(idx+1)+'</td><td>'+f.material+'</td><td>'+f.process+'</td><td>'+sup+'</td><td>'+v.toLocaleString()+'</td><td>'+Math.round(pred).toLocaleString()+'</td><td>'+(errPct?errPct.toFixed(1)+'%':'0%')+'</td><td>—</td><td>'+(yieldRate?yieldRate.toFixed(1):'—')+'</td></tr>';
+      const waferVal=f.process==='FT'?Math.round(dpWaferEq(v)).toLocaleString()+'片':'—';
+      html+='<tr><td>W'+(idx+1)+'</td><td>'+f.material+'</td><td>'+f.process+'</td><td>'+sup+'</td><td>'+v.toLocaleString()+'</td><td>'+Math.round(pred).toLocaleString()+'</td><td>'+(errPct?errPct.toFixed(1)+'%':'0%')+'</td><td>'+waferVal+'</td><td>'+(yieldRate?yieldRate.toFixed(1):'—')+'</td></tr>';
     });
     // 追加未来预测期（即便历史部分周为0，预测值不应为0）
     f.forecast.forEach((v,i)=>{
       const wIdx=f.history.length+i;
-      html+='<tr style="background:#f0f7ff"><td><strong>W'+(wIdx+1)+' ▶️</strong></td><td>'+f.material+'</td><td>'+f.process+'</td><td>'+sup+'</td><td>—</td><td style="font-weight:600;color:var(--primary)">'+Math.round(v).toLocaleString()+'</td><td>—</td><td>—</td><td>'+(yieldRate?yieldRate.toFixed(1):'—')+'</td></tr>';
+      const waferVal=f.process==='FT'?Math.round(dpWaferEq(Math.round(v))).toLocaleString()+'片':'—';
+      html+='<tr style="background:#f0f7ff"><td><strong>W'+(wIdx+1)+' ▶️</strong></td><td>'+f.material+'</td><td>'+f.process+'</td><td>'+sup+'</td><td>—</td><td style="font-weight:600;color:var(--primary)">'+Math.round(v).toLocaleString()+'</td><td>—</td><td>'+waferVal+'</td><td>'+(yieldRate?yieldRate.toFixed(1):'—')+'</td></tr>';
     });
   });
   document.getElementById('dpHistoryTable').querySelector('tbody').innerHTML=html;
