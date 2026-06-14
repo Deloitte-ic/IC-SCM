@@ -7337,11 +7337,21 @@ function renderDpSensing(skipAuto){
       renderEmptyDpState('dpSensingCards', ['dpSensingAdjustTable','dpSignalTable'], 'dpSensingChart', 'dpSensingChartInstance');
       return;
     }
-    // 按物料+周聚合客户订单（仅已确认）
+    // 确定预测覆盖的时间窗口（与基线预测保持相同周期）
+    const todayStr = new Date().toISOString().substring(0,10);
+    const cwk = getWeekKey(todayStr);
+    const cwn = cwk % 100, cy = Math.floor(cwk / 100);
+    const horizon = parseInt(document.getElementById('dpForecastHorizon')?.value || 4);
+    let ewn = cwn + horizon - 1, ey = cy;
+    if(ewn > 52) { ewn -= 52; ey += 1; }
+    const startWk = cwk, endWk = ey * 100 + ewn;
+
+    // 按物料+周聚合客户订单（仅已确认，且仅在预测时间窗口内）
     const orderByWeek = {};
     appData.customerOrders.forEach(o => {
       if(o.status !== '已确认') return;
       const wk = getWeekKey(o.demandDate);
+      if(wk < startWk || wk > endWk) return;  // 只取预测窗口内的订单
       const key = o.material + '|' + wk;
       if(!orderByWeek[key]) orderByWeek[key] = {material:o.material, week:wk, hard:0, flexible:0, forecastAmt:0, total:0, customers:[]};
       if(o.orderType === 'Hard') orderByWeek[key].hard += o.quantity;
