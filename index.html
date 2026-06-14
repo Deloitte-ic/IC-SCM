@@ -911,13 +911,13 @@ tbody tr:hover td{background:var(--primary-bg)}
               <div class="grid-2" style="margin-bottom:8px">
                 <div class="form-group"><label>模型</label>
                   <select id="dpModelSelect" style="width:100%;padding:4px 6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px">
-                    <option value="auto">🤖 自动选型</option>
-                    <option value="holt-winters" selected>📐 Holt-Winters</option>
+                    <option value="auto" selected>🤖 自动选型</option>
+                    <option value="holt-winters">📐 Holt-Winters</option>
                     <option value="sma">📊 SMA</option>
                     <option value="croston">📉 Croston</option>
                   </select>
                 </div>
-                <div class="form-group"><label>滚动周期(周)</label><input type="number" id="dpForecastHorizon" value="4" min="4" max="52" style="width:100%;padding:4px 6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px"></div>
+                <div class="form-group"><label>滚动周期(周)</label><input type="number" id="dpForecastHorizon" value="1" min="1" max="52" style="width:100%;padding:4px 6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px"></div>
               </div>
               <div class="grid-2" style="margin-bottom:8px">
                 <div class="form-group"><label>制程层级预测</label>
@@ -932,8 +932,8 @@ tbody tr:hover td{background:var(--primary-bg)}
                 </div>
                 <div class="form-group"><label>季节性</label>
                   <select id="dpSeasonLength" style="width:100%;padding:4px 6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px">
-                    <option value="4">4周(月)</option>
-                    <option value="13" selected>13周(季)</option>
+                    <option value="4" selected>4周(月)</option>
+                    <option value="13">13周(季)</option>
                     <option value="52">52周(年)</option>
                   </select>
                 </div>
@@ -7062,11 +7062,15 @@ function renderDpStatistical(skipAuto){
       {code:'IC-1000-BP',name:'BP凸块',processCode:'BP',unit:'片'},
       {code:'IC-1000-Wafer',name:'Wafer晶圆',processCode:'Wafer',unit:'片'}
     ];
-    const supplierMap={FT:'ASE/PTI',AB:'京元/矽格',CP:'SPIL/Amkor',BP:'京元/硅品',Wafer:'TSMC/SMIC'};
+    // 从实际供应商数据查找制程对应的委外供应商
+    function getSupplierNameByProcess(procCode){
+      const sups = appData.suppliers.filter(s => s.processCode === procCode);
+      return sups.length ? sups.map(s => s.name).join(' / ') : '—';
+    }
     const level=document.getElementById('dpProcessLevel')?.value||'all';
     const filtered=level==='all'?mats:mats.filter(m=>m.processCode===level);
-    const horizon=parseInt(document.getElementById('dpForecastHorizon')?.value||4);
-    const seasonLen=parseInt(document.getElementById('dpSeasonLength')?.value||13);
+    const horizon=parseInt(document.getElementById('dpForecastHorizon')?.value||1);
+    const seasonLen=parseInt(document.getElementById('dpSeasonLength')?.value||4);
     const yieldFactor=document.getElementById('dpYieldAuto')?.checked!==false;
     
     // 从实际需求按月聚合构建历史数据
@@ -7137,7 +7141,9 @@ function renderDpStatistical(skipAuto){
       const prop=yieldFactor?propagateDemand(totalForecast):{};
       const waferEq=prop.Wafer||(totalForecast>0?Math.round(totalForecast/120/(SEMI_YIELD[proc]||0.95)):0);
       const yieldProd=yieldFactor?SEMI_YIELD[proc]*100||98:100;
-      const supName = realMats.length && realMats.find(mt=>mt.code===m.code)?.supplier || supplierMap[proc]||'—';
+      const supName = (realMats.length && realMats.find(mt=>mt.code===m.code)?.supplier 
+        ? (appData.suppliers.find(s=>s.code===realMats.find(mt=>mt.code===m.code).supplier)?.name || realMats.find(mt=>mt.code===m.code).supplier) 
+        : getSupplierNameByProcess(proc)) || '—';
       demandPlanData.forecasts.push({
         material:m.code,materialName:m.name||m.code,process:proc,
         supplier:supName,model:modelName,
@@ -7186,13 +7192,13 @@ function renderDpStatistical(skipAuto){
   let html='';fc.forEach(f=>{
     const rec=f.mape<10?'🌟 优秀':f.mape<20?'✅ 良好':f.mape<30?'⚠️ 一般':'🔴 需改进';
     const procTxt={'FT':'成品','AB':'封装','CP':'测试','BP':'凸块','Wafer':'晶圆'}[f.process]||f.process;
-    const supTxt=f.process==='FT'?'ASE/PTI委外':f.process==='AB'?'京元/矽格委外':f.process==='CP'?'SPIL/Amkor委外':f.process==='BP'?'京元/硅品委外':'TSMC/SMIC采购';
+    const supTxt=f.supplier||getSupplierNameByProcess(f.process)||'—';
     html+='<tr><td>'+f.material+'</td><td><span class="tag" style="background:'+dpProcessColor(f.process)+'">'+procTxt+'</span></td><td style="font-size:11px">'+supTxt+'</td><td>'+f.model+'</td><td style="'+(f.mape<15?'color:var(--success)':'color:var(--danger)')+'">'+(f.mape?f.mape.toFixed(1)+'%':'—')+'</td><td>'+(f.mae?f.mae.toFixed(1):'—')+'</td><td>'+(f.rmse?f.rmse.toFixed(1):'—')+'</td><td>'+Math.round(f.totalForecast).toLocaleString()+'</td><td>'+(f.yieldRate?f.yieldRate.toFixed(1)+'%':'—')+'</td><td style="font-weight:600;color:var(--primary)">'+(f.waferEquivalent?f.waferEquivalent.toLocaleString():'—')+'</td><td>'+rec+'</td></tr>';
   });
   document.getElementById('dpAccuracyTable').querySelector('tbody').innerHTML=html;
 
   html='';fc.slice(0,6).forEach(f=>{
-    const sup=f.supplier||'—';
+    const sup=f.supplier||getSupplierNameByProcess(f.process)||'—';
     f.history.slice(-18).forEach((v,i)=>{
       const pred=f.smoothed[i]||0;const errPct=Math.abs(v-pred)/Math.max(v,1)*100;
       const prop=f.propagation?f.propagation[f.process]||0:0;
@@ -7211,8 +7217,8 @@ function runDpForecast(){
 }
 function runDpModelComparison(){
   if(!demandPlanData.forecasts.length) runDpForecast();
-  const seasonLen=parseInt(document.getElementById('dpSeasonLength')?.value||13);
-  const horizon=parseInt(document.getElementById('dpForecastHorizon')?.value||4);
+  const seasonLen=parseInt(document.getElementById('dpSeasonLength')?.value||4);
+  const horizon=parseInt(document.getElementById('dpForecastHorizon')?.value||1);
   const mats=demandPlanData.forecasts.map(f=>f.material);
   let html='<h3>📊 多模型对比（含委外良率因子）</h3>';
   html+='<div class="table-wrapper"><table><thead><tr><th>物料</th><th>制程</th><th>委外供应商</th><th>Holt-Winters</th><th>α/β/γ</th><th>SMA MAPE</th><th>窗口</th><th>零值比</th><th>推荐</th></tr></thead><tbody>';
@@ -7709,7 +7715,7 @@ function renderDpAnalytics(skipAuto){
       return;
     }
     const processLevels=['FT成品','AB封装','CP测试','BP凸块','Wafer晶圆'];
-    const processSuppliers=['ASE/PTI','京元/矽格','SPIL/Amkor','京元/硅品','TSMC/SMIC'];
+    const processSuppliers=['FT','AB','CP','BP','Wafer'].map(p => getSupplierNameByProcess(p));
     
     if(hasRealDemands){
       // 从实际需求数据按制程分组
