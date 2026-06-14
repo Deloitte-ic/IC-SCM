@@ -932,8 +932,8 @@ tbody tr:hover td{background:var(--primary-bg)}
                 </div>
                 <div class="form-group"><label>季节性</label>
                   <select id="dpSeasonLength" style="width:100%;padding:4px 6px;border:1px solid var(--gray-300);border-radius:4px;font-size:12px">
-                    <option value="4" selected>4周(月)</option>
-                    <option value="13">13周(季)</option>
+                    <option value="4">4周(月)</option>
+                    <option value="13" selected>13周(季)</option>
                     <option value="52">52周(年)</option>
                   </select>
                 </div>
@@ -7211,11 +7211,18 @@ function renderDpStatistical(skipAuto){
 
   html='';fc.slice(0,6).forEach(f=>{
     const sup=f.supplier||getSupplierNameByProcess(f.process)||'—';
+    const yieldRate=f.yieldRate||SEMI_YIELD[f.process]*100;
+    // 修正索引偏移：slice(-18) 的 i 是切片内索引，需映射回原数组索引
+    const histStart=Math.max(0,f.history.length-18);
     f.history.slice(-18).forEach((v,i)=>{
-      const pred=f.smoothed[i]||0;const errPct=Math.abs(v-pred)/Math.max(v,1)*100;
-      const prop=f.propagation?f.propagation[f.process]||0:0;
-      const yieldRate=f.yieldRate||SEMI_YIELD[f.process]*100;
-      html+='<tr><td>W'+(i+1)+'</td><td>'+f.material+'</td><td>'+f.process+'</td><td>'+sup+'</td><td>'+v.toLocaleString()+'</td><td>'+Math.round(pred).toLocaleString()+'</td><td>'+(errPct?errPct.toFixed(1)+'%':'0%')+'</td><td>'+(prop?prop.toLocaleString():'—')+'</td><td>'+(yieldRate?yieldRate.toFixed(1):'—')+'</td></tr>';
+      const idx=histStart+i;
+      const pred=f.smoothed[idx]||0;const errPct=Math.abs(v-pred)/Math.max(v,1)*100;
+      html+='<tr><td>W'+(idx+1)+'</td><td>'+f.material+'</td><td>'+f.process+'</td><td>'+sup+'</td><td>'+v.toLocaleString()+'</td><td>'+Math.round(pred).toLocaleString()+'</td><td>'+(errPct?errPct.toFixed(1)+'%':'0%')+'</td><td>—</td><td>'+(yieldRate?yieldRate.toFixed(1):'—')+'</td></tr>';
+    });
+    // 追加未来预测期（即便历史部分周为0，预测值不应为0）
+    f.forecast.forEach((v,i)=>{
+      const wIdx=histStart+18+i;
+      html+='<tr style="background:#f0f7ff"><td><strong>W'+(wIdx+1)+' ▶️</strong></td><td>'+f.material+'</td><td>'+f.process+'</td><td>'+sup+'</td><td>—</td><td style="font-weight:600;color:var(--primary)">'+Math.round(v).toLocaleString()+'</td><td>—</td><td>—</td><td>'+(yieldRate?yieldRate.toFixed(1):'—')+'</td></tr>';
     });
   });
   document.getElementById('dpHistoryTable').querySelector('tbody').innerHTML=html;
