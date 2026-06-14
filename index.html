@@ -254,36 +254,36 @@ tbody tr:hover td{background:var(--primary-bg)}
   </div>
   <nav class="sidebar-nav" id="sidebarNav">
     <div class="nav-group">
-      <div class="nav-group-title">Master</div>
+      <div class="nav-group-title">主数据</div>
       <div class="nav-item active" data-section="masterdata" onclick="switchSection('masterdata')">
-        <span class="nav-icon">📦</span><span class="nav-text">Master Data（主数据）</span>
+        <span class="nav-icon">📦</span><span class="nav-text">主数据</span>
       </div>
     </div>
     <div class="nav-group">
-      <div class="nav-group-title">Business Data</div>
+      <div class="nav-group-title">业务数据</div>
       <div class="nav-item" data-section="business" onclick="switchSection('business')">
-        <span class="nav-icon">📊</span><span class="nav-text">Business Data（业务数据）</span>
+        <span class="nav-icon">📊</span><span class="nav-text">业务数据</span>
       </div>
     </div>
     <div class="nav-group">
-      <div class="nav-group-title">Demand</div>
+      <div class="nav-group-title">需求管理</div>
       <div class="nav-item" data-section="demand" onclick="switchSection('demand')">
-        <span class="nav-icon">📊</span><span class="nav-text">需求数据管理</span>
+        <span class="nav-icon">📊</span><span class="nav-text">需求管理</span>
       </div>
       <div class="nav-item" data-section="demandplan" onclick="switchSection('demandplan')">
-        <span class="nav-icon">📈</span><span class="nav-text">Demand Planning（需求计划）</span>
+        <span class="nav-icon">📈</span><span class="nav-text">需求计划</span>
       </div>
     </div>
     <div class="nav-group">
-      <div class="nav-group-title">Supply</div>
+      <div class="nav-group-title">供应计划</div>
       <div class="nav-item" data-section="supplyplan" onclick="switchSection('supplyplan')">
-        <span class="nav-icon">🌐</span><span class="nav-text">Supply Planning（供应链计划）</span>
+        <span class="nav-icon">🌐</span><span class="nav-text">供应计划</span>
       </div>
     </div>
     <div class="nav-group">
-      <div class="nav-group-title">S&OP</div>
+      <div class="nav-group-title">销售与运营计划</div>
       <div class="nav-item" data-section="collaboration" onclick="switchSection('collaboration')">
-        <span class="nav-icon">🤝</span><span class="nav-text">S&OP（销售与运营计划）</span>
+        <span class="nav-icon">🤝</span><span class="nav-text">销售与运营计划</span>
       </div>
     </div>
   </nav>
@@ -294,8 +294,8 @@ tbody tr:hover td{background:var(--primary-bg)}
 <main class="main-content" id="mainContent">
   <header class="header">
     <div class="header-left">
-      <h2 id="pageTitle">📦 Master Data（主数据）</h2>
-      <div class="breadcrumb" id="breadcrumb">供应链计划及产销协同平台 <span>/ Master Data</span></div>
+      <h2 id="pageTitle">📦 主数据</h2>
+      <div class="breadcrumb" id="breadcrumb">供应链计划及产销协同平台 <span>/ 主数据</span></div>
     </div>
     <div class="header-actions">
     </div>
@@ -1653,18 +1653,20 @@ function switchSection(id) {
   if(navItem) navItem.classList.add('active');
 
   const titles = {
-    masterdata:'📦 Master Data（主数据）',
+    masterdata:'📦 主数据',
     business:'📊 业务数据',
-    demandplan:'📈 Demand Planning（需求计划）',
-    supplyplan:'🌐 Supply Planning（供应链计划）',
-    collaboration:'🤝 S&OP（销售与运营计划）'
+    demand:'📊 需求管理',
+    demandplan:'📈 需求计划',
+    supplyplan:'🌐 供应计划',
+    collaboration:'🤝 销售与运营计划'
   };
   const breadcrumbs = {
-    masterdata:'Master',
+    masterdata:'主数据',
     business:'业务数据',
-    demandplan:'Demand Planning',
-    supplyplan:'Supply Planning',
-    collaboration:'S&OP'
+    demand:'需求管理',
+    demandplan:'需求计划',
+    supplyplan:'供应计划',
+    collaboration:'销售与运营计划'
   };
   document.getElementById('pageTitle').textContent = titles[id]||'SCM平台';
   document.getElementById('breadcrumb').innerHTML = '供应链计划及产销协同平台 <span>/ '+breadcrumbs[id]+'</span>';
