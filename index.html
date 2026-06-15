@@ -1713,8 +1713,11 @@ function fallbackToLocal(){
     } else {
       // 2. 云端不可用，走本地 localStorage
       if(!loadMasterdataFromStorage()){
-        loadSampleData();
-        saveMasterdataToStorage();
+        // 本地也无数据 → 展示空表（不填充示例数据）
+        renderAllMasterdata();
+        renderDemand();
+        refreshOrderSelect();
+        renderConfigTables();
       } else {
         loadSampleDemands();
         renderAllMasterdata();
