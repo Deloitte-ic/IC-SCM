@@ -1879,7 +1879,8 @@ function handleUnifiedUpload(event) {
 
       if(parsedCount > 0) {
         statusEl.innerHTML = '<span class="success">✅ 解析完成！共处理 '+wb.SheetNames.length+' 个工作表，识别 '+parsedCount+' 个数据区域</span>';
-        // 刷新所有视图
+        // 保存到localStorage并触发云同步
+        saveMasterdataToStorage();
         renderAllMasterdata();
         renderDemand();
         updateDashboard();
