@@ -3999,8 +3999,9 @@ const STORAGE_KEY_RULES='ic_scm_natural_rules';
 const STORAGE_KEY_MASTER='ic_scm_master_data';
 const STORAGE_KEY_PLANNED='ic_scm_planned_orders';
 
-// ======================== 共享数据持久化（后端代理 → jsonblob） ========================
-const SYNC_API_URL = 'https://ic-scm-backend.vercel.app/api/app-data';
+// ======================== 共享数据持久化（jsonblob 直连） ========================
+const JSONBLOB_ID = '019ec9c9-2082-729f-80cc-ff1a6866ef3b';
+const JSONBLOB_API = 'https://jsonblob.com/api/jsonBlob/' + JSONBLOB_ID;
 let _syncTimer=null,_syncStatus='idle';
 
 function updateSyncUI(icon,label){
@@ -4010,11 +4011,11 @@ function updateSyncUI(icon,label){
   if(lb) lb.textContent=label;
 }
 
-// 从服务器加载共享数据
+// 从云端加载共享数据（jsonblob 直连）
 async function loadFromServer(){
   updateSyncUI('🔄','同步中…');
   try{
-    const res=await fetch(SYNC_API_URL+'?t='+Date.now());
+    const res=await fetch(JSONBLOB_API+'?t='+Date.now());
     if(!res.ok)throw Error('HTTP '+res.status);
     const data=await res.json();
     if(!data||!data.materials||!data.materials.length)throw Error('无效或空数据');
@@ -4022,25 +4023,25 @@ async function loadFromServer(){
     updateSyncUI('✅','已同步');
     return true;
   }catch(e){
-    console.warn('从服务器加载数据失败:',e.message);
-    updateSyncUI('☁️','云端');
+    console.warn('从云端加载数据失败:',e.message);
+    updateSyncUI('☁️','本地');
     return false;
   }
 }
 
-// 保存到服务器
+// 保存到云端（jsonblob 直连 PUT）
 async function saveToServer(){
   if(_syncStatus==='syncing')return;
   _syncStatus='syncing';
   updateSyncUI('🔄','保存中…');
   try{
     const raw=localStorage.getItem(STORAGE_KEY_MASTER);
-    if(!raw){updateSyncUI('☁️','云端');_syncStatus='idle';return;}
+    if(!raw){updateSyncUI('☁️','本地');_syncStatus='idle';return;}
     const data=JSON.parse(raw);
-    const res=await fetch(SYNC_API_URL,{
-      method:'POST',
+    const res=await fetch(JSONBLOB_API,{
+      method:'PUT',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({data})
+      body:JSON.stringify(data)
     });
     if(res.ok){updateSyncUI('✅','已同步');}else{updateSyncUI('❌','同步失败');}
   }catch(e){console.error('同步失败:',e);updateSyncUI('❌','同步失败');}
@@ -8303,10 +8304,4 @@ function runDpWhatIf(){
       action:scenario==='yield_up'?'优化委外工艺参数，提升各制程良率':scenario==='yield_down'?'排查委外线异常，增加投料':scenario==='customer_up'?'同步增加Wafer投片计划，通知TSMC/SMIC':scenario==='customer_down'?'调整供应计划，减少Wafer采购':scenario==='wafer_limit'?'按客户优先级分配晶圆产能':'维持现有委外计划'
     };
   });
-  renderDpAnalytics();showToast('📊 IC设计委外级联情景分析完成：'+descs[scenario],'success');
-}
-
-document.addEventListener('DOMContentLoaded', init);
-</script>
-</body>
-</html>
+  renderDpAnalytics();showToast('📊 IC设计委外级联情景分析完成：'+descs[scenario],'success
