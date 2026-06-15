@@ -4013,7 +4013,7 @@ async function loadFromServer(){
     const res=await fetch(SYNC_API_URL+'?t='+Date.now());
     if(!res.ok)throw Error('HTTP '+res.status);
     const data=await res.json();
-    if(!data||!data.materials)throw Error('无效数据格式');
+    if(!data||!data.materials||!data.materials.length)throw Error('无效或空数据');
     localStorage.setItem(STORAGE_KEY_MASTER,JSON.stringify(data));
     updateSyncUI('✅','已同步');
     return true;
