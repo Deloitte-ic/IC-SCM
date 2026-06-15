@@ -1253,55 +1253,16 @@ tbody tr:hover td{background:var(--primary-bg)}
 
         <!-- ===== 子页签1：运算规则 ===== -->
         <div class="sub-tab-content active" id="tab-sp-mrp-rules">
-          <div class="alert alert-info">💡 所有参数在线可编辑，修改后自动保存。这些参数将影响MRP运算的完整逻辑。</div>
+          <div class="alert alert-info">💡 MRP运算参数在线可编辑，修改后点击保存生效。制程层级、BOM、交期、审批等主数据来自Master Data模块。</div>
 
-          <!-- 制程层级 -->
-          <div class="card">
-            <div class="card-header">
-              <div class="card-title">🏗️ 制程层级 <span class="tag" id="spMrpProcessCount">0条</span></div>
-              <div class="card-actions">
-                <button class="btn btn-sm btn-primary" onclick="openAddProcessModal()">➕ 新增</button>
-              </div>
-            </div>
-            <div class="table-wrapper"><table id="spMrpProcessTable"><thead><tr><th>层级</th><th>制程名称</th><th>描述</th><th>单位</th><th>操作</th></tr></thead><tbody></tbody></table></div>
-          </div>
-
-          <!-- BOM结构配置 -->
-          <div class="card">
-            <div class="card-header">
-              <div class="card-title">🔗 BOM结构配置 <span class="tag" id="spMrpBomCount">0条</span></div>
-              <div class="card-actions">
-                <button class="btn btn-sm btn-primary" onclick="openAddBomConfigModal()">➕ 新增</button>
-              </div>
-            </div>
-            <div class="table-wrapper"><table id="spMrpBomTable"><thead><tr><th>父项制程</th><th>子项制程</th><th>单位用量</th><th>损耗率(%)</th><th>操作</th></tr></thead><tbody></tbody></table></div>
-          </div>
-
-          <!-- 交期配置 -->
-          <div class="card">
-            <div class="card-header">
-              <div class="card-title">⏱️ 交期配置 <span class="tag" id="spMrpLeadTimeCount">0条</span></div>
-              <div class="card-actions">
-                <button class="btn btn-sm btn-primary" onclick="openAddLeadTimeModal()">➕ 新增</button>
-              </div>
-            </div>
-            <div class="table-wrapper"><table id="spMrpLeadTimeTable"><thead><tr><th>制程</th><th>供应商编码</th><th>供应商名称</th><th>生产(天)</th><th>运输(天)</th><th>检验(天)</th><th>总交付(天)</th><th>操作</th></tr></thead><tbody></tbody></table></div>
-          </div>
-
-          <!-- 审批流程 -->
-          <div class="card">
-            <div class="card-header">
-              <div class="card-title">📋 审批流程天数 <span class="tag" id="spMrpApprovalCount">0条</span></div>
-              <div class="card-actions">
-                <button class="btn btn-sm btn-primary" onclick="openAddApprovalModal()">➕ 新增</button>
-              </div>
-            </div>
-            <div class="table-wrapper"><table id="spMrpApprovalTable"><thead><tr><th>审批节点</th><th>天数</th><th>操作</th></tr></thead><tbody></tbody></table></div>
-          </div>
-
-          <!-- MRP运算参数（快速开关） -->
+          <!-- MRP运算参数 -->
           <div class="card">
             <div class="card-title">⚙️ MRP运算参数</div>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:13px">
+              <span>参数方案：</span>
+              <select id="spMrpPresetSelect" onchange="switchMrpPreset()" style="font-size:12px;padding:3px 6px;border:1px solid var(--gray-300);border-radius:4px;min-width:140px"></select>
+              <button class="btn btn-sm btn-outline" onclick="deleteMrpPreset()" style="font-size:11px;padding:2px 8px;color:var(--danger)" title="删除当前方案">🗑️</button>
+            </div>
             <div style="display:flex;flex-wrap:wrap;gap:18px;padding:8px 0">
               <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
                 <input type="checkbox" id="spMrpOptDeductPR" checked> 扣减Open PR
@@ -1329,13 +1290,25 @@ tbody tr:hover td{background:var(--primary-bg)}
               </label>
             </div>
             <div style="text-align:right;margin-top:10px">
-              <button class="btn btn-sm btn-success" onclick="saveSpMrpParams()">💾 保存参数</button>
+              <button class="btn btn-sm btn-primary" onclick="addMrpParamPreset()">➕ 新增参数</button>
+              <button class="btn btn-sm btn-success" onclick="saveSpMrpParams()" style="margin-left:6px">💾 保存参数</button>
             </div>
           </div>
         </div>
 
         <!-- ===== 子页签2：运行及结果 ===== -->
         <div class="sub-tab-content" id="tab-sp-mrp-run">
+          <!-- MRP数据关联概况 -->
+          <div class="card" style="background:#f8fafc;border:1px solid #e2e8f0">
+            <div class="card-title" style="font-size:14px">🔗 数据关联（来自主数据 / Master Data）</div>
+            <div style="display:flex;flex-wrap:wrap;gap:16px;padding:6px 0;font-size:13px;color:#475569">
+              <span>🏗️ 制程层级：<strong id="spMrpRefProcessCount">0</strong> 个</span>
+              <span>🔗 BOM结构：<strong id="spMrpRefBomCount">0</strong> 条</span>
+              <span>⏱️ 交期配置：<strong id="spMrpRefLeadTimeCount">0</strong> 条</span>
+              <span>📋 审批流程：<strong id="spMrpRefApprovalCount">0</strong> 条｜合计 <strong id="spMrpRefApprovalTotal">0</strong> 天</span>
+              <span>🔄 制程遍历：<strong id="spMrpRefProcessOrder">FT→AB→CP→BP→Wafer</strong></span>
+            </div>
+          </div>
           <div class="card">
             <div class="card-title">🎯 MRP运算条件</div>
             <div class="grid-3">
@@ -3785,20 +3758,12 @@ function onMrpOrderSelect(){
 }
 
 // MRP运算引擎 - 改造二
-function executeMRP(){
-  const sel=document.getElementById('mrpOrderSelect'),qtyInput=document.getElementById('mrpQuantity'),dateInput=document.getElementById('mrpDueDate');
-  let demandQty=parseInt(qtyInput.value);
-  if(isNaN(demandQty)||demandQty<=0){showToast('请输入有效的需求数量','error');return;}
-  let dueDate=dateInput.value;
-  if(!dueDate){showToast('请选择需求日期','error');return;}
-  let selectedOrder=null;
-  if(sel.value!==''&&sel.value!=='custom')selectedOrder=appData.demands[parseInt(sel.value)];
+// ==================== MRP核心计算引擎（无DOM依赖） ====================
+function runMrpEngine(demandQty, dueDate){
   const approvalDays=appData.approvals.reduce((s,a)=>s+a.days,0);
   const unitMap=appData.unitMap,materialCodeMap=appData.materialCodeMap,actionMap=appData.actionMap;
-  // 物料编码 → 制程名 反向映射
   const processByMatCode={};
   Object.keys(materialCodeMap).forEach(k=>{processByMatCode[materialCodeMap[k]]=k;});
-  // BOM子项查找：用制程名→物料编码匹配
   function getBomChildren(process){
     const matCode=materialCodeMap[process];
     return appData.bom.filter(b=>b.parent===matCode);
@@ -3813,28 +3778,8 @@ function executeMRP(){
   function getMaterialByProcess(process){const code=materialCodeMap[process]||'IC-1000-'+process;return appData.materials.find(m=>m.code===code);}
   function getInventoryByProcess(process){const matCode=materialCodeMap[process]||'IC-1000-'+process;return appData.inventory.find(i=>i.materialCode===matCode);}
   function addDays(dateStr,days){const d=new Date(dateStr);d.setDate(d.getDate()+days);return d.toISOString().split('T')[0];}
-  // FIFO供给池（多需求共享，按FIFO顺序消耗）
-  let fifoSupplyQueues = null;
-  function consumeFromPool(matCode, grossReq, cutoffDate){
-    const queue = fifoSupplyQueues[matCode];
-    if (!queue) return {stock:0,wip:0,pr:0,po:0};
-    let remaining = grossReq;
-    const result = {stock:0,wip:0,pr:0,po:0};
-    for (let i = 0; i < queue.length && remaining > 0; i++) {
-      const item = queue[i];
-      if (item.qty <= 0) continue;
-      // 按到货日过滤：supply到货日 > 当前需求截止日则跳过（库存永远可用）
-      if (item.type !== 'stock' && item.arrival && cutoffDate && item.arrival > cutoffDate) continue;
-      const take = Math.min(item.qty, remaining);
-      item.qty -= take;
-      remaining -= take;
-      result[item.type] += take;
-    }
-    return result;
-  }
   const results=[],details=[];
   function calcMRP(process,netReqQty,plannedArrival,level,demandDate){
-    // netReqQty = 净需求 = 该层级需要产出的数量（不含损耗）
     const lt=getLeadTime(process);if(!lt)return;
     const unit=unitMap[process]||'EA',totalDelivery=lt.prod+lt.trans+lt.inspect;
     const mat=getMaterialByProcess(process);
@@ -3843,60 +3788,39 @@ function executeMRP(){
     const action=actionMap[process]||('委外'+process);
     const supplier=getSupplierName(process);
     const demandType=(level===0)?'独立需求':'相关需求';
-    // 损耗率 = 该制程作为父项时的BOM损耗率
     const scrapRate=getScrapRate(process);
-    // 使用当前生效的运算规则
     const core=getActiveMrpCore();
-    // 毛需求 = 净需求 × (1 + 损耗率%)
     const grossReq=core.calcGrossReq(netReqQty,scrapRate);
-    // 库存扣减（按规则四配置决定WIP计入方式）
     const inv=getInventoryByProcess(process);
     let stock=inv?inv.stock:0,wipAvailable=0;
     let prAvailable=0,poAvailable=0;
     let prBreakdown='',poBreakdown='';
-    // FIFO模式：从供给池中按序消耗
-    if (core.supplyStrategy === 'fifo' && fifoSupplyQueues) {
-      const alloc = consumeFromPool(matCode, grossReq, plannedArrival);
-      stock = alloc.stock;
-      wipAvailable = alloc.wip;
-      prAvailable = alloc.pr;
-      poAvailable = alloc.po;
-    } else {
-      // 标准模式：各自独立扣减
-      if(inv&&inv.transit>0){
-        if(core.wipMode==='all'){
-          wipAvailable=inv.transit;
-        } else {
-          // filtered：仅当WIP到货日≤需求日才计入
-          if(inv.transitArrival&&inv.transitArrival<=plannedArrival)wipAvailable=inv.transit;
-        }
+    // WIP计入
+    if(inv&&inv.transit>0){
+      if(core.wipMode==='all'){
+        wipAvailable=inv.transit;
+      } else {
+        if(inv.transitArrival&&inv.transitArrival<=plannedArrival)wipAvailable=inv.transit;
       }
-      if(core.deductPR){
-        const prItems=appData.prpo.filter(p=>p.materialCode===matCode&&p.orderType==='PR'&&p.demandDate<=plannedArrival);
-        prAvailable=prItems.reduce((s,p)=>s+(p.quantity||0),0);
-        if(prItems.length>0){
-          const prDates=[...new Set(prItems.map(p=>p.demandDate).sort())];
-          prBreakdown=prDates.map(d=>{
-            const qty=prItems.filter(p=>p.demandDate===d).reduce((s,p)=>s+(p.quantity||0),0);
-            return d.slice(5)+':'+qty.toLocaleString();
-          }).join(' / ');
-        }
+    }
+    if(core.deductPR){
+      const prItems=appData.prpo.filter(p=>p.materialCode===matCode&&p.orderType==='PR'&&p.demandDate<=plannedArrival);
+      prAvailable=prItems.reduce((s,p)=>s+(p.quantity||0),0);
+      if(prItems.length>0){
+        const prDates=[...new Set(prItems.map(p=>p.demandDate).sort())];
+        prBreakdown=prDates.map(d=>{const qty=prItems.filter(p=>p.demandDate===d).reduce((s,p)=>s+(p.quantity||0),0);return d.slice(5)+':'+qty.toLocaleString();}).join(' / ');
       }
-      if(core.deductPO){
-        const poItems=appData.prpo.filter(p=>p.materialCode===matCode&&p.orderType==='PO'&&p.demandDate<=plannedArrival);
-        poAvailable=poItems.reduce((s,p)=>s+(p.quantity||0),0);
-        if(poItems.length>0){
-          const poDates=[...new Set(poItems.map(p=>p.demandDate).sort())];
-          poBreakdown=poDates.map(d=>{
-            const qty=poItems.filter(p=>p.demandDate===d).reduce((s,p)=>s+(p.quantity||0),0);
-            return d.slice(5)+':'+qty.toLocaleString();
-          }).join(' / ');
-        }
+    }
+    if(core.deductPO){
+      const poItems=appData.prpo.filter(p=>p.materialCode===matCode&&p.orderType==='PO'&&p.demandDate<=plannedArrival);
+      poAvailable=poItems.reduce((s,p)=>s+(p.quantity||0),0);
+      if(poItems.length>0){
+        const poDates=[...new Set(poItems.map(p=>p.demandDate).sort())];
+        poBreakdown=poDates.map(d=>{const qty=poItems.filter(p=>p.demandDate===d).reduce((s,p)=>s+(p.quantity||0),0);return d.slice(5)+':'+qty.toLocaleString();}).join(' / ');
       }
     }
     const totalSupply=stock+wipAvailable+prAvailable+poAvailable;
     const netRemaining=Math.max(0,grossReq-stock-wipAvailable-prAvailable-poAvailable);
-    // 时间倒推（审批天数仅对采购物料有效）
     let plannedOrderDate='';
     const isPurchase=mat&&mat.type==='采购';
     const effectiveApproval=isPurchase?approvalDays:0;
@@ -3913,13 +3837,10 @@ function executeMRP(){
     if(isPurchase)detailText+=' → 到货日'+plannedArrival+' → 总交付'+totalDelivery+'天+审批'+effectiveApproval+'天 → 下单日'+(plannedOrderDate||'N/A');
     else detailText+=' → 到货日'+plannedArrival+' → 交付周期'+totalDelivery+'天 → 投产日'+(plannedOrderDate||'N/A');
     details.push({process,text:detailText,netRemaining});
-    // 递归展开子制程
     if(core.shouldExpandChildren(netRemaining)){
       const children=getBomChildren(process);
       children.forEach(child=>{
-        // child.child是物料编码，需转成制程名
         const childProcess=processByMatCode[child.child]||child.child;
-        // 子制程净需求 = 调用运算规则中的函数
         const childNetReq=core.calcChildNetReq(grossReq,child.usage,childProcess);
         const childDemandDate=addDays(demandDate,-totalDelivery);
         const childArrival=addDays(plannedOrderDate,0);
@@ -3928,83 +3849,21 @@ function executeMRP(){
     }
   }
   results.length=0;details.length=0;
-  if(sel.value==='all'){
-    // 将所有需求按日期分组（升序），先到先得分配库存
-    const dateMap={};
-    appData.demands.forEach(d=>{if(!dateMap[d.demandDate])dateMap[d.demandDate]=0;dateMap[d.demandDate]+=d.quantity;});
-    const sortedDates=Object.keys(dateMap).sort();
-    // FIFO模式：初始化全局供给池（库存/WIP/PR/PO按FIFO排序，被多需求依次消耗）
-    if (getActiveMrpCore().supplyStrategy === 'fifo') {
-      fifoSupplyQueues = {};
-      appData.materials.forEach(mat => {
-        const code = mat.code;
-        const inv = appData.inventory.find(i => i.materialCode === code);
-        const queue = [];
-        if (inv && inv.stock > 0) queue.push({type:'stock', qty:inv.stock, arrival:''});
-        if (inv && inv.transit > 0) queue.push({type:'wip', qty:inv.transit, arrival:inv.transitArrival||''});
-        appData.prpo.filter(p => p.materialCode===code && p.orderType==='PR').forEach(p => {queue.push({type:'pr', qty:p.quantity||0, arrival:p.demandDate||''});});
-        appData.prpo.filter(p => p.materialCode===code && p.orderType==='PO').forEach(p => {queue.push({type:'po', qty:p.quantity||0, arrival:p.demandDate||''});});
-        // 排序：stock永远第一，其他按到货日升序，同到货日 wip→po→pr
-        const order = {stock:0, wip:1, po:2, pr:3};
-        queue.sort((a,b) => {
-          if (a.type==='stock') return -1;
-          if (b.type==='stock') return 1;
-          if (a.arrival !== b.arrival) return a.arrival < b.arrival ? -1 : 1;
-          return (order[a.type]||99) - (order[b.type]||99);
-        });
-        fifoSupplyQueues[code] = queue;
-      });
-    }
-    const origInventory=JSON.parse(JSON.stringify(appData.inventory));
-    const origPrpo=JSON.parse(JSON.stringify(appData.prpo));
-    let combResults=[],combDetails=[];
-    sortedDates.forEach(date=>{
-      const groupQty=dateMap[date];
-      results.length=0;details.length=0;
-      calcMRP('FT',groupQty,date,0,date);
-      // 标准模式下手动扣除已消耗的库存/WIP（FIFO模式下由consumeFromPool自动处理）
-      if (getActiveMrpCore().supplyStrategy !== 'fifo') {
-        results.forEach(r=>{
-          const consumedStock=r.stock>0?Math.min(r.stock,Math.max(0,r.grossReq-r.wipAvailable-r.netRemaining)):0;
-          if(consumedStock>0){const inv=appData.inventory.find(i=>i.materialCode===r.matCode);if(inv)inv.stock=Math.max(0,inv.stock-consumedStock);}
-          const consumedWip=r.wipAvailable>0?Math.min(r.wipAvailable,Math.max(0,r.grossReq-r.stock-r.netRemaining)):0;
-          if(consumedWip>0){const inv=appData.inventory.find(i=>i.materialCode===r.matCode);if(inv)inv.transit=Math.max(0,inv.transit-consumedWip);}
-          // 计算实际消耗的PR/PO量：扣除stock/wip后剩余需求量中依次扣减PR→PO
-          const required=Math.max(0,r.grossReq-r.stock-r.wipAvailable);
-          const prConsumed=r.prAvailable>0?Math.min(r.prAvailable,required):0;
-          const poConsumed=(r.poAvailable>0&&prConsumed<required)?Math.min(r.poAvailable,required-prConsumed):0;
-          if(prConsumed>0){
-            let remain=prConsumed;
-            appData.prpo.forEach(p=>{
-              if(p.materialCode===r.matCode && p.orderType==='PR' && p.quantity>0 && remain>0){
-                const take=Math.min(p.quantity,remain);
-                p.quantity-=take;remain-=take;
-              }
-            });
-          }
-          if(poConsumed>0){
-            let remain=poConsumed;
-            appData.prpo.forEach(p=>{
-              if(p.materialCode===r.matCode && p.orderType==='PO' && p.quantity>0 && remain>0){
-                const take=Math.min(p.quantity,remain);
-                p.quantity-=take;remain-=take;
-              }
-            });
-          }
-        });
-      }
-      combResults=combResults.concat(results);
-      combDetails=combDetails.concat(details);
-    });
-    appData.inventory=origInventory;
-    appData.prpo=origPrpo;
-    // 把合并结果写回results/details（const数组不能重新赋值，清空后逐个push）
-    results.length=0;combResults.forEach(r=>results.push(r));
-    details.length=0;combDetails.forEach(d=>details.push(d));
-  }else{
-    calcMRP('FT',demandQty,dueDate,0,dueDate);
-  }
+  calcMRP('FT',demandQty,dueDate,0,dueDate);
   appData.mrpResult=results;appData.mrpDetails=details;
+}
+// ==================== 原始MRP执行（保留原有DOM操作，仅从引擎读数据） ====================
+function executeMRP(){
+  const sel=document.getElementById('mrpOrderSelect'),qtyInput=document.getElementById('mrpQuantity'),dateInput=document.getElementById('mrpDueDate');
+  let demandQty=parseInt(qtyInput.value);
+  if(isNaN(demandQty)||demandQty<=0){showToast('请输入有效的需求数量','error');return;}
+  let dueDate=dateInput.value;
+  if(!dueDate){showToast('请选择需求日期','error');return;}
+  let selectedOrder=null;
+  if(sel.value!==''&&sel.value!=='custom')selectedOrder=appData.demands[parseInt(sel.value)];
+  // 使用核心计算引擎
+  runMrpEngine(demandQty, dueDate);
+  const results=appData.mrpResult,details=appData.mrpDetails;
   document.querySelector('#mrpTabs .tab[data-tab="mrp-result"]').click();
   document.getElementById('mrpEmpty').style.display='none';
   document.getElementById('mrpResultArea').style.display='block';
@@ -7374,15 +7233,16 @@ function exportSpReport(section){
 function renderSpMrp(){
   // 渲染运算规则页
   renderSpMrpRules();
-  // 初始化运行&结果页
+  // 初始化运行&结果页 — 从真实客户订单加载
   const sel=document.getElementById('spMrpOrderSelect');
   if(!sel) return;
-  sel.innerHTML='<option value="">-- 选择订单 --</option><option value="__manual__">📝 手动输入</option>';
-  appData.demands.forEach((d,i)=>{
-    if(d.material && d.quantity){
+  sel.innerHTML='<option value="">-- 选择订单 --</option><option value="__all__">📋 所有订单</option><option value="__manual__">📝 手动输入</option>';
+  appData.customerOrders.forEach((o,i)=>{
+    if(o.quantity){
       const opt=document.createElement('option');
-      opt.value='demand_'+i;
-      opt.textContent=d.orderNo||('DEM-'+i)+' | '+d.material+' | '+(d.quantity||0).toLocaleString()+'颗 | '+(d.demandDate||'—');
+      opt.value='order_'+i;
+      const typeTag=o.orderType==='Hard'?'🔴':o.orderType==='Flexible'?'🟡':'🔵';
+      opt.textContent=typeTag+' '+o.orderNo+' | '+o.material+' | '+o.quantity.toLocaleString()+(o.unit||'颗')+' | '+(o.demandDate||'—');
       sel.appendChild(opt);
     }
   });
@@ -7400,139 +7260,151 @@ function switchSpMrpInnerTab(tab){
   const content=document.getElementById('tab-'+tab);
   if(content) content.classList.add('active');
   if(tab==='sp-mrp-rules') renderSpMrpRules();
+  if(tab==='sp-mrp-run') renderSpMrpDataRef();
 }
 // ==================== MRP运算规则渲染 ====================
 function renderSpMrpRules(){
-  // 制程层级
-  let html1='';
-  appData.processes.forEach((p,i)=>{
-    html1+='<tr><td>'+p.level+'</td><td>'+p.name+'</td><td>'+(p.desc||'')+'</td><td>'+p.unit+'</td><td><button class="btn btn-sm btn-outline" onclick="spMrpDeleteProcess('+i+')">🗑️</button></td></tr>';
-  });
-  const pt=document.getElementById('spMrpProcessTable');
-  if(pt) pt.querySelector('tbody').innerHTML=html1;
-  const pc=document.getElementById('spMrpProcessCount');
-  if(pc) pc.textContent=appData.processes.length+'条';
-
-  // BOM结构配置（单位用量 + 损耗率）
-  let html2='';
-  appData.bom.forEach((b,i)=>{
-    html2+='<tr><td>'+b.parent+'</td><td>'+b.child+'</td><td><input class="sp-mrp-editable" type="number" step="any" value="'+b.usage+'" data-sp-bom-idx="'+i+'" data-field="usage" style="width:70px;padding:2px 4px;border:1px solid var(--gray-300);border-radius:3px;font-size:12px"></td><td><input class="sp-mrp-editable" type="number" step="any" value="'+b.scrap+'" data-sp-bom-idx="'+i+'" data-field="scrap" style="width:70px;padding:2px 4px;border:1px solid var(--gray-300);border-radius:3px;font-size:12px"></td><td><button class="btn btn-sm btn-outline" onclick="spMrpDeleteBom('+i+')">🗑️</button></td></tr>';
-  });
-  const bt=document.getElementById('spMrpBomTable');
-  if(bt) bt.querySelector('tbody').innerHTML=html2;
-  const bc=document.getElementById('spMrpBomCount');
-  if(bc) bc.textContent=appData.bom.length+'条';
-  document.querySelectorAll('#spMrpBomTable .sp-mrp-editable').forEach(el=>{
-    el.addEventListener('change',function(){
-      const idx=parseInt(this.dataset.spBomIdx),field=this.dataset.field;
-      if(!isNaN(idx)&&appData.bom[idx]) appData.bom[idx][field]=(field==='usage'||field==='scrap')?parseFloat(this.value)||0:this.value;
-    });
-  });
-
-  // 交期配置（生产+运输+检验 → 总交付天数）
-  let html3='';
-  appData.leadTimes.forEach((l,i)=>{
-    const totalDays=(l.prod||0)+(l.trans||0)+(l.inspect||0);
-    html3+='<tr><td>'+l.process+'</td><td><input class="sp-mrp-lt-edit" value="'+l.code+'" data-sp-lt-idx="'+i+'" data-field="code" style="width:90px;padding:2px 4px;border:1px solid var(--gray-300);border-radius:3px;font-size:12px"></td><td><input class="sp-mrp-lt-edit" value="'+l.name+'" data-sp-lt-idx="'+i+'" data-field="name" style="width:100px;padding:2px 4px;border:1px solid var(--gray-300);border-radius:3px;font-size:12px"></td><td><input class="sp-mrp-lt-edit" type="number" min="0" value="'+l.prod+'" data-sp-lt-idx="'+i+'" data-field="prod" style="width:60px;padding:2px 4px;border:1px solid var(--gray-300);border-radius:3px;font-size:12px"></td><td><input class="sp-mrp-lt-edit" type="number" min="0" value="'+l.trans+'" data-sp-lt-idx="'+i+'" data-field="trans" style="width:60px;padding:2px 4px;border:1px solid var(--gray-300);border-radius:3px;font-size:12px"></td><td><input class="sp-mrp-lt-edit" type="number" min="0" value="'+l.inspect+'" data-sp-lt-idx="'+i+'" data-field="inspect" style="width:60px;padding:2px 4px;border:1px solid var(--gray-300);border-radius:3px;font-size:12px"></td><td><span style="font-weight:600;color:var(--primary)">'+totalDays+'天</span></td><td><button class="btn btn-sm btn-outline" onclick="spMrpDeleteLeadTime('+i+')">🗑️</button></td></tr>';
-  });
-  const lt=document.getElementById('spMrpLeadTimeTable');
-  if(lt) lt.querySelector('tbody').innerHTML=html3;
-  const lc=document.getElementById('spMrpLeadTimeCount');
-  if(lc) lc.textContent=appData.leadTimes.length+'条';
-  document.querySelectorAll('#spMrpLeadTimeTable .sp-mrp-lt-edit').forEach(el=>{
-    el.addEventListener('change',function(){
-      const idx=parseInt(this.dataset.spLtIdx),field=this.dataset.field;
-      if(!isNaN(idx)&&appData.leadTimes[idx]){
-        if(field==='prod'||field==='trans'||field==='inspect') appData.leadTimes[idx][field]=parseInt(this.value)||0;
-        else appData.leadTimes[idx][field]=this.value;
-      }
-    });
-  });
-
-  // 审批流程天数（部门审批+采购审批+财务审批）
-  renderSpMrpApprovals();
+  // 运算规则页仅保留MRP运算参数（由loadSpMrpParams初始化）
+  // 同时更新运行页的数据关联状态
+  renderSpMrpDataRef();
 }
-function renderSpMrpApprovals(){
-  let html='',totalDays=0;
-  appData.approvals.forEach((a,i)=>{
-    totalDays+=a.days;
-    html+='<tr><td>'+a.node+'</td><td>'+a.days+'</td><td><button class="btn btn-sm btn-outline" onclick="spMrpDeleteApproval('+i+')">🗑️</button></td></tr>';
-  });
-  const at=document.getElementById('spMrpApprovalTable');
-  if(at) at.querySelector('tbody').innerHTML=html;
-  const ac=document.getElementById('spMrpApprovalCount');
-  if(ac) ac.textContent=(appData.approvals||[]).length+'条（合计'+totalDays+'天）';
+function renderSpMrpDataRef(){
+  const procEl=document.getElementById('spMrpRefProcessCount');
+  if(procEl) procEl.textContent=appData.processes.length;
+  const bomEl=document.getElementById('spMrpRefBomCount');
+  if(bomEl) bomEl.textContent=appData.bom.length;
+  const ltEl=document.getElementById('spMrpRefLeadTimeCount');
+  if(ltEl) ltEl.textContent=appData.leadTimes.length;
+  const apCount=document.getElementById('spMrpRefApprovalCount');
+  if(apCount) apCount.textContent=(appData.approvals||[]).length;
+  const apTotal=document.getElementById('spMrpRefApprovalTotal');
+  if(apTotal) apTotal.textContent=(appData.approvals||[]).reduce((s,a)=>s+(a.days||0),0);
+  const orderEl=document.getElementById('spMrpRefProcessOrder');
+  if(orderEl) orderEl.textContent=(appData.processOrder||['FT','AB','CP','BP','Wafer']).join('→');
 }
-function spMrpDeleteProcess(idx){
-  appData.processes.splice(idx,1);
-  renderSpMrpRules();
+// ==================== MRP参数方案（多预设） ====================
+const STORAGE_KEY_MRP_PRESETS='ic_scm_mrp_presets';
+function getMrpParamValues(){
+  return {
+    deductPR:document.getElementById('spMrpOptDeductPR').checked,
+    deductPO:document.getElementById('spMrpOptDeductPO').checked,
+    wipMode:document.getElementById('spMrpOptWipMode').value,
+    supplyStrategy:document.getElementById('spMrpOptStrategy').value,
+    expandThreshold:parseInt(document.getElementById('spMrpOptExpandThreshold').value)||0
+  };
 }
-function spMrpDeleteBom(idx){
-  if(appData.bom.length<=1){showToast('至少保留一条BOM记录','warning');return;}
-  appData.bom.splice(idx,1);
-  appData.boms=appData.bom;
-  saveMasterdataToStorage();
-  renderSpMrpRules();
+function setMrpParamValues(v){
+  const d1=document.getElementById('spMrpOptDeductPR'); if(d1) d1.checked=v.deductPR!==false;
+  const d2=document.getElementById('spMrpOptDeductPO'); if(d2) d2.checked=v.deductPO!==false;
+  const wm=document.getElementById('spMrpOptWipMode'); if(wm) wm.value=v.wipMode||'filtered';
+  const ss=document.getElementById('spMrpOptStrategy'); if(ss) ss.value=v.supplyStrategy||'independent';
+  const et=document.getElementById('spMrpOptExpandThreshold'); if(et) et.value=v.expandThreshold||0;
 }
-function spMrpDeleteLeadTime(idx){
-  appData.leadTimes.splice(idx,1);
-  renderSpMrpRules();
-}
-function spMrpDeleteApproval(idx){
-  appData.approvals.splice(idx,1);
-  renderSpMrpApprovals();
-}
-// ==================== 审批流程新增 ====================
-function openAddApprovalModal(){
-  openModal('<div class="modal-title">新增审批节点 <button class="modal-close" onclick="closeModal()">×</button></div>'+
-    '<div class="grid-2"><div class="form-group"><label>审批节点名称</label><input id="formApprNode" placeholder="如 部门审批"></div><div class="form-group"><label>天数</label><input type="number" id="formApprDays" value="1" min="1"></div></div>'+
-    '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveNewApproval()">保存</button></div>');
-}
-function saveNewApproval(){
-  const node=document.getElementById('formApprNode').value.trim();
-  if(!node){showToast('请输入审批节点名称','error');return;}
-  if(!appData.approvals) appData.approvals=[];
-  appData.approvals.push({node,days:parseInt(document.getElementById('formApprDays').value)||1});
-  closeModal();
-  renderSpMrpApprovals();
-}
-// ==================== MRP运算参数持久化 ====================
-function saveSpMrpParams(){
+function syncParamsToCore(v){
   if(!appData.naturalRules) appData.naturalRules={};
-  appData.naturalRules.deductPR=document.getElementById('spMrpOptDeductPR').checked;
-  appData.naturalRules.deductPO=document.getElementById('spMrpOptDeductPO').checked;
-  appData.naturalRules.wipMode=document.getElementById('spMrpOptWipMode').value;
-  appData.naturalRules.supplyStrategy=document.getElementById('spMrpOptStrategy').value;
-  appData.naturalRules.expandThreshold=parseInt(document.getElementById('spMrpOptExpandThreshold').value)||0;
-  // 同步到core
+  Object.assign(appData.naturalRules,v);
   const core=defaultMrpCore;
-  core.deductPR=appData.naturalRules.deductPR;
-  core.deductPO=appData.naturalRules.deductPO;
-  core.wipMode=appData.naturalRules.wipMode;
-  core.supplyStrategy=appData.naturalRules.supplyStrategy;
-  core.shouldExpandChildren=function(netRemaining){return netRemaining>(appData.naturalRules.expandThreshold||0);};
+  core.deductPR=v.deductPR;
+  core.deductPO=v.deductPO;
+  core.wipMode=v.wipMode;
+  core.supplyStrategy=v.supplyStrategy;
+  core.shouldExpandChildren=function(netRemaining){return netRemaining>(v.expandThreshold||0);};
   saveRulesToStorage();
+}
+function getMrpPresets(){
+  try{ return JSON.parse(localStorage.getItem(STORAGE_KEY_MRP_PRESETS))||{}; }catch(e){ return {}; }
+}
+function saveMrpPresets(presets){
+  localStorage.setItem(STORAGE_KEY_MRP_PRESETS,JSON.stringify(presets));
+}
+function renderMrpPresetSelect(){
+  const sel=document.getElementById('spMrpPresetSelect');
+  if(!sel)return;
+  const presets=getMrpPresets();
+  const current=localStorage.getItem('ic_scm_mrp_current_preset')||'default';
+  sel.innerHTML='';
+  const names=Object.keys(presets);
+  if(names.length===0){
+    presets['default']={deductPR:true,deductPO:true,wipMode:'filtered',supplyStrategy:'independent',expandThreshold:0};
+    saveMrpPresets(presets);
+    names.push('default');
+  }
+  names.forEach(n=>{
+    const opt=document.createElement('option');
+    opt.value=n; opt.textContent=n;
+    if(n===current) opt.selected=true;
+    sel.appendChild(opt);
+  });
+  // 应用当前预设值
+  if(presets[current]) setMrpParamValues(presets[current]);
+}
+function saveSpMrpParams(){
+  const v=getMrpParamValues();
+  const presets=getMrpPresets();
+  const current=localStorage.getItem('ic_scm_mrp_current_preset')||'default';
+  presets[current]=v;
+  saveMrpPresets(presets);
+  syncParamsToCore(v);
   showToast('✅ MRP运算参数已保存','success');
 }
+function addMrpParamPreset(){
+  const name=prompt('请输入参数方案名称：');
+  if(!name||!name.trim()) return;
+  const presetName=name.trim();
+  const presets=getMrpPresets();
+  if(presets[presetName]){
+    if(!confirm(`方案"${presetName}"已存在，是否覆盖？`)) return;
+  }
+  presets[presetName]=getMrpParamValues();
+  saveMrpPresets(presets);
+  localStorage.setItem('ic_scm_mrp_current_preset',presetName);
+  renderMrpPresetSelect();
+  showToast(`✅ 方案"${presetName}"已创建`,'success');
+}
+function switchMrpPreset(){
+  const sel=document.getElementById('spMrpPresetSelect');
+  if(!sel)return;
+  const name=sel.value;
+  if(!name) return;
+  const presets=getMrpPresets();
+  if(presets[name]){
+    setMrpParamValues(presets[name]);
+    localStorage.setItem('ic_scm_mrp_current_preset',name);
+  }
+}
+function deleteMrpPreset(){
+  const presets=getMrpPresets();
+  const current=localStorage.getItem('ic_scm_mrp_current_preset')||'default';
+  if(Object.keys(presets).length<=1){
+    showToast('至少保留一个参数方案','warning'); return;
+  }
+  if(!confirm(`确定删除参数方案"${current}"？`)) return;
+  delete presets[current];
+  saveMrpPresets(presets);
+  const remaining=Object.keys(presets);
+  localStorage.setItem('ic_scm_mrp_current_preset',remaining[0]);
+  renderMrpPresetSelect();
+  showToast(`已删除方案"${current}"`,'info');
+}
 function loadSpMrpParams(){
-  try{
-    const raw=localStorage.getItem(STORAGE_KEY_RULES);
-    if(raw){
-      const data=JSON.parse(raw);
-      const d1=document.getElementById('spMrpOptDeductPR'); if(d1) d1.checked=data.deductPR!==false;
-      const d2=document.getElementById('spMrpOptDeductPO'); if(d2) d2.checked=data.deductPO!==false;
-      const wm=document.getElementById('spMrpOptWipMode'); if(wm) wm.value=data.wipMode||'filtered';
-      const ss=document.getElementById('spMrpOptStrategy'); if(ss) ss.value=data.supplyStrategy||'independent';
-      const et=document.getElementById('spMrpOptExpandThreshold'); if(et) et.value=data.expandThreshold||0;
-    }
-  }catch(e){}
+  renderMrpPresetSelect();
+  // 确保同步到core
+  const v=getMrpParamValues();
+  syncParamsToCore(v);
 }
 function onSpMrpOrderSelect(){
   const sel=document.getElementById('spMrpOrderSelect'),val=sel.value;
   if(val==='__manual__') return;
-  if(val.startsWith('demand_')){
-    const idx=parseInt(val.replace('demand_',''));
-    const order=appData.demands[idx];
+  if(val==='__all__'){
+    const totalQty=appData.customerOrders.reduce((s,o)=>s+(o.quantity||0),0);
+    const latestDate=appData.customerOrders.reduce((latest,o)=>o.demandDate&&o.demandDate>latest?o.demandDate:latest,'');
+    document.getElementById('spMrpQuantity').value=totalQty;
+    if(latestDate) document.getElementById('spMrpDueDate').value=latestDate;
+    return;
+  }
+  if(val.startsWith('order_')){
+    const idx=parseInt(val.replace('order_',''));
+    const order=appData.customerOrders[idx];
     if(order){
       document.getElementById('spMrpQuantity').value=order.quantity||0;
       document.getElementById('spMrpDueDate').value=order.demandDate||'';
@@ -7545,13 +7417,11 @@ function executeSpMrp(){
   if(isNaN(demandQty)||demandQty<=0){showToast('请输入有效的需求数量','error');return;}
   let dueDate=dateInput.value;
   if(!dueDate){showToast('请选择需求日期','error');return;}
-  // 将值填入原始MRP表单并执行
-  document.getElementById('mrpQuantity').value=demandQty;
-  document.getElementById('mrpDueDate').value=dueDate;
-  document.getElementById('mrpOrderSelect').value='custom';
-  executeMRP();
-  // 将原始MRP结果映射到sp-mrp表
+  // 直接调用核心计算引擎，不再经过已删除的旧版DOM
+  runMrpEngine(demandQty, dueDate);
+  // 将运算结果渲染到sp-mrp子页签
   renderSpMrpResult();
+  showToast('✅ MRP运算完成','success');
 }
 function renderSpMrpResult(){
   const results=appData.mrpResult;
@@ -7587,7 +7457,8 @@ function renderSpMrpResult(){
   const orderInfo=document.getElementById('spMrpOrderInfo');
   const sel=document.getElementById('spMrpOrderSelect');
   if(sel.value==='__manual__') orderInfo.textContent='自定义需求';
-  else if(sel.value.startsWith('demand_')) orderInfo.textContent=sel.options[sel.selectedIndex].textContent;
+  else if(sel.value==='__all__') orderInfo.textContent='所有订单';
+  else if(sel.value.startsWith('order_')) orderInfo.textContent=sel.options[sel.selectedIndex].textContent;
   else orderInfo.textContent='总需求 '+results.reduce((s,r)=>s+r.netReq,0).toLocaleString()+'颗';
   
   // 22列结果表
