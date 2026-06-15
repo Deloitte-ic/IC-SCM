@@ -4111,10 +4111,38 @@ function triggerSync(){
   _syncDebounce=setTimeout(()=>{saveToServer();_syncDebounce=null;},1500);
 }
 
+// 从云端强制拉取数据（覆盖本地）
+async function pullFromServer(){
+  if(_syncStatus==='syncing')return;
+  _syncStatus='syncing';
+  updateSyncUI('🔄','拉取中…');
+  try{
+    const res=await fetchWithTimeout(SHARED_DATA_RAW+'?t='+Date.now(),8000);
+    if(res.ok){
+      const data=await res.json();
+      if(data && Array.isArray(data.materials) && data.materials.length > 0){
+        localStorage.setItem(STORAGE_KEY_MASTER,JSON.stringify(data));
+        loadMasterdataFromStorage();
+        renderAllMasterdata();
+        renderDemand();
+        refreshOrderSelect();
+        renderConfigTables();
+        updateSyncUI('✅','已同步');
+        showToast('✅ 已从云端拉取最新数据','success');
+        _syncStatus='idle';
+        return;
+      }
+    }
+    showToast('⚠️ 云端暂无数据','warning');
+  }catch(e){console.error('云端拉取失败:',e);}
+  updateSyncUI('☁️','本地');
+  _syncStatus='idle';
+}
+
 // 手动同步（Token 未配置时弹出对话框引导配置）
 async function syncManual(){
   const el=document.getElementById('syncLabel');
-  if(el&&el.textContent==='保存中…')return;
+  if(el&&(el.textContent==='保存中…'||el.textContent==='拉取中…'))return;
   const token=getGithubToken();
   if(!token){
     const userToken=prompt('请输入 GitHub Token 以启用云同步：\n（Token 仅保存在您浏览器本地，可随时修改）\n\n如不清楚 Token 值，可以告诉我，我帮你查', '');
@@ -4124,7 +4152,13 @@ async function syncManual(){
     }
     return;
   }
-  await saveToServer();
+  // 选择操作：推送还是拉取
+  const action = prompt('选择操作：\n1 = 推送到云端（上传本地数据到服务器）\n2 = 从云端拉取（下载云端数据覆盖本地）\n\n输入 1 或 2，直接回车默认推送', '1');
+  if(action === '2'){
+    await pullFromServer();
+  } else {
+    await saveToServer();
+  }
 }
 
 // 保存规则到 localStorage
