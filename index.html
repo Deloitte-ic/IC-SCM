@@ -6588,25 +6588,121 @@ function saveSpAlloc(){
   closeModal();renderSpNetwork();showToast('✅ 产能分配已更新','success');
 }
 function runSpNetworkOptimization(){
-  // 均衡优化：按上下游比例协调
-  let prevAlloc={};
-  SP_PROCS.forEach((p,i)=>{
-    const allocs=supplyPlanData.networkAllocations.filter(n=>n.process===p);
-    if(p==='Wafer'){
-      // 晶圆产能按需求比例分配
-      allocs.forEach(n=>{n.allocated=Math.round(n.weeklyCap*(0.75+Math.random()*0.15));n.remain=n.weeklyCap-n.allocated;n.ratio=Math.round(n.allocated/n.weeklyCap*100);});
-    }else{
-      // 下游制程参照上游分配
-      const upstream=SP_PROCS[i-1];
-      const upAlloc=supplyPlanData.networkAllocations.filter(n=>n.process===upstream).reduce((s,n)=>s+n.allocated,0);
-      const totalUpstreamAlloc=upAlloc;
-      allocs.forEach(n=>{
-        const optimal=Math.min(n.weeklyCap,Math.round(totalUpstreamAlloc*0.9*Math.random()+totalUpstreamAlloc*0.05));
-        n.allocated=Math.min(optimal,n.weeklyCap);n.remain=n.weeklyCap-n.allocated;n.ratio=Math.round(n.allocated/n.weeklyCap*100);
+  // === 基于MRP净需求的均衡优化 ===
+  const mrpResults = appData.mrpResult || [];
+  const hasMrpData = mrpResults.length > 0;
+
+  // 按制程汇总净待补
+  const netDemandByProc = {};
+  if(hasMrpData){
+    mrpResults.forEach(r => {
+      const p = r.process || '其他';
+      netDemandByProc[p] = (netDemandByProc[p] || 0) + (r.netRemaining || 0);
+    });
+  }
+
+  // 计算推荐分配
+  const recommendations = [];
+  let totalUnmet = 0;
+
+  SP_PROCS.forEach((p) => {
+    const allocs = supplyPlanData.networkAllocations.filter(n => n.process === p);
+    if(!allocs.length) return;
+    const totalCap = allocs.reduce((s,n) => s + n.weeklyCap, 0);
+    const netDemand = netDemandByProc[p] || 0;
+
+    if(!hasMrpData || netDemand <= 0){
+      allocs.forEach(n => recommendations.push({
+        process:p, supplier:n.supplier, current:n.allocated,
+        recommended:'—', cap:n.weeklyCap,
+        note:hasMrpData ? '无MRP净需求' : '请先执行MRP运算'
+      }));
+      return;
+    }
+
+    if(totalCap <= 0){
+      allocs.forEach(n => recommendations.push({
+        process:p, supplier:n.supplier, current:n.allocated,
+        recommended:0, cap:n.weeklyCap, note:'供应商未设置周产能'
+      }));
+      return;
+    }
+
+    if(netDemand >= totalCap){
+      totalUnmet += netDemand - totalCap;
+      allocs.forEach(n => {
+        const share = n.weeklyCap / totalCap;
+        recommendations.push({
+          process:p, supplier:n.supplier, current:n.allocated,
+          recommended:n.weeklyCap, cap:n.weeklyCap,
+          note:share < 0.3 ? '产能集中风险' : '需求超产能'
+        });
+      });
+    } else {
+      allocs.forEach(n => {
+        const share = n.weeklyCap / totalCap;
+        const rec = Math.round(netDemand * share);
+        recommendations.push({
+          process:p, supplier:n.supplier,
+          current:n.allocated, recommended:Math.min(rec, n.weeklyCap),
+          cap:n.weeklyCap, note:''
+        });
       });
     }
   });
-  renderSpNetwork();showToast('🔁 委外网络均衡优化完成','success');
+
+  // 弹窗展示对比
+  const totalCurrent = recommendations.reduce((s,r) => s + (typeof r.current==='number'?r.current:0), 0);
+  const totalRecommended = recommendations.reduce((s,r) => s + (typeof r.recommended==='number'?r.recommended:0), 0);
+
+  let mh = '<h3>🔁 委外网络均衡优化</h3>';
+  mh += hasMrpData
+    ? '<div style="margin:8px 0;padding:8px 12px;background:#f0fdf4;border-radius:6px;font-size:12px;color:#166534">✅ 基于MRP运算结果（净待补）优化分配</div>'
+    : '<div style="margin:8px 0;padding:8px 12px;background:#fef3c7;border-radius:6px;font-size:12px;color:#92400e">⚠️ 未执行MRP运算，无法获取需求数据</div>';
+
+  mh += '<div style="display:flex;gap:12px;margin:12px 0;flex-wrap:wrap">' +
+    '<div style="flex:1;min-width:120px;padding:8px;background:var(--gray-50);border-radius:6px;text-align:center"><div style="font-size:11px;color:var(--gray-500)">当前总分配(PO)</div><div style="font-size:18px;font-weight:600;color:var(--primary)">'+totalCurrent.toLocaleString()+'</div></div>' +
+    '<div style="flex:1;min-width:120px;padding:8px;background:#f0fdf4;border-radius:6px;text-align:center"><div style="font-size:11px;color:var(--gray-500)">推荐总分配</div><div style="font-size:18px;font-weight:600;color:var(--success)">'+totalRecommended.toLocaleString()+'</div></div>' +
+    (totalUnmet>0?'<div style="flex:1;min-width:120px;padding:8px;background:#fef2f2;border-radius:6px;text-align:center"><div style="font-size:11px;color:var(--gray-500)">产能缺口</div><div style="font-size:18px;font-weight:600;color:var(--danger)">'+totalUnmet.toLocaleString()+'</div></div>':'') +
+    '</div>';
+
+  mh += '<div class="table-wrapper" style="max-height:300px"><table style="width:100%;font-size:12px;border-collapse:collapse"><thead><tr style="background:var(--gray-100)"><th style="padding:6px 8px;text-align:left">制程</th><th style="padding:6px 8px;text-align:left">供应商</th><th style="padding:6px 8px;text-align:right">周产能</th><th style="padding:6px 8px;text-align:right">当前(PO)</th><th style="padding:6px 8px;text-align:right">推荐分配</th><th style="padding:6px 8px;text-align:left">说明</th></tr></thead><tbody>';
+  let prevProc = '';
+  recommendations.forEach(r => {
+    const isNew = r.process !== prevProc;
+    if(isNew && prevProc) mh += '<tr><td colspan="6" style="border-top:2px solid var(--gray-300);padding:0"></td></tr>';
+    prevProc = r.process;
+    const recDisp = typeof r.recommended === 'number' ? r.recommended.toLocaleString() : r.recommended;
+    const diff = (typeof r.recommended === 'number' && typeof r.current === 'number') ? r.recommended - r.current : 0;
+    const dClr = diff > 0 ? 'var(--danger)' : diff < 0 ? 'var(--success)' : 'var(--gray-400)';
+    const dDisp = diff !== 0 ? '<span style="color:'+dClr+';font-size:11px"> ('+(diff>0?'+':'')+diff.toLocaleString()+')</span>' : '';
+    mh += '<tr'+(isNew?' style="background:#f8fafc"':'')+'><td style="padding:4px 8px"><strong>'+r.process+'</strong></td><td style="padding:4px 8px">'+r.supplier+'</td><td style="padding:4px 8px;text-align:right">'+r.cap.toLocaleString()+'</td><td style="padding:4px 8px;text-align:right">'+r.current.toLocaleString()+'</td><td style="padding:4px 8px;text-align:right;font-weight:600;color:var(--success)">'+recDisp+' '+dDisp+'</td><td style="padding:4px 8px;font-size:11px;color:var(--gray-500)">'+r.note+'</td></tr>';
+  });
+  mh += '</tbody></table></div>';
+
+  mh += '<div style="display:flex;gap:8px;margin-top:16px">' +
+    '<button class="btn btn-sm btn-primary" onclick="applySpOptimization()">✅ 应用优化</button>' +
+    '<button class="btn btn-sm btn-outline" onclick="closeModal()">取消</button></div>';
+
+  window._spOptRecs = recommendations;
+  openModal(mh);
+}
+function applySpOptimization(){
+  const recs = window._spOptRecs || [];
+  if(!recs.length){ showToast('无优化结果','error'); closeModal(); return; }
+  let applied = 0;
+  recs.forEach(r => {
+    if(typeof r.recommended !== 'number') return;
+    const alloc = supplyPlanData.networkAllocations.find(n => n.process === r.process && n.supplier === r.supplier);
+    if(!alloc) return;
+    alloc.allocated = r.recommended;
+    alloc.remain = Math.max(0, alloc.weeklyCap - r.recommended);
+    alloc.ratio = alloc.weeklyCap > 0 ? Math.round(r.recommended / alloc.weeklyCap * 100) : 0;
+    applied++;
+  });
+  closeModal();
+  renderSpNetwork();
+  showToast('✅ 已应用 '+applied+' 项优化分配','success');
 }
 
 // ==================== Tab 2: 委外制程生产计划 ====================
