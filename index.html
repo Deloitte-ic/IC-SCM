@@ -241,6 +241,12 @@ tbody tr:hover td{background:var(--primary-bg)}
 .sim-slider { accent-color: var(--primary); cursor: pointer; height:4px; }
 .sim-slider::-webkit-slider-thumb { -webkit-appearance: none; width:14px; height:14px; border-radius:50%; background:var(--primary); cursor:pointer; }
 .sim-val { font-weight:600; color:var(--gray-600); }
+.sub-tabs{display:flex;gap:0;border-bottom:2px solid var(--gray-200);margin-bottom:16px;overflow-x:auto;padding-left:4px}
+.sub-tab{padding:7px 14px;cursor:pointer;font-size:12px;font-weight:500;color:var(--gray-500);border-bottom:2px solid transparent;margin-bottom:-2px;transition:var(--transition);white-space:nowrap}
+.sub-tab.active{color:var(--primary);border-bottom-color:var(--primary)}
+.sub-tab:hover{color:var(--gray-700);background:var(--gray-50)}
+.sub-tab-content{display:none;animation:fadeIn .2s ease}
+.sub-tab-content.active{display:block}
 </style>
 </head>
 <body>
@@ -1239,59 +1245,151 @@ tbody tr:hover td{background:var(--primary-bg)}
       </div>
       <!-- ==================== Tab 6: MRP物料需求计划 ==================== -->
       <div class="tab-content" id="tab-sp-mrp">
-        <div class="card">
-          <div class="card-title">🎯 MRP运算条件</div>
-          <div class="grid-3">
-            <div class="form-group">
-              <label>选择需求订单</label>
-              <select id="spMrpOrderSelect" onchange="onSpMrpOrderSelect()"><option value="">-- 选择订单 --</option><option value="__manual__">📝 手动输入</option></select>
-            </div>
-            <div class="form-group">
-              <label>需求数量<span style="color:var(--danger)">*</span></label>
-              <input type="number" id="spMrpQuantity" min="1" value="120000">
-            </div>
-            <div class="form-group">
-              <label>需求日期<span style="color:var(--danger)">*</span></label>
-              <input type="date" id="spMrpDueDate">
-            </div>
-          </div>
-          <div style="display:flex;gap:10px;margin-top:8px">
-            <button class="btn btn-primary btn-lg" onclick="executeSpMrp()">🧮 执行MRP运算</button>
-            <button class="btn btn-outline" onclick="resetSpMrp()">↻ 重置</button>
-          </div>
+        <!-- 内部子页签 -->
+        <div class="sub-tabs" id="spMrpTabs">
+          <div class="sub-tab active" data-tab="sp-mrp-rules" onclick="switchSpMrpInnerTab('sp-mrp-rules')">📐 运算规则</div>
+          <div class="sub-tab" data-tab="sp-mrp-run" onclick="switchSpMrpInnerTab('sp-mrp-run')">▶️ 运行及结果</div>
         </div>
-        <div id="spMrpResultArea" style="display:none">
-          <div class="result-summary" id="spMrpSummary"></div>
+
+        <!-- ===== 子页签1：运算规则 ===== -->
+        <div class="sub-tab-content active" id="tab-sp-mrp-rules">
+          <div class="alert alert-info">💡 所有参数在线可编辑，修改后自动保存。这些参数将影响MRP运算的完整逻辑。</div>
+
+          <!-- 制程层级 -->
           <div class="card">
             <div class="card-header">
-              <div class="card-title">📊 MRP运算结果表 <span class="tag" id="spMrpOrderInfo"></span></div>
+              <div class="card-title">🏗️ 制程层级 <span class="tag" id="spMrpProcessCount">0条</span></div>
               <div class="card-actions">
-                <button class="btn btn-sm btn-success" onclick="exportMRPResult()">📥 导出Excel</button>
+                <button class="btn btn-sm btn-primary" onclick="openAddProcessModal()">➕ 新增</button>
               </div>
             </div>
-            <div class="table-wrapper" style="max-height:400px;overflow-y:auto"><table id="spMrpResultTable"><thead><tr>
-              <th>层级</th><th>制程</th><th>物料编码</th><th>物料名称</th><th>需求日期</th><th>建议动作</th><th>供应商</th><th>需求类型</th><th>单位</th><th>净需求</th><th>损耗率</th><th>毛需求</th><th>可用库存</th><th>WIP</th><th>WIP到货日</th><th>Open PR</th><th>Open PR到货日</th><th>Open PO</th><th>Open PO到货日</th><th>净待补</th><th>PlOrd到货日</th><th>PlOrd下单日</th>
-            </tr></thead><tbody></tbody></table></div>
+            <div class="table-wrapper"><table id="spMrpProcessTable"><thead><tr><th>层级</th><th>制程名称</th><th>描述</th><th>单位</th><th>操作</th></tr></thead><tbody></tbody></table></div>
           </div>
+
+          <!-- BOM结构配置 -->
           <div class="card">
             <div class="card-header">
-              <div class="card-title">📋 采购/委外建议清单 <span class="tag" id="spMrpProcurementCount">0项</span></div>
+              <div class="card-title">🔗 BOM结构配置 <span class="tag" id="spMrpBomCount">0条</span></div>
               <div class="card-actions">
-                <button class="btn btn-sm btn-success" onclick="exportProcurementList()">📥 导出Excel</button>
+                <button class="btn btn-sm btn-primary" onclick="openAddBomConfigModal()">➕ 新增</button>
               </div>
             </div>
-            <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap">
-              <span style="display:inline-flex;align-items:center;gap:4px;font-size:12px"><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#f59e0b"></span> 采购</span>
-              <span style="display:inline-flex;align-items:center;gap:4px;font-size:12px"><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#3b82f6"></span> 委外</span>
+            <div class="table-wrapper"><table id="spMrpBomTable"><thead><tr><th>父项制程</th><th>子项制程</th><th>单位用量</th><th>损耗率(%)</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+          </div>
+
+          <!-- 交期配置 -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">⏱️ 交期配置 <span class="tag" id="spMrpLeadTimeCount">0条</span></div>
+              <div class="card-actions">
+                <button class="btn btn-sm btn-primary" onclick="openAddLeadTimeModal()">➕ 新增</button>
+              </div>
             </div>
-            <div class="table-wrapper" style="max-height:300px;overflow-y:auto"><table id="spMrpProcurementTable"><thead><tr>
-              <th>物料编码</th><th>物料名称</th><th>制程</th><th>净待补</th><th>单位</th><th>PlOrd到货日</th><th>PlOrd下单日</th><th>PlOrd号</th><th>供应商</th><th>类型</th>
-            </tr></thead><tbody></tbody></table></div>
+            <div class="table-wrapper"><table id="spMrpLeadTimeTable"><thead><tr><th>制程</th><th>供应商编码</th><th>供应商名称</th><th>生产(天)</th><th>运输(天)</th><th>检验(天)</th><th>总交付(天)</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+          </div>
+
+          <!-- 审批流程 -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">📋 审批流程天数 <span class="tag" id="spMrpApprovalCount">0条</span></div>
+              <div class="card-actions">
+                <button class="btn btn-sm btn-primary" onclick="openAddApprovalModal()">➕ 新增</button>
+              </div>
+            </div>
+            <div class="table-wrapper"><table id="spMrpApprovalTable"><thead><tr><th>审批节点</th><th>天数</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+          </div>
+
+          <!-- MRP运算参数（快速开关） -->
+          <div class="card">
+            <div class="card-title">⚙️ MRP运算参数</div>
+            <div style="display:flex;flex-wrap:wrap;gap:18px;padding:8px 0">
+              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+                <input type="checkbox" id="spMrpOptDeductPR" checked> 扣减Open PR
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+                <input type="checkbox" id="spMrpOptDeductPO" checked> 扣减Open PO
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+                WIP计入方式：
+                <select id="spMrpOptWipMode" style="font-size:12px;padding:3px 6px;border:1px solid var(--gray-300);border-radius:4px">
+                  <option value="filtered">仅到期WIP</option>
+                  <option value="all">全部WIP</option>
+                </select>
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+                供给扣减策略：
+                <select id="spMrpOptStrategy" style="font-size:12px;padding:3px 6px;border:1px solid var(--gray-300);border-radius:4px">
+                  <option value="independent">独立扣减</option>
+                  <option value="fifo">FIFO顺序扣减</option>
+                </select>
+              </label>
+              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+                子制程展开阈值：
+                <input type="number" id="spMrpOptExpandThreshold" value="0" min="0" style="width:70px;font-size:12px;padding:3px 6px;border:1px solid var(--gray-300);border-radius:4px">
+              </label>
+            </div>
+            <div style="text-align:right;margin-top:10px">
+              <button class="btn btn-sm btn-success" onclick="saveSpMrpParams()">💾 保存参数</button>
+            </div>
           </div>
         </div>
-        <div class="empty-state" id="spMrpEmpty">
-          <span class="icon">📊</span>
-          <div class="text">请设置条件并执行MRP运算</div>
+
+        <!-- ===== 子页签2：运行及结果 ===== -->
+        <div class="sub-tab-content" id="tab-sp-mrp-run">
+          <div class="card">
+            <div class="card-title">🎯 MRP运算条件</div>
+            <div class="grid-3">
+              <div class="form-group">
+                <label>选择需求订单</label>
+                <select id="spMrpOrderSelect" onchange="onSpMrpOrderSelect()"><option value="">-- 选择订单 --</option><option value="__manual__">📝 手动输入</option></select>
+              </div>
+              <div class="form-group">
+                <label>需求数量<span style="color:var(--danger)">*</span></label>
+                <input type="number" id="spMrpQuantity" min="1" value="120000">
+              </div>
+              <div class="form-group">
+                <label>需求日期<span style="color:var(--danger)">*</span></label>
+                <input type="date" id="spMrpDueDate">
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:8px">
+              <button class="btn btn-primary btn-lg" onclick="executeSpMrp()">🧮 执行MRP运算</button>
+              <button class="btn btn-outline" onclick="resetSpMrp()">↻ 重置</button>
+            </div>
+          </div>
+          <div id="spMrpResultArea" style="display:none">
+            <div class="result-summary" id="spMrpSummary"></div>
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">📊 MRP运算结果表 <span class="tag" id="spMrpOrderInfo"></span></div>
+                <div class="card-actions">
+                  <button class="btn btn-sm btn-success" onclick="exportMRPResult()">📥 导出Excel</button>
+                </div>
+              </div>
+              <div class="table-wrapper" style="max-height:400px;overflow-y:auto"><table id="spMrpResultTable"><thead><tr>
+                <th>层级</th><th>制程</th><th>物料编码</th><th>物料名称</th><th>需求日期</th><th>建议动作</th><th>供应商</th><th>需求类型</th><th>单位</th><th>净需求</th><th>损耗率</th><th>毛需求</th><th>可用库存</th><th>WIP</th><th>WIP到货日</th><th>Open PR</th><th>Open PR到货日</th><th>Open PO</th><th>Open PO到货日</th><th>净待补</th><th>PlOrd到货日</th><th>PlOrd下单日</th>
+              </tr></thead><tbody></tbody></table></div>
+            </div>
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">📋 采购/委外建议清单 <span class="tag" id="spMrpProcurementCount">0项</span></div>
+                <div class="card-actions">
+                  <button class="btn btn-sm btn-success" onclick="exportProcurementList()">📥 导出Excel</button>
+                </div>
+              </div>
+              <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap">
+                <span style="display:inline-flex;align-items:center;gap:4px;font-size:12px"><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#f59e0b"></span> 采购</span>
+                <span style="display:inline-flex;align-items:center;gap:4px;font-size:12px"><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#3b82f6"></span> 委外</span>
+              </div>
+              <div class="table-wrapper" style="max-height:300px;overflow-y:auto"><table id="spMrpProcurementTable"><thead><tr>
+                <th>物料编码</th><th>物料名称</th><th>制程</th><th>净待补</th><th>单位</th><th>PlOrd到货日</th><th>PlOrd下单日</th><th>PlOrd号</th><th>供应商</th><th>类型</th>
+              </tr></thead><tbody></tbody></table></div>
+            </div>
+          </div>
+          <div class="empty-state" id="spMrpEmpty">
+            <span class="icon">📊</span>
+            <div class="text">请设置条件并执行MRP运算</div>
+          </div>
         </div>
       </div>
     </div>
@@ -7274,10 +7372,11 @@ function exportSpReport(section){
 
 // ==================== Supply - MRP物料需求计划 Tab ====================
 function renderSpMrp(){
-  // 初始化订单选择
+  // 渲染运算规则页
+  renderSpMrpRules();
+  // 初始化运行&结果页
   const sel=document.getElementById('spMrpOrderSelect');
   if(!sel) return;
-  // 更新客户订单选项
   sel.innerHTML='<option value="">-- 选择订单 --</option><option value="__manual__">📝 手动输入</option>';
   appData.demands.forEach((d,i)=>{
     if(d.material && d.quantity){
@@ -7287,9 +7386,146 @@ function renderSpMrp(){
       sel.appendChild(opt);
     }
   });
-  // 默认日期
   const dateInput=document.getElementById('spMrpDueDate');
   if(!dateInput.value) dateInput.value=new Date(Date.now()+30*86400000).toISOString().split('T')[0];
+  // 加载已保存的运算参数
+  loadSpMrpParams();
+}
+// ==================== MRP子页签切换 ====================
+function switchSpMrpInnerTab(tab){
+  document.querySelectorAll('#spMrpTabs .sub-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('#tab-sp-mrp .sub-tab-content').forEach(t=>t.classList.remove('active'));
+  const tabEl=document.querySelector('#spMrpTabs .sub-tab[data-tab="'+tab+'"]');
+  if(tabEl) tabEl.classList.add('active');
+  const content=document.getElementById('tab-'+tab);
+  if(content) content.classList.add('active');
+  if(tab==='sp-mrp-rules') renderSpMrpRules();
+}
+// ==================== MRP运算规则渲染 ====================
+function renderSpMrpRules(){
+  // 制程层级
+  let html1='';
+  appData.processes.forEach((p,i)=>{
+    html1+='<tr><td>'+p.level+'</td><td>'+p.name+'</td><td>'+(p.desc||'')+'</td><td>'+p.unit+'</td><td><button class="btn btn-sm btn-outline" onclick="spMrpDeleteProcess('+i+')">🗑️</button></td></tr>';
+  });
+  const pt=document.getElementById('spMrpProcessTable');
+  if(pt) pt.querySelector('tbody').innerHTML=html1;
+  const pc=document.getElementById('spMrpProcessCount');
+  if(pc) pc.textContent=appData.processes.length+'条';
+
+  // BOM结构配置（单位用量 + 损耗率）
+  let html2='';
+  appData.bom.forEach((b,i)=>{
+    html2+='<tr><td>'+b.parent+'</td><td>'+b.child+'</td><td><input class="sp-mrp-editable" type="number" step="any" value="'+b.usage+'" data-sp-bom-idx="'+i+'" data-field="usage" style="width:70px;padding:2px 4px;border:1px solid var(--gray-300);border-radius:3px;font-size:12px"></td><td><input class="sp-mrp-editable" type="number" step="any" value="'+b.scrap+'" data-sp-bom-idx="'+i+'" data-field="scrap" style="width:70px;padding:2px 4px;border:1px solid var(--gray-300);border-radius:3px;font-size:12px"></td><td><button class="btn btn-sm btn-outline" onclick="spMrpDeleteBom('+i+')">🗑️</button></td></tr>';
+  });
+  const bt=document.getElementById('spMrpBomTable');
+  if(bt) bt.querySelector('tbody').innerHTML=html2;
+  const bc=document.getElementById('spMrpBomCount');
+  if(bc) bc.textContent=appData.bom.length+'条';
+  document.querySelectorAll('#spMrpBomTable .sp-mrp-editable').forEach(el=>{
+    el.addEventListener('change',function(){
+      const idx=parseInt(this.dataset.spBomIdx),field=this.dataset.field;
+      if(!isNaN(idx)&&appData.bom[idx]) appData.bom[idx][field]=(field==='usage'||field==='scrap')?parseFloat(this.value)||0:this.value;
+    });
+  });
+
+  // 交期配置（生产+运输+检验 → 总交付天数）
+  let html3='';
+  appData.leadTimes.forEach((l,i)=>{
+    const totalDays=(l.prod||0)+(l.trans||0)+(l.inspect||0);
+    html3+='<tr><td>'+l.process+'</td><td><input class="sp-mrp-lt-edit" value="'+l.code+'" data-sp-lt-idx="'+i+'" data-field="code" style="width:90px;padding:2px 4px;border:1px solid var(--gray-300);border-radius:3px;font-size:12px"></td><td><input class="sp-mrp-lt-edit" value="'+l.name+'" data-sp-lt-idx="'+i+'" data-field="name" style="width:100px;padding:2px 4px;border:1px solid var(--gray-300);border-radius:3px;font-size:12px"></td><td><input class="sp-mrp-lt-edit" type="number" min="0" value="'+l.prod+'" data-sp-lt-idx="'+i+'" data-field="prod" style="width:60px;padding:2px 4px;border:1px solid var(--gray-300);border-radius:3px;font-size:12px"></td><td><input class="sp-mrp-lt-edit" type="number" min="0" value="'+l.trans+'" data-sp-lt-idx="'+i+'" data-field="trans" style="width:60px;padding:2px 4px;border:1px solid var(--gray-300);border-radius:3px;font-size:12px"></td><td><input class="sp-mrp-lt-edit" type="number" min="0" value="'+l.inspect+'" data-sp-lt-idx="'+i+'" data-field="inspect" style="width:60px;padding:2px 4px;border:1px solid var(--gray-300);border-radius:3px;font-size:12px"></td><td><span style="font-weight:600;color:var(--primary)">'+totalDays+'天</span></td><td><button class="btn btn-sm btn-outline" onclick="spMrpDeleteLeadTime('+i+')">🗑️</button></td></tr>';
+  });
+  const lt=document.getElementById('spMrpLeadTimeTable');
+  if(lt) lt.querySelector('tbody').innerHTML=html3;
+  const lc=document.getElementById('spMrpLeadTimeCount');
+  if(lc) lc.textContent=appData.leadTimes.length+'条';
+  document.querySelectorAll('#spMrpLeadTimeTable .sp-mrp-lt-edit').forEach(el=>{
+    el.addEventListener('change',function(){
+      const idx=parseInt(this.dataset.spLtIdx),field=this.dataset.field;
+      if(!isNaN(idx)&&appData.leadTimes[idx]){
+        if(field==='prod'||field==='trans'||field==='inspect') appData.leadTimes[idx][field]=parseInt(this.value)||0;
+        else appData.leadTimes[idx][field]=this.value;
+      }
+    });
+  });
+
+  // 审批流程天数（部门审批+采购审批+财务审批）
+  renderSpMrpApprovals();
+}
+function renderSpMrpApprovals(){
+  let html='',totalDays=0;
+  appData.approvals.forEach((a,i)=>{
+    totalDays+=a.days;
+    html+='<tr><td>'+a.node+'</td><td>'+a.days+'</td><td><button class="btn btn-sm btn-outline" onclick="spMrpDeleteApproval('+i+')">🗑️</button></td></tr>';
+  });
+  const at=document.getElementById('spMrpApprovalTable');
+  if(at) at.querySelector('tbody').innerHTML=html;
+  const ac=document.getElementById('spMrpApprovalCount');
+  if(ac) ac.textContent=(appData.approvals||[]).length+'条（合计'+totalDays+'天）';
+}
+function spMrpDeleteProcess(idx){
+  appData.processes.splice(idx,1);
+  renderSpMrpRules();
+}
+function spMrpDeleteBom(idx){
+  if(appData.bom.length<=1){showToast('至少保留一条BOM记录','warning');return;}
+  appData.bom.splice(idx,1);
+  appData.boms=appData.bom;
+  saveMasterdataToStorage();
+  renderSpMrpRules();
+}
+function spMrpDeleteLeadTime(idx){
+  appData.leadTimes.splice(idx,1);
+  renderSpMrpRules();
+}
+function spMrpDeleteApproval(idx){
+  appData.approvals.splice(idx,1);
+  renderSpMrpApprovals();
+}
+// ==================== 审批流程新增 ====================
+function openAddApprovalModal(){
+  openModal('<div class="modal-title">新增审批节点 <button class="modal-close" onclick="closeModal()">×</button></div>'+
+    '<div class="grid-2"><div class="form-group"><label>审批节点名称</label><input id="formApprNode" placeholder="如 部门审批"></div><div class="form-group"><label>天数</label><input type="number" id="formApprDays" value="1" min="1"></div></div>'+
+    '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveNewApproval()">保存</button></div>');
+}
+function saveNewApproval(){
+  const node=document.getElementById('formApprNode').value.trim();
+  if(!node){showToast('请输入审批节点名称','error');return;}
+  if(!appData.approvals) appData.approvals=[];
+  appData.approvals.push({node,days:parseInt(document.getElementById('formApprDays').value)||1});
+  closeModal();
+  renderSpMrpApprovals();
+}
+// ==================== MRP运算参数持久化 ====================
+function saveSpMrpParams(){
+  if(!appData.naturalRules) appData.naturalRules={};
+  appData.naturalRules.deductPR=document.getElementById('spMrpOptDeductPR').checked;
+  appData.naturalRules.deductPO=document.getElementById('spMrpOptDeductPO').checked;
+  appData.naturalRules.wipMode=document.getElementById('spMrpOptWipMode').value;
+  appData.naturalRules.supplyStrategy=document.getElementById('spMrpOptStrategy').value;
+  appData.naturalRules.expandThreshold=parseInt(document.getElementById('spMrpOptExpandThreshold').value)||0;
+  // 同步到core
+  const core=defaultMrpCore;
+  core.deductPR=appData.naturalRules.deductPR;
+  core.deductPO=appData.naturalRules.deductPO;
+  core.wipMode=appData.naturalRules.wipMode;
+  core.supplyStrategy=appData.naturalRules.supplyStrategy;
+  core.shouldExpandChildren=function(netRemaining){return netRemaining>(appData.naturalRules.expandThreshold||0);};
+  saveRulesToStorage();
+  showToast('✅ MRP运算参数已保存','success');
+}
+function loadSpMrpParams(){
+  try{
+    const raw=localStorage.getItem(STORAGE_KEY_RULES);
+    if(raw){
+      const data=JSON.parse(raw);
+      const d1=document.getElementById('spMrpOptDeductPR'); if(d1) d1.checked=data.deductPR!==false;
+      const d2=document.getElementById('spMrpOptDeductPO'); if(d2) d2.checked=data.deductPO!==false;
+      const wm=document.getElementById('spMrpOptWipMode'); if(wm) wm.value=data.wipMode||'filtered';
+      const ss=document.getElementById('spMrpOptStrategy'); if(ss) ss.value=data.supplyStrategy||'independent';
+      const et=document.getElementById('spMrpOptExpandThreshold'); if(et) et.value=data.expandThreshold||0;
+    }
+  }catch(e){}
 }
 function onSpMrpOrderSelect(){
   const sel=document.getElementById('spMrpOrderSelect'),val=sel.value;
@@ -8553,4 +8789,3 @@ function runDpWhatIf(){
 document.addEventListener('DOMContentLoaded', init);
 </script>
 </body>
-</html>
