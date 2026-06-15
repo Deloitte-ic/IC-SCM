@@ -293,6 +293,7 @@ tbody tr:hover td{background:var(--primary-bg)}
       <div class="breadcrumb" id="breadcrumb">供应链计划及产销协同平台 <span>/ Master Data</span></div>
     </div>
     <div class="header-actions">
+      <span id="syncStatus" onclick="syncManual()" title="点击手动同步到服务器" style="cursor:pointer;font-size:12px;display:flex;align-items:center;gap:4px;padding:4px 10px;border-radius:16px;background:#f0f7ff;color:#1a73e8;border:1px solid #cce5ff">☁️ <span id="syncLabel">云端</span></span>
     </div>
   </header>
 
@@ -366,7 +367,7 @@ tbody tr:hover td{background:var(--primary-bg)}
               <button class="btn btn-sm btn-primary" onclick="openAddSupplierModal()">➕ 新增</button>
             </div>
           </div>
-          <div class="table-wrapper"><table id="supplierTable"><thead><tr><th>供应商编码</th><th>供应商名称</th><th>供应制程</th><th>供应物料</th><th>交期（天）</th><th>MOQ</th><th>品质等级</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+          <div class="table-wrapper"><table id="supplierTable"><thead><tr><th>供应商编码</th><th>供应商名称</th><th>供应制程</th><th>供应物料</th><th>交期（天）</th><th>周产能(片/周)</th><th>MOQ</th><th>品质等级</th><th>操作</th></tr></thead><tbody></tbody></table></div>
         </div>
       </div>
 
@@ -1699,19 +1700,32 @@ function init() {
 }
 
 function fallbackToLocal(){
-  // 优先从 localStorage 恢复主数据，无则加载示例
-  if(!loadMasterdataFromStorage()){
-    loadSampleData();
-    saveMasterdataToStorage();
-  } else {
-    loadSampleDemands();
-    renderAllMasterdata();
-    renderDemand();
-    refreshOrderSelect();
-    renderConfigTables();
-  }
-  // 加载计划订单
-  loadPlannedOrdersFromStorage();
+  // 1. 尝试从云端（GitHub）加载共享数据
+  loadFromServer().then(loaded=>{
+    if(loaded){
+      // 云端数据已写入 localStorage，再读一次
+      loadMasterdataFromStorage();
+      loadSampleDemands();
+      renderAllMasterdata();
+      renderDemand();
+      refreshOrderSelect();
+      renderConfigTables();
+    } else {
+      // 2. 云端不可用，走本地 localStorage
+      if(!loadMasterdataFromStorage()){
+        loadSampleData();
+        saveMasterdataToStorage();
+      } else {
+        loadSampleDemands();
+        renderAllMasterdata();
+        renderDemand();
+        refreshOrderSelect();
+        renderConfigTables();
+      }
+    }
+    // 3. 加载计划订单
+    loadPlannedOrdersFromStorage();
+  });
 }
 
 // ======================== 侧边栏切换 ========================
@@ -2474,6 +2488,7 @@ function parseSupplierSheet(data, sheetName) {
   const lIdx = h.findIndex(c=>/(交期|lead|天数)/i.test(c));
   const moqIdx = h.findIndex(c=>/(MOQ|起订|最小|moq)/i.test(c));
   const qIdx = h.findIndex(c=>/(品质|等级|quality)/i.test(c));
+  const capIdx = h.findIndex(c=>/(周产|产能|capacity|weekly)/i.test(c));
   if(cIdx<0 && nIdx<0) return;
 
   for(let i=1; i<data.length; i++) {
@@ -2490,6 +2505,7 @@ function parseSupplierSheet(data, sheetName) {
       material: mIdx>=0 && r[mIdx] ? String(r[mIdx]).trim() : '',
       processCode: pIdx>=0 && r[pIdx] ? String(r[pIdx]).trim() : '',
       leadTime: lIdx>=0 ? parseInt(r[lIdx])||0 : 0,
+      weeklyCap: capIdx>=0 ? parseInt(r[capIdx])||0 : 0,
       moq: moqIdx>=0 ? parseInt(r[moqIdx])||0 : 0,
       qualityLevel: qIdx>=0 && r[qIdx] ? String(r[qIdx]).trim() : 'A'
     };
@@ -2664,9 +2680,10 @@ function renderAllMasterdata() {
   let shtml = '';
   appData.suppliers.forEach((s,i)=>{
     const qlColor = s.qualityLevel==='S'?'tag-green':s.qualityLevel==='A'?'tag-blue':'tag-yellow';
-    shtml += '<tr><td>'+s.code+'</td><td>'+s.name+'</td><td><span class="tag-status tag-cyan">'+(s.processCode||'')+'</span></td><td>'+(s.material||'-')+'</td><td>'+s.leadTime+'天</td><td>'+(s.moq||'-')+'</td><td><span class="tag-status '+qlColor+'">'+(s.qualityLevel||'-')+'</span></td><td><button class="btn btn-sm btn-outline" onclick="editSupplier('+i+')">✏️</button><button class="btn btn-sm btn-outline" onclick="deleteSupplier('+i+')">🗑️</button></td></tr>';
+    const capDisplay = s.weeklyCap ? '<strong>'+s.weeklyCap.toLocaleString()+'</strong>' : '<span style="color:var(--gray-400)">未设置</span>';
+    shtml += '<tr><td>'+s.code+'</td><td>'+s.name+'</td><td><span class="tag-status tag-cyan">'+(s.processCode||'')+'</span></td><td>'+(s.material||'-')+'</td><td>'+s.leadTime+'天</td><td>'+capDisplay+'</td><td>'+(s.moq||'-')+'</td><td><span class="tag-status '+qlColor+'">'+(s.qualityLevel||'-')+'</span></td><td><button class="btn btn-sm btn-outline" onclick="editSupplier('+i+')">✏️</button><button class="btn btn-sm btn-outline" onclick="deleteSupplier('+i+')">🗑️</button></td></tr>';
   });
-  document.querySelector('#supplierTable tbody').innerHTML = shtml || '<tr><td colspan="8" style="text-align:center;color:var(--gray-400)">暂无数据</td></tr>';
+  document.querySelector('#supplierTable tbody').innerHTML = shtml || '<tr><td colspan="9" style="text-align:center;color:var(--gray-400)">暂无数据</td></tr>';
   document.getElementById('supplierCount').textContent = appData.suppliers.length+'条';
   // 客户渲染
   let chtml = '';
@@ -2794,15 +2811,16 @@ function editSupplier(idx) {
     '<div class="grid-2"><div class="form-group"><label>供应制程</label><select id="formSupProcess"><option value="FT" '+(s.processCode==='FT'?'selected':'')+'>FT（成品测试）</option><option value="AB" '+(s.processCode==='AB'?'selected':'')+'>AB（封装委外）</option><option value="CP" '+(s.processCode==='CP'?'selected':'')+'>CP（测试委外）</option><option value="BP" '+(s.processCode==='BP'?'selected':'')+'>BP（凸块委外）</option><option value="Wafer" '+(s.processCode==='Wafer'?'selected':'')+'>Wafer（晶圆采购）</option></select></div>'+
     '<div class="form-group"><label>供应物料</label><input id="formSupMat" value="'+escapeHtml(s.material)+'"></div></div>'+
     '<div class="grid-2"><div class="form-group"><label>交期（天）</label><input type="number" id="formSupLead" value="'+s.leadTime+'"></div>'+
-    '<div class="form-group"><label>MOQ（最小起订量）</label><input type="number" id="formSupMoq" value="'+(s.moq||0)+'"></div></div>'+
-    '<div class="form-group"><label>品质等级</label><select id="formSupQuality"><option value="S" '+(s.qualityLevel==='S'?'selected':'')+'>S（卓越）</option><option value="A" '+(s.qualityLevel==='A'?'selected':'')+'>A（优秀）</option><option value="B" '+(s.qualityLevel==='B'?'selected':'')+'>B（良好）</option><option value="C" '+(s.qualityLevel==='C'?'selected':'')+'>C（普通）</option></select></div>'+
+    '<div class="form-group"><label>周产能（片/周）</label><input type="number" id="formSupCap" value="'+(s.weeklyCap||'')+'" min="0"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>MOQ（最小起订量）</label><input type="number" id="formSupMoq" value="'+(s.moq||0)+'"></div>'+
+    '<div class="form-group"><label>品质等级</label><select id="formSupQuality"><option value="S" '+(s.qualityLevel==='S'?'selected':'')+'>S（卓越）</option><option value="A" '+(s.qualityLevel==='A'?'selected':'')+'>A（优秀）</option><option value="B" '+(s.qualityLevel==='B'?'selected':'')+'>B（良好）</option><option value="C" '+(s.qualityLevel==='C'?'selected':'')+'>C（普通）</option></select></div></div>'+
     '<input type="hidden" id="editSupIdx" value="'+idx+'">'+
     '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveEditSupplier()">保存</button></div>');
 }
 function saveEditSupplier() {
   const idx=parseInt(document.getElementById('editSupIdx').value);
   if(isNaN(idx)||!appData.suppliers[idx]){showToast('数据异常','error');return;}
-  appData.suppliers[idx]={code:document.getElementById('formSupCode').value.trim(),name:document.getElementById('formSupName').value.trim(),processCode:document.getElementById('formSupProcess').value,material:document.getElementById('formSupMat').value.trim(),leadTime:parseInt(document.getElementById('formSupLead').value)||0,moq:parseInt(document.getElementById('formSupMoq').value)||0,qualityLevel:document.getElementById('formSupQuality').value};
+  appData.suppliers[idx]={code:document.getElementById('formSupCode').value.trim(),name:document.getElementById('formSupName').value.trim(),processCode:document.getElementById('formSupProcess').value,material:document.getElementById('formSupMat').value.trim(),leadTime:parseInt(document.getElementById('formSupLead').value)||0,weeklyCap:parseInt(document.getElementById('formSupCap').value)||0,moq:parseInt(document.getElementById('formSupMoq').value)||0,qualityLevel:document.getElementById('formSupQuality').value};
   closeModal();renderAllMasterdata();showToast('✅ 供应商已更新','success');
 }
 
@@ -2885,12 +2903,13 @@ function openAddSupplierModal() {
     '<div class="grid-2"><div class="form-group"><label>供应制程</label><select id="formSupProcess"><option value="FT">FT（成品测试）</option><option value="AB">AB（封装委外）</option><option value="CP">CP（测试委外）</option><option value="BP">BP（凸块委外）</option><option value="Wafer">Wafer（晶圆采购）</option></select></div>'+
     '<div class="form-group"><label>供应物料</label><input id="formSupMat" placeholder="物料编码"></div></div>'+
     '<div class="grid-2"><div class="form-group"><label>交期（天）</label><input type="number" id="formSupLead" value="10"></div>'+
-    '<div class="form-group"><label>MOQ（最小起订量）</label><input type="number" id="formSupMoq" value="0"></div></div>'+
-    '<div class="form-group"><label>品质等级</label><select id="formSupQuality"><option value="A">A（优秀）</option><option value="B">B（良好）</option><option value="S">S（卓越）</option><option value="C">C（普通）</option></select></div>'+
+    '<div class="form-group"><label>周产能（片/周）</label><input type="number" id="formSupCap" value="" min="0" placeholder="0"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>MOQ（最小起订量）</label><input type="number" id="formSupMoq" value="0"></div>'+
+    '<div class="form-group"><label>品质等级</label><select id="formSupQuality"><option value="A">A（优秀）</option><option value="B">B（良好）</option><option value="S">S（卓越）</option><option value="C">C（普通）</option></select></div></div>'+
     '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveNewSupplier()">保存</button></div>');
 }
 function saveNewSupplier() {
-  appData.suppliers.push({code:document.getElementById('formSupCode').value.trim(),name:document.getElementById('formSupName').value.trim(),processCode:document.getElementById('formSupProcess').value,material:document.getElementById('formSupMat').value.trim(),leadTime:parseInt(document.getElementById('formSupLead').value)||0,moq:parseInt(document.getElementById('formSupMoq').value)||0,qualityLevel:document.getElementById('formSupQuality').value});
+  appData.suppliers.push({code:document.getElementById('formSupCode').value.trim(),name:document.getElementById('formSupName').value.trim(),processCode:document.getElementById('formSupProcess').value,material:document.getElementById('formSupMat').value.trim(),leadTime:parseInt(document.getElementById('formSupLead').value)||0,weeklyCap:parseInt(document.getElementById('formSupCap').value)||0,moq:parseInt(document.getElementById('formSupMoq').value)||0,qualityLevel:document.getElementById('formSupQuality').value});
   closeModal();renderAllMasterdata();showToast('✅ 供应商添加成功','success');
 }
 
@@ -3976,6 +3995,68 @@ const STORAGE_KEY_RULES='ic_scm_natural_rules';
 const STORAGE_KEY_MASTER='ic_scm_master_data';
 const STORAGE_KEY_PLANNED='ic_scm_planned_orders';
 
+// ======================== 共享数据持久化（后端代理 → jsonblob） ========================
+const SYNC_API_URL = 'https://ic-scm-backend.vercel.app/api/app-data';
+let _syncTimer=null,_syncStatus='idle';
+
+function updateSyncUI(icon,label){
+  const el=document.getElementById('syncStatus');
+  const lb=document.getElementById('syncLabel');
+  if(el) el.innerHTML=icon+' <span id="syncLabel">'+label+'</span>';
+  if(lb) lb.textContent=label;
+}
+
+// 从服务器加载共享数据
+async function loadFromServer(){
+  updateSyncUI('🔄','同步中…');
+  try{
+    const res=await fetch(SYNC_API_URL+'?t='+Date.now());
+    if(!res.ok)throw Error('HTTP '+res.status);
+    const data=await res.json();
+    if(!data||!data.materials)throw Error('无效数据格式');
+    localStorage.setItem(STORAGE_KEY_MASTER,JSON.stringify(data));
+    updateSyncUI('✅','已同步');
+    return true;
+  }catch(e){
+    console.warn('从服务器加载数据失败:',e.message);
+    updateSyncUI('☁️','云端');
+    return false;
+  }
+}
+
+// 保存到服务器
+async function saveToServer(){
+  if(_syncStatus==='syncing')return;
+  _syncStatus='syncing';
+  updateSyncUI('🔄','保存中…');
+  try{
+    const raw=localStorage.getItem(STORAGE_KEY_MASTER);
+    if(!raw){updateSyncUI('☁️','云端');_syncStatus='idle';return;}
+    const data=JSON.parse(raw);
+    const res=await fetch(SYNC_API_URL,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({data})
+    });
+    if(res.ok){updateSyncUI('✅','已同步');}else{updateSyncUI('❌','同步失败');}
+  }catch(e){console.error('同步失败:',e);updateSyncUI('❌','同步失败');}
+  _syncStatus='idle';
+}
+
+// 节流同步（自动保存后触发）
+let _syncDebounce=null;
+function triggerSync(){
+  if(_syncDebounce)clearTimeout(_syncDebounce);
+  _syncDebounce=setTimeout(()=>{saveToServer();_syncDebounce=null;},1500);
+}
+
+// 手动同步
+async function syncManual(){
+  const el=document.getElementById('syncLabel');
+  if(el&&el.textContent==='保存中…')return;
+  await saveToServer();
+}
+
 // 保存规则到 localStorage
 function saveRulesToStorage(){
   try{
@@ -4055,6 +4136,7 @@ function saveMasterdataToStorage(){
       salesHistory: appData.salesHistory||[]
     };
     localStorage.setItem(STORAGE_KEY_MASTER,JSON.stringify(data));
+    triggerSync();
   }catch(e){}
 }
 
@@ -5787,12 +5869,12 @@ function renderSopSimulation(){
       }
     });
   }
-  // 无真实供应商数据时使用内置默认
-  if(!hasSupplierData || PROCESS_CHAIN.some(p => procBaseCap[p] === 0)){
+  // 无真实供应商数据时使用内置默认（仅当完全没有供应商数据时）
+  if(!hasSupplierData){
     PROCESS_CHAIN.forEach(p => {
       if(procBaseCap[p] === 0){
         const defCaps = SEMI_SUPPLIERS[p] || [];
-        procBaseCap[p] = defCaps.reduce((s, sup) => s + (sup.weeklyCap || 800), 0) || 800;
+        procBaseCap[p] = defCaps.reduce((s, sup) => s + (sup.weeklyCap || 0), 0);
       }
     });
   }
@@ -5848,7 +5930,7 @@ function renderSopSimulation(){
   // 调整后的产能
   const procSimCap = {};
   PROCESS_CHAIN.forEach(p => {
-    const base = procBaseCap[p] || 800;
+    const base = procBaseCap[p] || 0;
     const adjPct = (capAdj[p]||0) / 100;
     // 供应商级别的精调：匹配到对应制程的供应商
     let supTotalAdj = 0;
@@ -5920,7 +6002,7 @@ function renderSopSimulation(){
       // 最大输出（考虑良率）
       const maxAfterYield = Math.round(flow[p] * yieldRate);
       // 可用产能上限
-      const capacity = procSimCap[p] || 800;
+      const capacity = procSimCap[p] || 0;
       // 该制程已有的库存/WIP/PO可以部分抵减
       const existingSupply = (procInv[p]||0) + (procWip[p]||0) + (procPo[p]||0);
       
@@ -6239,17 +6321,17 @@ function renderSpNetwork(){
         const matched = appData.suppliers.filter(s => s.processCode === proc);
         if(matched.length > 0){
           suppliers = matched.map(s => ({
-            code: s.code, name: s.name, weeklyCap: s.weeklyCap || 800,
+            code: s.code, name: s.name, weeklyCap: s.weeklyCap || 0,
             leadTime: s.leadTime || 14, unitPrice: s.unitPrice || 0
           }));
         } else {
-          suppliers = SEMI_SUPPLIERS[proc] || [];
+          suppliers = []; // 无此制程的供应商，不显示假数据
         }
       } else {
         suppliers = SEMI_SUPPLIERS[proc] || [];
       }
       suppliers.forEach((sup,si)=>{
-        const cap=sup.weeklyCap;
+        const cap=sup.weeklyCap || 0;
         const alloc = hasRealSuppliers ? Math.round(cap * 0.78) : Math.round(cap*(0.6+Math.random()*0.3));
         // 从PR/PO获取实际已分配量
         const prpoAlloc = appData.prpo.filter(p => p.supplier === sup.name && p.orderType === 'PO' && p.status !== '已取消');
@@ -6386,7 +6468,7 @@ function renderSpProduction(){
       let suppliers;
       if(hasRealSuppliers){
         const matched = appData.suppliers.filter(s => s.processCode === proc);
-        suppliers = matched.length > 0 ? matched.map(s => ({code:s.code, name:s.name, weeklyCap:s.weeklyCap||800, leadTime:s.leadTime||14})) : (SEMI_SUPPLIERS[proc]||[]);
+        suppliers = matched.length > 0 ? matched.map(s => ({code:s.code, name:s.name, weeklyCap:s.weeklyCap||0, leadTime:s.leadTime||14})) : [];
       } else {
         suppliers = SEMI_SUPPLIERS[proc]||[];
       }
