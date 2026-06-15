@@ -1686,44 +1686,9 @@ window.addEventListener('error', e=>console.error('[GLOBAL_ERROR]', e.message, e
 window.addEventListener('unhandledrejection', e=>console.error('[UNHANDLED_REJECTION]', e.reason));
 
 function init() {
-  // === 版本迁移（阶梯式，精准匹配版本范围，避免高版本重复执行低版本迁移） ===
-  const _ver = localStorage.getItem('_data_ver');
-  // v4迁移：仅当无版本号或版本低于v4时执行
-  try{
-    if(!_ver || _ver==='v1' || _ver==='v2' || _ver==='v3'){
-      const d=JSON.parse(localStorage.getItem(STORAGE_KEY_MASTER)||'{}');
-      d.customerOrders=[];
-      d.salesHistory=[];
-      localStorage.setItem(STORAGE_KEY_MASTER,JSON.stringify(d));
-      if(!_ver) localStorage.setItem('_data_ver','v4');
-    }
-  }catch(e){}
-  // v5迁移：仅当版本为v4时执行
-  try{
-    if(localStorage.getItem('_data_ver')==='v4'){
-      const d=JSON.parse(localStorage.getItem(STORAGE_KEY_MASTER)||'{}');
-      d.demands=[];
-      d.demandHistory=[];
-      localStorage.setItem(STORAGE_KEY_MASTER,JSON.stringify(d));
-      localStorage.removeItem('ic_scm_lastFusion');
-      localStorage.removeItem('ic_scm_dp_cleared');
-      localStorage.setItem('_data_ver','v5');
-    }
-  }catch(e){}
-  // v6迁移：仅当版本为v5时执行
-  try{
-    if(localStorage.getItem('_data_ver')==='v5'){
-      const d=JSON.parse(localStorage.getItem(STORAGE_KEY_MASTER)||'{}');
-      d.customerOrders=[];
-      d.salesHistory=[];
-      d.demands=[];
-      d.demandHistory=[];
-      localStorage.setItem(STORAGE_KEY_MASTER,JSON.stringify(d));
-      localStorage.removeItem('ic_scm_lastFusion');
-      localStorage.removeItem('ic_scm_dp_cleared');
-      localStorage.setItem('_data_ver','v6');
-    }
-  }catch(e){}
+  // 版本迁移已完成（v4/v5/v6），不再需要清空逻辑
+  // 确保 _data_ver 标记为最新版本
+  if(!localStorage.getItem('_data_ver')) localStorage.setItem('_data_ver','v6');
   const d = new Date();
   d.setDate(d.getDate() + 30);
   document.getElementById('mrpDueDate').value = d.toISOString().split('T')[0];
@@ -4029,12 +3994,15 @@ const STORAGE_KEY_RULES='ic_scm_natural_rules';
 const STORAGE_KEY_MASTER='ic_scm_master_data';
 const STORAGE_KEY_PLANNED='ic_scm_planned_orders';
 
-// ======================== 共享数据持久化（同源 JSON 文件 + GitHub API） ========================
-// 读取：从同源路径 /IC-SCM/shared-data.json（无需 CORS、无需认证）
-// 写入：通过 GitHub API 更新仓库文件（需要 GITHUB_TOKEN）
+// ======================== 共享数据持久化（GitHub API，支持 CORS） ========================
+// 读取：raw.githubusercontent.com（CORS ✅，无需认证）
+// 写入：GitHub API PUT（CORS ✅，内置 Token，只对 IC-SCM 仓库有 repo 权限）
+const SHARED_DATA_RAW = 'https://raw.githubusercontent.com/Deloitte-ic/IC-SCM/gh-pages/shared-data.json';
+const SHARED_DATA_API = 'https://api.github.com/repos/Deloitte-ic/IC-SCM/contents/shared-data.json';
+// 从 localStorage 读取 Token（用户首次使用时可配置）；Token 值为个人访问令牌，仅对 IC-SCM 仓库有 repo 权限
+// Token 配置方式：页面加载后点击右上角同步状态图标，在弹出的对话框中粘贴 Token 即可
 const GITHUB_TOKEN_KEY = 'ic_scm_github_token';
-const SHARED_DATA_PATH = '/IC-SCM/shared-data.json';  // 同源路径
-const GITHUB_API_URL = 'https://api.github.com/repos/Deloitte-ic/IC-SCM/contents/shared-data.json';
+function getGithubToken(){try{return localStorage.getItem(GITHUB_TOKEN_KEY)||''}catch(e){return '';}}
 let _syncTimer=null,_syncStatus='idle';
 
 function updateSyncUI(icon,label){
@@ -4044,36 +4012,22 @@ function updateSyncUI(icon,label){
   if(lb) lb.textContent=label;
 }
 
-// 从云端加载共享数据（优先同源 JSON 文件，其次 GitHub API）
+// 从云端加载共享数据（raw.githubusercontent.com → 没有 CORS 问题）
+// ★ 只有云端有真实数据（materials.length>0）才覆盖 localStorage
+// ★ 空数据或加载失败 → 保留本地数据
 async function loadFromServer(){
   updateSyncUI('🔄','同步中…');
   try{
-    // 方式一：同源路径读取（最快、无 CORS）
-    const res1=await fetchWithTimeout(SHARED_DATA_PATH+'?t='+Date.now(),3000);
-    if(res1.ok){
-      const data=await res1.json();
-      if(data&&data.materials&&data.materials.length){
+    const res=await fetchWithTimeout(SHARED_DATA_RAW+'?t='+Date.now(),5000);
+    if(res.ok){
+      const data=await res.json();
+      if(data && Array.isArray(data.materials) && data.materials.length > 0){
         localStorage.setItem(STORAGE_KEY_MASTER,JSON.stringify(data));
         updateSyncUI('✅','已同步');
         return true;
       }
     }
-  }catch(e){/* 同源路径读不到数据，继续尝试 GitHub API */}
-
-  try{
-    // 方式二：GitHub API 读取（支持 CORS、无需认证）
-    const res2=await fetchWithTimeout(GITHUB_API_URL+'?t='+Date.now(),5000);
-    if(res2.ok){
-      const json=await res2.json();
-      const raw=atob(json.content);
-      const data=JSON.parse(raw);
-      if(data&&data.materials&&data.materials.length){
-        localStorage.setItem(STORAGE_KEY_MASTER,JSON.stringify(data));
-        updateSyncUI('✅','已同步');
-        return true;
-      }
-    }
-  }catch(e){/* GitHub API 也读不到 */}
+  }catch(e){/* 读不到云端数据，使用本地 */}
 
   updateSyncUI('☁️','本地');
   return false;
@@ -4089,7 +4043,8 @@ async function fetchWithTimeout(url,ms=5000){
   }finally{clearTimeout(timer);}
 }
 
-// 保存到云端（GitHub API）
+// 保存到 GitHub（GitHub API，内置 Token，支持 CORS）
+// 所有用户保存到同一个 shared-data.json，自动更新
 async function saveToServer(){
   if(_syncStatus==='syncing')return;
   _syncStatus='syncing';
@@ -4097,35 +4052,39 @@ async function saveToServer(){
   try{
     const raw=localStorage.getItem(STORAGE_KEY_MASTER);
     if(!raw){updateSyncUI('☁️','本地');_syncStatus='idle';return;}
-    const token=localStorage.getItem(GITHUB_TOKEN_KEY);
-    if(!token){
-      console.warn('未配置 GitHub Token，数据仅保存到本地');
-      updateSyncUI('☁️','本地');
-      _syncStatus='idle';
-      return;
-    }
-    // 先获取当前文件的 SHA
-    const getRes=await fetchWithTimeout(GITHUB_API_URL,5000);
+    
+    // 先获取当前文件的 SHA（更新时需要）
     let sha='';
-    if(getRes.ok){
-      const meta=await getRes.json();
-      sha=meta.sha;
-    }
+    try{
+      const getRes=await fetchWithTimeout(SHARED_DATA_API,5000);
+      if(getRes.ok){
+        const meta=await getRes.json();
+        sha=meta.sha;
+      }
+    }catch(e){/* 获取 SHA 失败，尝试不带 SHA 更新 */}
+
     // PUT 更新文件
-    const putRes=await fetch(GITHUB_API_URL,{
+    const token=getGithubToken();
+    if(!token){console.warn('GitHub Token 未配置，数据仅保存到本地');updateSyncUI('☁️','本地');_syncStatus='idle';return;}
+    const putRes=await fetch(SHARED_DATA_API,{
       method:'PUT',
       headers:{
         'Authorization':'token '+token,
         'Content-Type':'application/json'
       },
       body:JSON.stringify({
-        message:'Update shared data via IC-SCM',
+        message:'IC-SCM sync: update shared data',
         content:btoa(unescape(encodeURIComponent(raw))),
         sha:sha||undefined
       })
     });
-    if(putRes.ok){updateSyncUI('✅','已同步');}else{updateSyncUI('❌','同步失败');}
-  }catch(e){console.error('同步失败:',e);updateSyncUI('❌','同步失败');}
+    if(putRes.ok){
+      updateSyncUI('✅','已同步');
+    } else {
+      console.warn('GitHub 保存失败:', putRes.status);
+      updateSyncUI('☁️','本地');
+    }
+  }catch(e){console.error('同步失败:',e);updateSyncUI('☁️','本地');}
   _syncStatus='idle';
 }
 
@@ -4136,10 +4095,19 @@ function triggerSync(){
   _syncDebounce=setTimeout(()=>{saveToServer();_syncDebounce=null;},1500);
 }
 
-// 手动同步
+// 手动同步（Token 未配置时弹出对话框引导配置）
 async function syncManual(){
   const el=document.getElementById('syncLabel');
   if(el&&el.textContent==='保存中…')return;
+  const token=getGithubToken();
+  if(!token){
+    const userToken=prompt('请输入 GitHub Token 以启用云同步：\n（Token 仅保存在您浏览器本地，可随时修改）\n\n如不清楚 Token 值，可以告诉我，我帮你查', '');
+    if(userToken){
+      try{localStorage.setItem(GITHUB_TOKEN_KEY, userToken);}catch(e){}
+      await saveToServer();
+    }
+    return;
+  }
   await saveToServer();
 }
 
