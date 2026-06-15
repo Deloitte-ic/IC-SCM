@@ -3953,9 +3953,17 @@ function executeMRP(){
       ? '<span style="display:inline-block;background:var(--primary);color:#fff;border-radius:4px;padding:1px 8px;font-size:11px">0</span>'
       : '└─ '+r.level;
     // 查找业务数据
-    const wipInv=appData.inventory.find(i=>i.materialCode===r.matCode&&i.transit>0);
-    const wipArrival=wipInv?(wipInv.transitArrival||''):'';
-    tableHtml+='<tr style="background:'+bg+'"><td style="'+levelStyle+'">'+levelLabel+'</td><td><span class="tag-status '+(r.process==='FT'?'tag-green':'tag-blue')+'">'+r.process+'</span></td><td style="font-weight:500">'+r.matCode+'</td><td><span class="tag-status '+(r.demandType==='独立需求'?'tag-green':'tag-blue')+'">'+r.demandType+'</span></td><td style="font-weight:600;color:var(--primary)">'+(r.demandDate||'')+'</td><td style="font-weight:500">'+r.grossReq.toLocaleString()+'</td><td>'+r.scrapRate+'%</td><td style="font-weight:600">'+r.netReq.toLocaleString()+'</td><td>'+r.unit+'</td><td style="font-weight:500">'+(r.consumeStock||0).toLocaleString()+'</td><td>'+(r.consumeWip||0).toLocaleString()+'</td><td>'+wipArrival+'</td><td style="font-weight:500;font-size:13px">'+(r.consumePr||0).toLocaleString()+'</td><td style="font-size:11px;color:var(--gray-600)">'+(r.prBreakdown||'')+'</td><td style="font-weight:500;font-size:13px">'+(r.consumePo||0).toLocaleString()+'</td><td style="font-size:11px;color:var(--gray-600)">'+(r.poBreakdown||'')+'</td><td style="font-weight:600;color:'+(r.netRemaining>0?'var(--danger)':'var(--success)')+'">'+r.netRemaining.toLocaleString()+'</td></tr>';
+    // ★ WIP到货日：从 Business Data → 在制品（appData.wip.estimatedFinish）取，而非 inventory.transitArrival
+    const wipRecords=appData.wip.filter(w=>w.materialCode===r.matCode&&w.estimatedFinish);
+    const wipDates=[...new Set(wipRecords.map(w=>w.estimatedFinish).sort())];
+    const wipArrival=wipDates.length>0?wipDates.join(' / '):'';
+    // ★ PR到货日：从 Business Data → PR/PO 的 demandDate 取
+    const prDateItems=appData.prpo.filter(p=>p.materialCode===r.matCode&&p.orderType==='PR'&&p.demandDate);
+    const prDatesStr=[...new Set(prDateItems.map(p=>p.demandDate).sort())].join(' / ');
+    // ★ PO到货日：从 Business Data → PR/PO 的 demandDate 取
+    const poDateItems=appData.prpo.filter(p=>p.materialCode===r.matCode&&p.orderType==='PO'&&p.demandDate);
+    const poDatesStr=[...new Set(poDateItems.map(p=>p.demandDate).sort())].join(' / ');
+    tableHtml+='<tr style="background:'+bg+'"><td style="'+levelStyle+'">'+levelLabel+'</td><td><span class="tag-status '+(r.process==='FT'?'tag-green':'tag-blue')+'">'+r.process+'</span></td><td style="font-weight:500">'+r.matCode+'</td><td><span class="tag-status '+(r.demandType==='独立需求'?'tag-green':'tag-blue')+'">'+r.demandType+'</span></td><td style="font-weight:600;color:var(--primary)">'+(r.demandDate||'')+'</td><td style="font-weight:500">'+r.grossReq.toLocaleString()+'</td><td>'+r.scrapRate+'%</td><td style="font-weight:600">'+r.netReq.toLocaleString()+'</td><td>'+r.unit+'</td><td style="font-weight:500">'+(r.consumeStock||0).toLocaleString()+'</td><td>'+(r.consumeWip||0).toLocaleString()+'</td><td>'+wipArrival+'</td><td style="font-weight:500;font-size:13px">'+(r.consumePr||0).toLocaleString()+'</td><td style="font-size:11px;color:var(--gray-600)">'+(prDatesStr||r.prBreakdown||'')+'</td><td style="font-weight:500;font-size:13px">'+(r.consumePo||0).toLocaleString()+'</td><td style="font-size:11px;color:var(--gray-600)">'+(poDatesStr||r.poBreakdown||'')+'</td><td style="font-weight:600;color:'+(r.netRemaining>0?'var(--danger)':'var(--success)')+'">'+r.netRemaining.toLocaleString()+'</td></tr>';
   });
   document.querySelector('#mrpResultTable tbody').innerHTML=tableHtml;
   renderProcurementList(results);
