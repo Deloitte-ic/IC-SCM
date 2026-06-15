@@ -1245,124 +1245,107 @@ tbody tr:hover td{background:var(--primary-bg)}
       </div>
       <!-- ==================== Tab 6: MRP物料需求计划 ==================== -->
       <div class="tab-content" id="tab-sp-mrp">
-        <!-- 内部子页签 -->
-        <div class="sub-tabs" id="spMrpTabs">
-          <div class="sub-tab active" data-tab="sp-mrp-rules" onclick="switchSpMrpInnerTab('sp-mrp-rules')">📐 运算规则</div>
-          <div class="sub-tab" data-tab="sp-mrp-run" onclick="switchSpMrpInnerTab('sp-mrp-run')">▶️ 运行及结果</div>
-        </div>
-
-        <!-- ===== 子页签1：运算规则 ===== -->
-        <div class="sub-tab-content active" id="tab-sp-mrp-rules">
-          <div class="alert alert-info">💡 MRP运算参数在线可编辑，修改后点击保存生效。制程层级、BOM、交期、审批等主数据来自Master Data模块。</div>
-
-          <!-- MRP运算参数 -->
-          <div class="card">
-            <div class="card-title">⚙️ MRP运算参数</div>
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:13px">
-              <span>参数方案：</span>
-              <select id="spMrpPresetSelect" onchange="switchMrpPreset()" style="font-size:12px;padding:3px 6px;border:1px solid var(--gray-300);border-radius:4px;min-width:140px"></select>
-              <button class="btn btn-sm btn-outline" onclick="deleteMrpPreset()" style="font-size:11px;padding:2px 8px;color:var(--danger)" title="删除当前方案">🗑️</button>
-            </div>
-            <div style="display:flex;flex-wrap:wrap;gap:18px;padding:8px 0">
-              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
-                <input type="checkbox" id="spMrpOptDeductPR" checked> 扣减Open PR
-              </label>
-              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
-                <input type="checkbox" id="spMrpOptDeductPO" checked> 扣减Open PO
-              </label>
-              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
-                WIP计入方式：
-                <select id="spMrpOptWipMode" style="font-size:12px;padding:3px 6px;border:1px solid var(--gray-300);border-radius:4px">
-                  <option value="filtered">仅到期WIP</option>
-                  <option value="all">全部WIP</option>
-                </select>
-              </label>
-              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
-                供给扣减策略：
-                <select id="spMrpOptStrategy" style="font-size:12px;padding:3px 6px;border:1px solid var(--gray-300);border-radius:4px">
-                  <option value="independent">独立扣减</option>
-                  <option value="fifo">FIFO顺序扣减</option>
-                </select>
-              </label>
-              <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
-                子制程展开阈值：
-                <input type="number" id="spMrpOptExpandThreshold" value="0" min="0" style="width:70px;font-size:12px;padding:3px 6px;border:1px solid var(--gray-300);border-radius:4px">
-              </label>
-            </div>
-            <div style="text-align:right;margin-top:10px">
-              <button class="btn btn-sm btn-primary" onclick="addMrpParamPreset()">➕ 新增参数</button>
-              <button class="btn btn-sm btn-success" onclick="saveSpMrpParams()" style="margin-left:6px">💾 保存参数</button>
-            </div>
+        <!-- MRP运算参数 -->
+        <div class="card">
+          <div class="card-title">⚙️ MRP运算参数</div>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:13px">
+            <span>参数方案：</span>
+            <select id="spMrpPresetSelect" onchange="switchMrpPreset()" style="font-size:12px;padding:3px 6px;border:1px solid var(--gray-300);border-radius:4px;min-width:140px"></select>
+            <button class="btn btn-sm btn-outline" onclick="deleteMrpPreset()" style="font-size:11px;padding:2px 8px;color:var(--danger)" title="删除当前方案">🗑️</button>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:18px;padding:8px 0">
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+              <input type="checkbox" id="spMrpOptDeductPR" checked> 扣减Open PR
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+              <input type="checkbox" id="spMrpOptDeductPO" checked> 扣减Open PO
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+              WIP计入方式：
+              <select id="spMrpOptWipMode" style="font-size:12px;padding:3px 6px;border:1px solid var(--gray-300);border-radius:4px">
+                <option value="filtered">仅到期WIP</option>
+                <option value="all">全部WIP</option>
+              </select>
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+              供给扣减策略：
+              <select id="spMrpOptStrategy" style="font-size:12px;padding:3px 6px;border:1px solid var(--gray-300);border-radius:4px">
+                <option value="independent">独立扣减</option>
+                <option value="fifo">FIFO顺序扣减</option>
+              </select>
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+              消耗优先级：
+              <select id="spMrpOptConsumePriority" style="font-size:12px;padding:3px 6px;border:1px solid var(--gray-300);border-radius:4px">
+                <option value="fifo-date">日期顺序消耗（FIFO→库存→WIP→PO→PR）</option>
+                <option value="simple">简单汇总扣减</option>
+              </select>
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+              子制程展开阈值：
+              <input type="number" id="spMrpOptExpandThreshold" value="0" min="0" style="width:70px;font-size:12px;padding:3px 6px;border:1px solid var(--gray-300);border-radius:4px">
+            </label>
+          </div>
+          <div style="text-align:right;margin-top:10px">
+            <button class="btn btn-sm btn-primary" onclick="addMrpParamPreset()">➕ 新增参数</button>
+            <button class="btn btn-sm btn-success" onclick="saveSpMrpParams()" style="margin-left:6px">💾 保存参数</button>
           </div>
         </div>
 
-        <!-- ===== 子页签2：运行及结果 ===== -->
-        <div class="sub-tab-content" id="tab-sp-mrp-run">
-          <!-- MRP数据关联概况 -->
-          <div class="card" style="background:#f8fafc;border:1px solid #e2e8f0">
-            <div class="card-title" style="font-size:14px">🔗 数据关联（来自主数据 / Master Data）</div>
-            <div style="display:flex;flex-wrap:wrap;gap:16px;padding:6px 0;font-size:13px;color:#475569">
-              <span>🏗️ 制程层级：<strong id="spMrpRefProcessCount">0</strong> 个</span>
-              <span>🔗 BOM结构：<strong id="spMrpRefBomCount">0</strong> 条</span>
-              <span>⏱️ 交期配置：<strong id="spMrpRefLeadTimeCount">0</strong> 条</span>
-              <span>📋 审批流程：<strong id="spMrpRefApprovalCount">0</strong> 条｜合计 <strong id="spMrpRefApprovalTotal">0</strong> 天</span>
-              <span>🔄 制程遍历：<strong id="spMrpRefProcessOrder">FT→AB→CP→BP→Wafer</strong></span>
+        <!-- MRP运算条件 -->
+        <div class="card">
+          <div class="card-title">🎯 MRP运算条件</div>
+          <div class="grid-3">
+            <div class="form-group">
+              <label>选择需求订单</label>
+              <select id="spMrpOrderSelect" onchange="onSpMrpOrderSelect()"><option value="">-- 选择订单 --</option><option value="__manual__">📝 手动输入</option></select>
             </div>
+            <div class="form-group">
+              <label>需求数量<span style="color:var(--danger)">*</span></label>
+              <input type="number" id="spMrpQuantity" min="1" value="120000">
+            </div>
+            <div class="form-group">
+              <label>需求日期<span style="color:var(--danger)">*</span></label>
+              <input type="date" id="spMrpDueDate">
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:8px">
+            <button class="btn btn-primary btn-lg" onclick="executeSpMrp()">🧮 执行MRP运算</button>
+            <button class="btn btn-outline" onclick="resetSpMrp()">↻ 重置</button>
+          </div>
+        </div>
+        <div id="spMrpResultArea" style="display:none">
+          <div class="result-summary" id="spMrpSummary"></div>
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">📊 MRP运算结果表 <span class="tag" id="spMrpOrderInfo"></span></div>
+              <div class="card-actions">
+                <button class="btn btn-sm btn-success" onclick="exportMRPResult()">📥 导出Excel</button>
+              </div>
+            </div>
+            <div class="table-wrapper" style="max-height:400px;overflow-y:auto"><table id="spMrpResultTable"><thead><tr>
+              <th>层级</th><th>制程</th><th>物料编码</th><th>物料名称</th><th>需求日期</th><th>建议动作</th><th>供应商</th><th>需求类型</th><th>单位</th><th>净需求</th><th>损耗率</th><th>毛需求</th><th>可用库存</th><th>WIP</th><th>WIP到货日</th><th>Open PR</th><th>Open PR到货日</th><th>Open PO</th><th>Open PO到货日</th><th>净待补</th><th>PlOrd到货日</th><th>PlOrd下单日</th>
+            </tr></thead><tbody></tbody></table></div>
           </div>
           <div class="card">
-            <div class="card-title">🎯 MRP运算条件</div>
-            <div class="grid-3">
-              <div class="form-group">
-                <label>选择需求订单</label>
-                <select id="spMrpOrderSelect" onchange="onSpMrpOrderSelect()"><option value="">-- 选择订单 --</option><option value="__manual__">📝 手动输入</option></select>
-              </div>
-              <div class="form-group">
-                <label>需求数量<span style="color:var(--danger)">*</span></label>
-                <input type="number" id="spMrpQuantity" min="1" value="120000">
-              </div>
-              <div class="form-group">
-                <label>需求日期<span style="color:var(--danger)">*</span></label>
-                <input type="date" id="spMrpDueDate">
+            <div class="card-header">
+              <div class="card-title">📋 采购/委外建议清单 <span class="tag" id="spMrpProcurementCount">0项</span></div>
+              <div class="card-actions">
+                <button class="btn btn-sm btn-success" onclick="exportProcurementList()">📥 导出Excel</button>
               </div>
             </div>
-            <div style="display:flex;gap:10px;margin-top:8px">
-              <button class="btn btn-primary btn-lg" onclick="executeSpMrp()">🧮 执行MRP运算</button>
-              <button class="btn btn-outline" onclick="resetSpMrp()">↻ 重置</button>
+            <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap">
+              <span style="display:inline-flex;align-items:center;gap:4px;font-size:12px"><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#f59e0b"></span> 采购</span>
+              <span style="display:inline-flex;align-items:center;gap:4px;font-size:12px"><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#3b82f6"></span> 委外</span>
             </div>
+            <div class="table-wrapper" style="max-height:300px;overflow-y:auto"><table id="spMrpProcurementTable"><thead><tr>
+              <th>物料编码</th><th>物料名称</th><th>制程</th><th>净待补</th><th>单位</th><th>PlOrd到货日</th><th>PlOrd下单日</th><th>PlOrd号</th><th>供应商</th><th>类型</th>
+            </tr></thead><tbody></tbody></table></div>
           </div>
-          <div id="spMrpResultArea" style="display:none">
-            <div class="result-summary" id="spMrpSummary"></div>
-            <div class="card">
-              <div class="card-header">
-                <div class="card-title">📊 MRP运算结果表 <span class="tag" id="spMrpOrderInfo"></span></div>
-                <div class="card-actions">
-                  <button class="btn btn-sm btn-success" onclick="exportMRPResult()">📥 导出Excel</button>
-                </div>
-              </div>
-              <div class="table-wrapper" style="max-height:400px;overflow-y:auto"><table id="spMrpResultTable"><thead><tr>
-                <th>层级</th><th>制程</th><th>物料编码</th><th>物料名称</th><th>需求日期</th><th>建议动作</th><th>供应商</th><th>需求类型</th><th>单位</th><th>净需求</th><th>损耗率</th><th>毛需求</th><th>可用库存</th><th>WIP</th><th>WIP到货日</th><th>Open PR</th><th>Open PR到货日</th><th>Open PO</th><th>Open PO到货日</th><th>净待补</th><th>PlOrd到货日</th><th>PlOrd下单日</th>
-              </tr></thead><tbody></tbody></table></div>
-            </div>
-            <div class="card">
-              <div class="card-header">
-                <div class="card-title">📋 采购/委外建议清单 <span class="tag" id="spMrpProcurementCount">0项</span></div>
-                <div class="card-actions">
-                  <button class="btn btn-sm btn-success" onclick="exportProcurementList()">📥 导出Excel</button>
-                </div>
-              </div>
-              <div style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap">
-                <span style="display:inline-flex;align-items:center;gap:4px;font-size:12px"><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#f59e0b"></span> 采购</span>
-                <span style="display:inline-flex;align-items:center;gap:4px;font-size:12px"><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#3b82f6"></span> 委外</span>
-              </div>
-              <div class="table-wrapper" style="max-height:300px;overflow-y:auto"><table id="spMrpProcurementTable"><thead><tr>
-                <th>物料编码</th><th>物料名称</th><th>制程</th><th>净待补</th><th>单位</th><th>PlOrd到货日</th><th>PlOrd下单日</th><th>PlOrd号</th><th>供应商</th><th>类型</th>
-              </tr></thead><tbody></tbody></table></div>
-            </div>
-          </div>
-          <div class="empty-state" id="spMrpEmpty">
-            <span class="icon">📊</span>
-            <div class="text">请设置条件并执行MRP运算</div>
-          </div>
+        </div>
+        <div class="empty-state" id="spMrpEmpty">
+          <span class="icon">📊</span>
+          <div class="text">请设置条件并执行MRP运算</div>
         </div>
       </div>
     </div>
@@ -3819,8 +3802,53 @@ function runMrpEngine(demandQty, dueDate){
         poBreakdown=poDates.map(d=>{const qty=poItems.filter(p=>p.demandDate===d).reduce((s,p)=>s+(p.quantity||0),0);return d.slice(5)+':'+qty.toLocaleString();}).join(' / ');
       }
     }
-    const totalSupply=stock+wipAvailable+prAvailable+poAvailable;
-    const netRemaining=Math.max(0,grossReq-stock-wipAvailable-prAvailable-poAvailable);
+    let netRemaining, totalSupply;
+    if(core.consumePriority==='fifo-date'){
+      // FIFO日期顺序消耗：按到期日先后 + 同天 库存→WIP→PO→PR
+      const supplyQueue=[];
+      // 库存（无到期日，优先级最高）
+      if(stock>0) supplyQueue.push({type:'stock',date:'0000-00-00',priority:1,qty:stock,label:'库存'});
+      // WIP
+      if(wipAvailable>0){
+        const wipDate=inv&&inv.transitArrival?inv.transitArrival:'0000-00-00';
+        supplyQueue.push({type:'wip',date:wipDate,priority:2,qty:wipAvailable,label:'WIP',arrival:wipDate});
+      }
+      // PO逐笔
+      if(core.deductPO){
+        appData.prpo.filter(p=>p.materialCode===matCode&&p.orderType==='PO'&&p.demandDate<=plannedArrival)
+          .forEach(p=>supplyQueue.push({type:'po',date:p.demandDate||'',priority:3,qty:p.quantity||0,label:'PO',arrival:p.demandDate}));
+      }
+      // PR逐笔
+      if(core.deductPR){
+        appData.prpo.filter(p=>p.materialCode===matCode&&p.orderType==='PR'&&p.demandDate<=plannedArrival)
+          .forEach(p=>supplyQueue.push({type:'pr',date:p.demandDate||'',priority:4,qty:p.quantity||0,label:'PR',arrival:p.demandDate}));
+      }
+      // 排序：日期升序（空日期排最后），同日期按优先级
+      supplyQueue.sort((a,b)=>{
+        if(a.date!==b.date){
+          if(!a.date) return 1; if(!b.date) return -1;
+          return a.date<b.date?-1:1;
+        }
+        return a.priority-b.priority;
+      });
+      // 逐笔消耗
+      let remaining=grossReq, consumed={stock:0,wip:0,pr:0,po:0};
+      supplyQueue.forEach(item=>{
+        if(remaining<=0) return;
+        const take=Math.min(remaining,item.qty);
+        remaining-=take;
+        if(item.type==='stock') consumed.stock+=take;
+        else if(item.type==='wip') consumed.wip+=take;
+        else if(item.type==='po') consumed.po+=take;
+        else if(item.type==='pr') consumed.pr+=take;
+      });
+      totalSupply=supplyQueue.reduce((s,i)=>s+i.qty,0);
+      netRemaining=Math.max(0,remaining);
+    } else {
+      // 简单汇总扣减（原逻辑）
+      totalSupply=stock+wipAvailable+prAvailable+poAvailable;
+      netRemaining=Math.max(0,grossReq-stock-wipAvailable-prAvailable-poAvailable);
+    }
     let plannedOrderDate='';
     const isPurchase=mat&&mat.type==='采购';
     const effectiveApproval=isPurchase?approvalDays:0;
@@ -3833,6 +3861,7 @@ function runMrpEngine(demandQty, dueDate){
     detailText+=' → 可用库存='+stock.toLocaleString()+' WIP='+wipAvailable.toLocaleString();
     detailText+=' PR='+prAvailable.toLocaleString()+'('+(core.deductPR?'✅生效':'❌关闭')+')';
     detailText+=' PO='+poAvailable.toLocaleString()+'('+(core.deductPO?'✅生效':'❌关闭')+')';
+    detailText+=' → 消耗模式='+(core.consumePriority==='fifo-date'?'📅日期FIFO':'📊简单汇总');
     detailText+=' → 净待补 = '+netRemaining.toLocaleString()+' '+unit;
     if(isPurchase)detailText+=' → 到货日'+plannedArrival+' → 总交付'+totalDelivery+'天+审批'+effectiveApproval+'天 → 下单日'+(plannedOrderDate||'N/A');
     else detailText+=' → 到货日'+plannedArrival+' → 交付周期'+totalDelivery+'天 → 投产日'+(plannedOrderDate||'N/A');
@@ -3937,7 +3966,7 @@ let defaultMrpCore={
   calcGrossReq: function(netReq,scrapRate){return Math.ceil(netReq*(1+scrapRate/100));},
   calcNetRemaining: function(grossReq,stock,wip){return Math.max(0,grossReq-stock-wip);},
   shouldExpandChildren: function(netRemaining){return netRemaining>0;},
-  wipMode: 'filtered', deductPR: true, deductPO: true, supplyStrategy: 'independent'
+  wipMode: 'filtered', deductPR: true, deductPO: true, supplyStrategy: 'independent', consumePriority: 'fifo-date'
 };
 
 // 获取系统默认规则列表（5条预设规则）
@@ -7231,8 +7260,6 @@ function exportSpReport(section){
 
 // ==================== Supply - MRP物料需求计划 Tab ====================
 function renderSpMrp(){
-  // 渲染运算规则页
-  renderSpMrpRules();
   // 初始化运行&结果页 — 从真实客户订单加载
   const sel=document.getElementById('spMrpOrderSelect');
   if(!sel) return;
@@ -7251,37 +7278,7 @@ function renderSpMrp(){
   // 加载已保存的运算参数
   loadSpMrpParams();
 }
-// ==================== MRP子页签切换 ====================
-function switchSpMrpInnerTab(tab){
-  document.querySelectorAll('#spMrpTabs .sub-tab').forEach(t=>t.classList.remove('active'));
-  document.querySelectorAll('#tab-sp-mrp .sub-tab-content').forEach(t=>t.classList.remove('active'));
-  const tabEl=document.querySelector('#spMrpTabs .sub-tab[data-tab="'+tab+'"]');
-  if(tabEl) tabEl.classList.add('active');
-  const content=document.getElementById('tab-'+tab);
-  if(content) content.classList.add('active');
-  if(tab==='sp-mrp-rules') renderSpMrpRules();
-  if(tab==='sp-mrp-run') renderSpMrpDataRef();
-}
-// ==================== MRP运算规则渲染 ====================
-function renderSpMrpRules(){
-  // 运算规则页仅保留MRP运算参数（由loadSpMrpParams初始化）
-  // 同时更新运行页的数据关联状态
-  renderSpMrpDataRef();
-}
-function renderSpMrpDataRef(){
-  const procEl=document.getElementById('spMrpRefProcessCount');
-  if(procEl) procEl.textContent=appData.processes.length;
-  const bomEl=document.getElementById('spMrpRefBomCount');
-  if(bomEl) bomEl.textContent=appData.bom.length;
-  const ltEl=document.getElementById('spMrpRefLeadTimeCount');
-  if(ltEl) ltEl.textContent=appData.leadTimes.length;
-  const apCount=document.getElementById('spMrpRefApprovalCount');
-  if(apCount) apCount.textContent=(appData.approvals||[]).length;
-  const apTotal=document.getElementById('spMrpRefApprovalTotal');
-  if(apTotal) apTotal.textContent=(appData.approvals||[]).reduce((s,a)=>s+(a.days||0),0);
-  const orderEl=document.getElementById('spMrpRefProcessOrder');
-  if(orderEl) orderEl.textContent=(appData.processOrder||['FT','AB','CP','BP','Wafer']).join('→');
-}
+
 // ==================== MRP参数方案（多预设） ====================
 const STORAGE_KEY_MRP_PRESETS='ic_scm_mrp_presets';
 function getMrpParamValues(){
@@ -7290,6 +7287,7 @@ function getMrpParamValues(){
     deductPO:document.getElementById('spMrpOptDeductPO').checked,
     wipMode:document.getElementById('spMrpOptWipMode').value,
     supplyStrategy:document.getElementById('spMrpOptStrategy').value,
+    consumePriority:document.getElementById('spMrpOptConsumePriority').value,
     expandThreshold:parseInt(document.getElementById('spMrpOptExpandThreshold').value)||0
   };
 }
@@ -7298,6 +7296,7 @@ function setMrpParamValues(v){
   const d2=document.getElementById('spMrpOptDeductPO'); if(d2) d2.checked=v.deductPO!==false;
   const wm=document.getElementById('spMrpOptWipMode'); if(wm) wm.value=v.wipMode||'filtered';
   const ss=document.getElementById('spMrpOptStrategy'); if(ss) ss.value=v.supplyStrategy||'independent';
+  const cp=document.getElementById('spMrpOptConsumePriority'); if(cp) cp.value=v.consumePriority||'fifo-date';
   const et=document.getElementById('spMrpOptExpandThreshold'); if(et) et.value=v.expandThreshold||0;
 }
 function syncParamsToCore(v){
@@ -7308,6 +7307,7 @@ function syncParamsToCore(v){
   core.deductPO=v.deductPO;
   core.wipMode=v.wipMode;
   core.supplyStrategy=v.supplyStrategy;
+  core.consumePriority=v.consumePriority;
   core.shouldExpandChildren=function(netRemaining){return netRemaining>(v.expandThreshold||0);};
   saveRulesToStorage();
 }
@@ -7325,7 +7325,7 @@ function renderMrpPresetSelect(){
   sel.innerHTML='';
   const names=Object.keys(presets);
   if(names.length===0){
-    presets['default']={deductPR:true,deductPO:true,wipMode:'filtered',supplyStrategy:'independent',expandThreshold:0};
+    presets['default']={deductPR:true,deductPO:true,wipMode:'filtered',supplyStrategy:'independent',consumePriority:'fifo-date',expandThreshold:0};
     saveMrpPresets(presets);
     names.push('default');
   }
