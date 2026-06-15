@@ -1627,6 +1627,10 @@ async function syncFromSap(){
 }
 
 // ======================== 初始化 ========================
+// 全局错误捕获（辅助定位问题）
+window.addEventListener('error', e=>console.error('[GLOBAL_ERROR]', e.message, e.filename, e.lineno));
+window.addEventListener('unhandledrejection', e=>console.error('[UNHANDLED_REJECTION]', e.reason));
+
 function init() {
   // === 版本迁移（阶梯式，精准匹配版本范围，避免高版本重复执行低版本迁移） ===
   const _ver = localStorage.getItem('_data_ver');
@@ -1700,34 +1704,35 @@ function init() {
 }
 
 function fallbackToLocal(){
-  // 1. 尝试从云端（GitHub）加载共享数据
   loadFromServer().then(loaded=>{
-    if(loaded){
-      // 云端数据已写入 localStorage，再读一次
-      loadMasterdataFromStorage();
-      loadSampleDemands();
+    try{
+      if(loaded){
+        loadMasterdataFromStorage();
+        if(!appData.demands||!appData.demands.length) loadSampleDemands();
+      } else {
+        if(!loadMasterdataFromStorage()){
+          // 本地也无数据 → 展示空表
+        } else {
+          if(!appData.demands||!appData.demands.length) loadSampleDemands();
+        }
+      }
       renderAllMasterdata();
       renderDemand();
       refreshOrderSelect();
       renderConfigTables();
-    } else {
-      // 2. 云端不可用，走本地 localStorage
-      if(!loadMasterdataFromStorage()){
-        // 本地也无数据 → 展示空表（不填充示例数据）
-        renderAllMasterdata();
-        renderDemand();
-        refreshOrderSelect();
-        renderConfigTables();
-      } else {
-        loadSampleDemands();
-        renderAllMasterdata();
-        renderDemand();
-        refreshOrderSelect();
-        renderConfigTables();
-      }
+      loadPlannedOrdersFromStorage();
+    }catch(e){
+      console.error('[fallbackToLocal] 渲染异常:',e);
+      // 尽力渲染
+      renderAllMasterdata();
     }
-    // 3. 加载计划订单
-    loadPlannedOrdersFromStorage();
+  }).catch(e=>{
+    console.error('[fallbackToLocal] 加载异常:',e);
+    try{loadMasterdataFromStorage()}catch(ex){}
+    renderAllMasterdata();
+    renderDemand();
+    refreshOrderSelect();
+    renderConfigTables();
   });
 }
 
@@ -3999,9 +4004,12 @@ const STORAGE_KEY_RULES='ic_scm_natural_rules';
 const STORAGE_KEY_MASTER='ic_scm_master_data';
 const STORAGE_KEY_PLANNED='ic_scm_planned_orders';
 
-// ======================== 共享数据持久化（jsonblob 直连） ========================
-const JSONBLOB_ID = '019ec9c9-2082-729f-80cc-ff1a6866ef3b';
-const JSONBLOB_API = 'https://jsonblob.com/api/jsonBlob/' + JSONBLOB_ID;
+// ======================== 共享数据持久化（同源 JSON 文件 + GitHub API） ========================
+// 读取：从同源路径 /IC-SCM/shared-data.json（无需 CORS、无需认证）
+// 写入：通过 GitHub API 更新仓库文件（需要 GITHUB_TOKEN）
+const GITHUB_TOKEN_KEY = 'ic_scm_github_token';
+const SHARED_DATA_PATH = '/IC-SCM/shared-data.json';  // 同源路径
+const GITHUB_API_URL = 'https://api.github.com/repos/Deloitte-ic/IC-SCM/contents/shared-data.json';
 let _syncTimer=null,_syncStatus='idle';
 
 function updateSyncUI(icon,label){
@@ -4011,25 +4019,52 @@ function updateSyncUI(icon,label){
   if(lb) lb.textContent=label;
 }
 
-// 从云端加载共享数据（jsonblob 直连）
+// 从云端加载共享数据（优先同源 JSON 文件，其次 GitHub API）
 async function loadFromServer(){
   updateSyncUI('🔄','同步中…');
   try{
-    const res=await fetch(JSONBLOB_API+'?t='+Date.now());
-    if(!res.ok)throw Error('HTTP '+res.status);
-    const data=await res.json();
-    if(!data||!data.materials||!data.materials.length)throw Error('无效或空数据');
-    localStorage.setItem(STORAGE_KEY_MASTER,JSON.stringify(data));
-    updateSyncUI('✅','已同步');
-    return true;
-  }catch(e){
-    console.warn('从云端加载数据失败:',e.message);
-    updateSyncUI('☁️','本地');
-    return false;
-  }
+    // 方式一：同源路径读取（最快、无 CORS）
+    const res1=await fetchWithTimeout(SHARED_DATA_PATH+'?t='+Date.now(),3000);
+    if(res1.ok){
+      const data=await res1.json();
+      if(data&&data.materials&&data.materials.length){
+        localStorage.setItem(STORAGE_KEY_MASTER,JSON.stringify(data));
+        updateSyncUI('✅','已同步');
+        return true;
+      }
+    }
+  }catch(e){/* 同源路径读不到数据，继续尝试 GitHub API */}
+
+  try{
+    // 方式二：GitHub API 读取（支持 CORS、无需认证）
+    const res2=await fetchWithTimeout(GITHUB_API_URL+'?t='+Date.now(),5000);
+    if(res2.ok){
+      const json=await res2.json();
+      const raw=atob(json.content);
+      const data=JSON.parse(raw);
+      if(data&&data.materials&&data.materials.length){
+        localStorage.setItem(STORAGE_KEY_MASTER,JSON.stringify(data));
+        updateSyncUI('✅','已同步');
+        return true;
+      }
+    }
+  }catch(e){/* GitHub API 也读不到 */}
+
+  updateSyncUI('☁️','本地');
+  return false;
 }
 
-// 保存到云端（jsonblob 直连 PUT）
+// 带超时的 fetch
+async function fetchWithTimeout(url,ms=5000){
+  const ctrl=new AbortController();
+  const timer=setTimeout(()=>ctrl.abort(),ms);
+  try{
+    const res=await fetch(url,{signal:ctrl.signal});
+    return res;
+  }finally{clearTimeout(timer);}
+}
+
+// 保存到云端（GitHub API）
 async function saveToServer(){
   if(_syncStatus==='syncing')return;
   _syncStatus='syncing';
@@ -4037,13 +4072,34 @@ async function saveToServer(){
   try{
     const raw=localStorage.getItem(STORAGE_KEY_MASTER);
     if(!raw){updateSyncUI('☁️','本地');_syncStatus='idle';return;}
-    const data=JSON.parse(raw);
-    const res=await fetch(JSONBLOB_API,{
+    const token=localStorage.getItem(GITHUB_TOKEN_KEY);
+    if(!token){
+      console.warn('未配置 GitHub Token，数据仅保存到本地');
+      updateSyncUI('☁️','本地');
+      _syncStatus='idle';
+      return;
+    }
+    // 先获取当前文件的 SHA
+    const getRes=await fetchWithTimeout(GITHUB_API_URL,5000);
+    let sha='';
+    if(getRes.ok){
+      const meta=await getRes.json();
+      sha=meta.sha;
+    }
+    // PUT 更新文件
+    const putRes=await fetch(GITHUB_API_URL,{
       method:'PUT',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(data)
+      headers:{
+        'Authorization':'token '+token,
+        'Content-Type':'application/json'
+      },
+      body:JSON.stringify({
+        message:'Update shared data via IC-SCM',
+        content:btoa(unescape(encodeURIComponent(raw))),
+        sha:sha||undefined
+      })
     });
-    if(res.ok){updateSyncUI('✅','已同步');}else{updateSyncUI('❌','同步失败');}
+    if(putRes.ok){updateSyncUI('✅','已同步');}else{updateSyncUI('❌','同步失败');}
   }catch(e){console.error('同步失败:',e);updateSyncUI('❌','同步失败');}
   _syncStatus='idle';
 }
@@ -8304,4 +8360,10 @@ function runDpWhatIf(){
       action:scenario==='yield_up'?'优化委外工艺参数，提升各制程良率':scenario==='yield_down'?'排查委外线异常，增加投料':scenario==='customer_up'?'同步增加Wafer投片计划，通知TSMC/SMIC':scenario==='customer_down'?'调整供应计划，减少Wafer采购':scenario==='wafer_limit'?'按客户优先级分配晶圆产能':'维持现有委外计划'
     };
   });
-  renderDpAnalytics();showToast('📊 IC设计委外级联情景分析完成：'+descs[scenario],'success
+  renderDpAnalytics();showToast('📊 IC设计委外级联情景分析完成：'+descs[scenario],'success');
+}
+
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
