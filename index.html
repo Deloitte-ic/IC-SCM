@@ -3873,7 +3873,8 @@ function runMrpEngine(demandQty, dueDate){
     if(isPurchase)detailText+=' → 到货日'+plannedArrival+' → 总交付'+totalDelivery+'天+审批'+effectiveApproval+'天 → 下单日'+(plannedOrderDate||'N/A');
     else detailText+=' → 到货日'+plannedArrival+' → 交付周期'+totalDelivery+'天 → 投产日'+(plannedOrderDate||'N/A');
     details.push({process,text:detailText,netRemaining});
-    if(core.shouldExpandChildren(netRemaining)){
+    // 全阶展开：始终遍历BOM子阶，让结果表展示所有下阶物料
+    {
       const children=getBomChildren(process);
       children.forEach(child=>{
         const childProcess=processByMatCode[child.child]||child.child;
