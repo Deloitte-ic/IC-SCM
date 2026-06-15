@@ -2418,7 +2418,9 @@ function parseWipSheet(data,sheetName){
   const inputIdx=h.findIndex(c=>/(投料数量|投入数量|投料|input|inputQty)/i.test(c));
   const outputIdx=h.findIndex(c=>/(已产出|产出数量|产出|良品|output|outputQty)/i.test(c));
   const yieldIdx=h.findIndex(c=>/(良率|良率|合格率|yield|yieldRate)/i.test(c));
-  const finishIdx=h.findIndex(c=>/(到货日|到货日期|预计完成|完成日期|完成日|预计完工|交货日期|需求日期|estimatedFinish|finish|arrival|arrivaldate)/i.test(c));
+  let finishIdx=h.findIndex(c=>/(到货日|到货日期|到貨日|到貨日期|预计到货日|预计到货日期|預計到貨日|預計到貨日期|预计完成日|预计完成日期|預計完成日|預計完成日期|完成日|完成日期|交货日|交货日期|交貨日|交貨日期|交期|需求日期|需求日|日期|estimatedFinish|finish|arrival|arrivaldate)/i.test(c));
+  // 智能回退：未匹配到则找任何含"日"的列（如到货日、到貨日、完成日等）
+  if(finishIdx<0) finishIdx=h.findIndex(c=>/(日|date)/i.test(c)&&!/名称|描述|name|desc|status|数量|qty|order|no|编码|code|supplier|供应商|良率|yield|process|制程|物料|material/i.test(c));
   const stIdx=h.findIndex(c=>/(状态|status)/i.test(c));
   if(matIdx<0) return;
   let count=0, updCount=0, newCount=0;
