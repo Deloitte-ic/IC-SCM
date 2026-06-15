@@ -427,7 +427,7 @@ tbody tr:hover td{background:var(--primary-bg)}
               <button class="btn btn-sm btn-primary" onclick="openAddWipModal()">➕ 新增</button>
             </div>
           </div>
-          <div class="table-wrapper"><table id="wipTable"><thead><tr><th>物料编码</th><th>物料名称</th><th>制程代码</th><th>工单号</th><th>委外供应商</th><th>投料数量</th><th>已产出</th><th>当前良率(%)</th><th>预计完成日</th><th>状态</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+          <div class="table-wrapper"><table id="wipTable"><thead><tr><th>物料编码</th><th>物料名称</th><th>制程代码</th><th>工单号</th><th>委外供应商</th><th>投料数量</th><th>已产出</th><th>当前良率(%)</th><th>到货日</th><th>状态</th><th>操作</th></tr></thead><tbody></tbody></table></div>
         </div>
       </div>
 
@@ -1247,7 +1247,7 @@ tbody tr:hover td{background:var(--primary-bg)}
       <div class="tab-content" id="tab-sp-mrp">
         <!-- MRP运算参数 -->
         <div class="card">
-          <div class="card-title">⚙️ MRP运算参数</div>
+          <div class="card-title">⚙️ MRP参数</div>
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:13px">
             <span>参数方案：</span>
             <select id="spMrpPresetSelect" onchange="switchMrpPreset()" style="font-size:12px;padding:3px 6px;border:1px solid var(--gray-300);border-radius:4px;min-width:140px"></select>
@@ -3045,7 +3045,7 @@ function openAddWipModal() {
     '<div class="grid-2"><div class="form-group"><label>投料数量</label><input type="number" id="formWipInput" value="0"></div>'+
     '<div class="form-group"><label>已产出</label><input type="number" id="formWipOutput" value="0"></div></div>'+
     '<div class="grid-2"><div class="form-group"><label>当前良率(%)</label><input type="number" id="formWipYield" value="100" min="0" max="100" step="0.1"></div>'+
-    '<div class="form-group"><label>预计完成日</label><input type="date" id="formWipFinish"></div></div>'+
+    '<div class="form-group"><label>到货日</label><input type="date" id="formWipFinish"></div></div>'+
     '<div class="form-group"><label>状态</label><select id="formWipStatus"><option value="进行中">进行中</option><option value="完成">完成</option><option value="异常">异常</option></select></div>'+
     '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveNewWip()">保存</button></div>');
   // 联动：物料选择自动带出制程
@@ -3083,7 +3083,7 @@ function editWip(idx) {
     '<div class="grid-2"><div class="form-group"><label>投料数量</label><input type="number" id="formWipInput" value="'+(w.inputQty||0)+'"></div>'+
     '<div class="form-group"><label>已产出</label><input type="number" id="formWipOutput" value="'+(w.outputQty||0)+'"></div></div>'+
     '<div class="grid-2"><div class="form-group"><label>当前良率(%)</label><input type="number" id="formWipYield" value="'+(w.yieldRate||100)+'" min="0" max="100" step="0.1"></div>'+
-    '<div class="form-group"><label>预计完成日</label><input type="date" id="formWipFinish" value="'+(w.estimatedFinish||'')+'"></div></div>'+
+    '<div class="form-group"><label>到货日</label><input type="date" id="formWipFinish" value="'+(w.estimatedFinish||'')+'"></div></div>'+
     '<div class="form-group"><label>状态</label><select id="formWipStatus"><option value="进行中"'+(w.status==='进行中'?' selected':'')+'>进行中</option><option value="完成"'+(w.status==='完成'?' selected':'')+'>完成</option><option value="异常"'+(w.status==='异常'?' selected':'')+'>异常</option></select></div>'+
     '<input type="hidden" id="editWipIdx" value="'+idx+'">'+
     '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveEditWip()">保存</button></div>');
@@ -3783,7 +3783,8 @@ function runMrpEngine(demandQty, dueDate){
       if(core.wipMode==='all'){
         wipAvailable=inv.transit;
       } else {
-        if(inv.transitArrival&&inv.transitArrival<=plannedArrival)wipAvailable=inv.transit;
+        // filtered: 到货日≤需求日才计入；到货日为空时也计入（未指定到货日视为可随时使用）
+        if(!inv.transitArrival||inv.transitArrival<=plannedArrival)wipAvailable=inv.transit;
       }
     }
     if(core.deductPR){
@@ -3802,7 +3803,7 @@ function runMrpEngine(demandQty, dueDate){
         poBreakdown=poDates.map(d=>{const qty=poItems.filter(p=>p.demandDate===d).reduce((s,p)=>s+(p.quantity||0),0);return d.slice(5)+':'+qty.toLocaleString();}).join(' / ');
       }
     }
-    let netRemaining, totalSupply;
+    let netRemaining, totalSupply, consumed={stock:0,wip:0,pr:0,po:0};
     if(core.consumePriority==='fifo-date'){
       // FIFO日期顺序消耗：按到期日先后 + 同天 库存→WIP→PO→PR
       const supplyQueue=[];
@@ -3832,7 +3833,7 @@ function runMrpEngine(demandQty, dueDate){
         return a.priority-b.priority;
       });
       // 逐笔消耗
-      let remaining=grossReq, consumed={stock:0,wip:0,pr:0,po:0};
+      let remaining=grossReq;
       supplyQueue.forEach(item=>{
         if(remaining<=0) return;
         const take=Math.min(remaining,item.qty);
@@ -3845,15 +3846,21 @@ function runMrpEngine(demandQty, dueDate){
       totalSupply=supplyQueue.reduce((s,i)=>s+i.qty,0);
       netRemaining=Math.max(0,remaining);
     } else {
-      // 简单汇总扣减（原逻辑）
+      // 简单汇总扣减（原逻辑）— 所有可用供给依次消耗
       totalSupply=stock+wipAvailable+prAvailable+poAvailable;
       netRemaining=Math.max(0,grossReq-stock-wipAvailable-prAvailable-poAvailable);
+      consumed.stock=Math.min(stock,grossReq);
+      const afterStock=Math.max(0,grossReq-stock);
+      consumed.wip=Math.min(wipAvailable,afterStock);
+      const afterWip=Math.max(0,afterStock-wipAvailable);
+      consumed.pr=Math.min(prAvailable,afterWip);
+      consumed.po=Math.min(poAvailable,Math.max(0,afterWip-prAvailable));
     }
     let plannedOrderDate='';
     const isPurchase=mat&&mat.type==='采购';
     const effectiveApproval=isPurchase?approvalDays:0;
     if(netRemaining>0)plannedOrderDate=addDays(plannedArrival,-(totalDelivery+effectiveApproval));
-    results.push({level,process,matCode,matName,action,supplier,demandType,unit,netReq:netReqQty,scrapRate,grossReq,stock,wipAvailable,prAvailable,poAvailable,totalSupply,netRemaining,plannedArrival,plannedOrderDate,totalDelivery,approvalDays:effectiveApproval,demandDate,prBreakdown,poBreakdown});
+    results.push({level,process,matCode,matName,action,supplier,demandType,unit,netReq:netReqQty,scrapRate,grossReq,stock,wipAvailable,prAvailable,poAvailable,totalSupply,netRemaining,plannedArrival,plannedOrderDate,totalDelivery,approvalDays:effectiveApproval,demandDate,prBreakdown,poBreakdown,consumeStock:consumed.stock,consumeWip:consumed.wip,consumePr:consumed.pr,consumePo:consumed.po});
     let detailText='';
     if(level===0)detailText='【'+process+'】顶层净需求 = '+netReqQty.toLocaleString()+' '+unit;
     else detailText='【'+process+'】净需求(父毛需求÷BOM用量) = '+netReqQty.toLocaleString()+' '+unit;
@@ -3949,7 +3956,7 @@ function executeMRP(){
     // 查找业务数据
     const wipInv=appData.inventory.find(i=>i.materialCode===r.matCode&&i.transit>0);
     const wipArrival=wipInv?(wipInv.transitArrival||''):'';
-    tableHtml+='<tr style="background:'+bg+'"><td style="'+levelStyle+'">'+levelLabel+'</td><td><span class="tag-status '+(r.process==='FT'?'tag-green':'tag-blue')+'">'+r.process+'</span></td><td style="font-weight:500">'+r.matCode+'</td><td><span class="tag-status '+(r.demandType==='独立需求'?'tag-green':'tag-blue')+'">'+r.demandType+'</span></td><td style="font-weight:600;color:var(--primary)">'+(r.demandDate||'')+'</td><td style="font-weight:500">'+r.grossReq.toLocaleString()+'</td><td>'+r.scrapRate+'%</td><td style="font-weight:600">'+r.netReq.toLocaleString()+'</td><td>'+r.unit+'</td><td style="font-weight:500">'+r.stock.toLocaleString()+'</td><td>'+r.wipAvailable.toLocaleString()+'</td><td>'+wipArrival+'</td><td style="font-weight:500;font-size:13px">'+(r.prAvailable||0).toLocaleString()+'</td><td style="font-size:11px;color:var(--gray-600)">'+(r.prBreakdown||'')+'</td><td style="font-weight:500;font-size:13px">'+(r.poAvailable||0).toLocaleString()+'</td><td style="font-size:11px;color:var(--gray-600)">'+(r.poBreakdown||'')+'</td><td style="font-weight:600;color:'+(r.netRemaining>0?'var(--danger)':'var(--success)')+'">'+r.netRemaining.toLocaleString()+'</td></tr>';
+    tableHtml+='<tr style="background:'+bg+'"><td style="'+levelStyle+'">'+levelLabel+'</td><td><span class="tag-status '+(r.process==='FT'?'tag-green':'tag-blue')+'">'+r.process+'</span></td><td style="font-weight:500">'+r.matCode+'</td><td><span class="tag-status '+(r.demandType==='独立需求'?'tag-green':'tag-blue')+'">'+r.demandType+'</span></td><td style="font-weight:600;color:var(--primary)">'+(r.demandDate||'')+'</td><td style="font-weight:500">'+r.grossReq.toLocaleString()+'</td><td>'+r.scrapRate+'%</td><td style="font-weight:600">'+r.netReq.toLocaleString()+'</td><td>'+r.unit+'</td><td style="font-weight:500">'+(r.consumeStock||0).toLocaleString()+'</td><td>'+(r.consumeWip||0).toLocaleString()+'</td><td>'+wipArrival+'</td><td style="font-weight:500;font-size:13px">'+(r.consumePr||0).toLocaleString()+'</td><td style="font-size:11px;color:var(--gray-600)">'+(r.prBreakdown||'')+'</td><td style="font-weight:500;font-size:13px">'+(r.consumePo||0).toLocaleString()+'</td><td style="font-size:11px;color:var(--gray-600)">'+(r.poBreakdown||'')+'</td><td style="font-weight:600;color:'+(r.netRemaining>0?'var(--danger)':'var(--success)')+'">'+r.netRemaining.toLocaleString()+'</td></tr>';
   });
   document.querySelector('#mrpResultTable tbody').innerHTML=tableHtml;
   renderProcurementList(results);
@@ -7348,18 +7355,45 @@ function saveSpMrpParams(){
   showToast('✅ MRP运算参数已保存','success');
 }
 function addMrpParamPreset(){
-  const name=prompt('请输入参数方案名称：');
-  if(!name||!name.trim()) return;
-  const presetName=name.trim();
+  const currentVals=getMrpParamValues();
+  openModal(
+    '<div class="modal-title">📋 新增MRP参数方案 <button class="modal-close" onclick="closeModal()">×</button></div>'+
+    '<div class="form-group"><label>方案名称 <span style="color:var(--danger)">*</span></label>'+
+    '<input type="text" id="modalNewPresetName" placeholder="输入方案名称" style="width:100%;padding:9px 12px;border:1px solid var(--gray-300);border-radius:6px;font-size:13px"></div>'+
+    '<div style="border:1px solid var(--gray-200);border-radius:8px;padding:14px;margin-top:10px">'+
+    '<div style="font-weight:600;font-size:13px;margin-bottom:10px;color:var(--gray-700)">参数配置</div>'+
+    '<div style="display:flex;flex-wrap:wrap;gap:14px">'+
+    '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" id="modalNewDeductPR" '+(currentVals.deductPR!==false?'checked':'')+'> 扣减Open PR</label>'+
+    '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" id="modalNewDeductPO" '+(currentVals.deductPO!==false?'checked':'')+'> 扣减Open PO</label>'+
+    '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">WIP：<select id="modalNewWipMode" style="font-size:12px;padding:3px 6px;border:1px solid var(--gray-300);border-radius:4px"><option value="filtered" '+(currentVals.wipMode==='filtered'?'selected':'')+'>仅到期WIP</option><option value="all" '+(currentVals.wipMode==='all'?'selected':'')+'>全部WIP</option></select></label>'+
+    '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">策略：<select id="modalNewStrategy" style="font-size:12px;padding:3px 6px;border:1px solid var(--gray-300);border-radius:4px"><option value="independent" '+(currentVals.supplyStrategy==='independent'?'selected':'')+'>独立扣减</option><option value="fifo" '+(currentVals.supplyStrategy==='fifo'?'selected':'')+'>FIFO顺序扣减</option></select></label>'+
+    '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">消耗：<select id="modalNewConsumePriority" style="font-size:12px;padding:3px 6px;border:1px solid var(--gray-300);border-radius:4px"><option value="fifo-date" '+(currentVals.consumePriority==='fifo-date'?'selected':'')+'>日期FIFO</option><option value="simple" '+(currentVals.consumePriority==='simple'?'selected':'')+'>简单汇总</option></select></label>'+
+    '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">展开阈值：<input type="number" id="modalNewExpandThreshold" value="'+(currentVals.expandThreshold||0)+'" min="0" style="width:70px;font-size:12px;padding:3px 6px;border:1px solid var(--gray-300);border-radius:4px"></label>'+
+    '</div></div>'+
+    '<div class="modal-footer" style="margin-top:14px"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="confirmAddMrpPreset()">创建方案</button></div>'
+  );
+}
+function confirmAddMrpPreset(){
+  const nameInput=document.getElementById('modalNewPresetName');
+  const name=nameInput.value.trim();
+  if(!name){showToast('请输入方案名称','warning');nameInput.focus();return;}
   const presets=getMrpPresets();
-  if(presets[presetName]){
-    if(!confirm(`方案"${presetName}"已存在，是否覆盖？`)) return;
+  if(presets[name]){
+    if(!confirm(`方案"${name}"已存在，是否覆盖？`)) return;
   }
-  presets[presetName]=getMrpParamValues();
+  presets[name]={
+    deductPR:document.getElementById('modalNewDeductPR').checked,
+    deductPO:document.getElementById('modalNewDeductPO').checked,
+    wipMode:document.getElementById('modalNewWipMode').value,
+    supplyStrategy:document.getElementById('modalNewStrategy').value,
+    consumePriority:document.getElementById('modalNewConsumePriority').value,
+    expandThreshold:parseInt(document.getElementById('modalNewExpandThreshold').value)||0
+  };
   saveMrpPresets(presets);
-  localStorage.setItem('ic_scm_mrp_current_preset',presetName);
+  localStorage.setItem('ic_scm_mrp_current_preset',name);
   renderMrpPresetSelect();
-  showToast(`✅ 方案"${presetName}"已创建`,'success');
+  closeModal();
+  showToast(`✅ 方案"${name}"已创建`,'success');
 }
 function switchMrpPreset(){
   const sel=document.getElementById('spMrpPresetSelect');
@@ -7412,14 +7446,35 @@ function onSpMrpOrderSelect(){
   }
 }
 function executeSpMrp(){
+  const sel=document.getElementById('spMrpOrderSelect');
   const qtyInput=document.getElementById('spMrpQuantity'),dateInput=document.getElementById('spMrpDueDate');
-  let demandQty=parseInt(qtyInput.value);
-  if(isNaN(demandQty)||demandQty<=0){showToast('请输入有效的需求数量','error');return;}
-  let dueDate=dateInput.value;
-  if(!dueDate){showToast('请选择需求日期','error');return;}
-  // 直接调用核心计算引擎，不再经过已删除的旧版DOM
-  runMrpEngine(demandQty, dueDate);
-  // 将运算结果渲染到sp-mrp子页签
+  if(sel.value==='__all__'){
+    // 所有订单：按物料+需求日期分组，每个日期单独一行
+    const groups={};
+    appData.customerOrders.forEach(o=>{
+      if(!o.quantity) return;
+      const mat=o.material||'FT', dt=o.demandDate||'';
+      const key=mat+'|'+dt;
+      if(!groups[key]) groups[key]={material:mat, demandDate:dt, qty:0};
+      groups[key].qty+=o.quantity;
+    });
+    const groupArr=Object.values(groups).sort((a,b)=>a.demandDate.localeCompare(b.demandDate));
+    const allResults=[], allDetails=[];
+    groupArr.forEach(g=>{
+      appData.mrpResult=[]; appData.mrpDetails=[];
+      runMrpEngine(g.qty, g.demandDate);
+      allResults.push(...appData.mrpResult);
+      allDetails.push(...appData.mrpDetails);
+    });
+    appData.mrpResult=allResults;
+    appData.mrpDetails=allDetails;
+  } else {
+    let demandQty=parseInt(qtyInput.value);
+    if(isNaN(demandQty)||demandQty<=0){showToast('请输入有效的需求数量','error');return;}
+    let dueDate=dateInput.value;
+    if(!dueDate){showToast('请选择需求日期','error');return;}
+    runMrpEngine(demandQty, dueDate);
+  }
   renderSpMrpResult();
   showToast('✅ MRP运算完成','success');
 }
@@ -7475,7 +7530,7 @@ function renderSpMrpResult(){
     const actionColor=r.action&&r.action.includes('采购')?'var(--warning)':'var(--info)';
     const gapColor=r.netRemaining>0?'color:var(--danger);font-weight:600':'color:var(--success)';
     const wipArrival=r.wipAvailable>0?(r.wipArrival||'—'):'—';
-    tableHtml+='<tr style="background:'+bg+'"><td>'+indent+' L'+r.level+'</td><td>'+r.process+'</td><td>'+r.matCode+'</td><td>'+r.matName+'</td><td>'+(r.demandDate||'—')+'</td><td><span style="color:'+actionColor+';font-weight:600">'+(r.action||'—')+'</span></td><td>'+(r.supplier||'—')+'</td><td>'+r.demandType+'</td><td>'+r.unit+'</td><td>'+r.netReq.toLocaleString()+'</td><td>'+(r.scrapRate||0)+'%</td><td>'+r.grossReq.toLocaleString()+'</td><td>'+r.stock.toLocaleString()+'</td><td>'+r.wipAvailable.toLocaleString()+'</td><td>'+wipArrival+'</td><td>'+(r.prAvailable>0?r.prAvailable.toLocaleString():'0')+'</td><td>'+(r.prArrival||'—')+'</td><td>'+(r.poAvailable>0?r.poAvailable.toLocaleString():'0')+'</td><td>'+(r.poArrival||'—')+'</td><td><span style="'+gapColor+'">'+r.netRemaining.toLocaleString()+'</span></td><td>'+(r.netRemaining>0?r.plannedArrival:'—')+'</td><td>'+(r.plannedOrderDate||'—')+'</td></tr>';
+    tableHtml+='<tr style="background:'+bg+'"><td>'+indent+' L'+r.level+'</td><td>'+r.process+'</td><td>'+r.matCode+'</td><td>'+r.matName+'</td><td>'+(r.demandDate||'—')+'</td><td><span style="color:'+actionColor+';font-weight:600">'+(r.action||'—')+'</span></td><td>'+(r.supplier||'—')+'</td><td>'+r.demandType+'</td><td>'+r.unit+'</td><td>'+r.netReq.toLocaleString()+'</td><td>'+(r.scrapRate||0)+'%</td><td>'+r.grossReq.toLocaleString()+'</td><td>'+(r.consumeStock||0).toLocaleString()+'</td><td>'+(r.consumeWip||0).toLocaleString()+'</td><td>'+wipArrival+'</td><td>'+(r.consumePr>0?r.consumePr.toLocaleString():'0')+'</td><td>'+(r.prArrival||'—')+'</td><td>'+(r.consumePo>0?r.consumePo.toLocaleString():'0')+'</td><td>'+(r.poArrival||'—')+'</td><td><span style="'+gapColor+'">'+r.netRemaining.toLocaleString()+'</span></td><td>'+(r.netRemaining>0?r.plannedArrival:'—')+'</td><td>'+(r.plannedOrderDate||'—')+'</td></tr>';
   });
   document.querySelector('#spMrpResultTable tbody').innerHTML=tableHtml;
   
