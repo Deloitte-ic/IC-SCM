@@ -4004,13 +4004,10 @@ const STORAGE_KEY_RULES='ic_scm_natural_rules';
 const STORAGE_KEY_MASTER='ic_scm_master_data';
 const STORAGE_KEY_PLANNED='ic_scm_planned_orders';
 
-// ======================== 共享数据持久化（GitHub API，支持 CORS） ========================
-// 读取：raw.githubusercontent.com（CORS ✅，无需认证）
-// 写入：GitHub API PUT（CORS ✅，内置 Token，只对 IC-SCM 仓库有 repo 权限）
-const SHARED_DATA_RAW = 'https://raw.githubusercontent.com/Deloitte-ic/IC-SCM/gh-pages/shared-data.json';
-const SHARED_DATA_API = 'https://api.github.com/repos/Deloitte-ic/IC-SCM/contents/shared-data.json';
-// 从 localStorage 读取 Token（用户首次使用时可配置）；Token 值为个人访问令牌，仅对 IC-SCM 仓库有 repo 权限
-// Token 配置方式：页面加载后点击右上角同步状态图标，在弹出的对话框中粘贴 Token 即可
+// ======================== 共享数据持久化（Vercel API 代理 → GitHub API） ========================
+// Vercel 后端代理读写 GitHub，实时无 CDN 缓存延迟
+// Vercel API 代理（绕过 CDN 缓存，实时读写）
+const VERCEL_API = 'https://ic-scm-backend-one.vercel.app/api';
 const GITHUB_TOKEN_KEY = 'ic_scm_github_token';
 function getGithubToken(){try{return localStorage.getItem(GITHUB_TOKEN_KEY)||''}catch(e){return '';}}
 let _syncTimer=null,_syncStatus='idle';
@@ -4022,42 +4019,36 @@ function updateSyncUI(icon,label){
   if(lb) lb.textContent=label;
 }
 
-// 从云端加载共享数据（raw.githubusercontent.com → 没有 CORS 问题）
-// ★ 只有云端有真实数据（materials.length>0）才覆盖 localStorage
-// ★ 空数据或加载失败 → 保留本地数据
+// 从 Vercel API 加载共享数据（实时，无 CDN 缓存）
 async function loadFromServer(){
   updateSyncUI('🔄','同步中…');
+  const token=getGithubToken();
+  if(!token){updateSyncUI('☁️','本地');return false;}
   try{
-    const res=await fetchWithTimeout(SHARED_DATA_RAW+'?t='+Date.now(),5000);
+    const res=await fetchWithTimeout(VERCEL_API+'/data?token='+encodeURIComponent(token),5000);
     if(res.ok){
-      const data=await res.json();
-      if(data && Array.isArray(data.materials) && data.materials.length > 0){
-        // ★ 关键：只在 localStorage 为空时才写入云端数据，绝不覆盖用户本地已有数据
-        // 因为 raw.githubusercontent.com CDN 有缓存延迟，刚同步的数据不会立即反映
+      const result=await res.json();
+      if(result.success && result.data && Array.isArray(result.data.materials) && result.data.materials.length > 0){
         const localRaw = localStorage.getItem(STORAGE_KEY_MASTER);
         if(localRaw){
           try{
             const localData = JSON.parse(localRaw);
             if(localData.materials && localData.materials.length > 0){
-              // localStorage 已有真实数据 → 保留本地，不覆盖
               updateSyncUI('✅','已同步');
               return true;
             }
           }catch(e){}
         }
-        // localStorage 为空 → 从云端加载到本地
-        localStorage.setItem(STORAGE_KEY_MASTER,JSON.stringify(data));
+        localStorage.setItem(STORAGE_KEY_MASTER,JSON.stringify(result.data));
         updateSyncUI('✅','已同步');
         return true;
       }
     }
   }catch(e){/* 读不到云端数据，使用本地 */}
-
   updateSyncUI('☁️','本地');
   return false;
 }
 
-// 带超时的 fetch
 async function fetchWithTimeout(url,ms=5000){
   const ctrl=new AbortController();
   const timer=setTimeout(()=>ctrl.abort(),ms);
@@ -4067,8 +4058,7 @@ async function fetchWithTimeout(url,ms=5000){
   }finally{clearTimeout(timer);}
 }
 
-// 保存到 GitHub（GitHub API，内置 Token，支持 CORS）
-// 所有用户保存到同一个 shared-data.json，自动更新
+// 保存到 Vercel API（Vercel 代理写入 GitHub，实时同步）
 async function saveToServer(){
   if(_syncStatus==='syncing')return;
   _syncStatus='syncing';
@@ -4076,60 +4066,43 @@ async function saveToServer(){
   try{
     const raw=localStorage.getItem(STORAGE_KEY_MASTER);
     if(!raw){updateSyncUI('☁️','本地');_syncStatus='idle';return;}
-    
-    // 先获取当前文件的 SHA（更新时需要）
-    let sha='';
-    try{
-      const getRes=await fetchWithTimeout(SHARED_DATA_API,5000);
-      if(getRes.ok){
-        const meta=await getRes.json();
-        sha=meta.sha;
-      }
-    }catch(e){/* 获取 SHA 失败，尝试不带 SHA 更新 */}
-
-    // PUT 更新文件
+    const data=JSON.parse(raw);
     const token=getGithubToken();
-    if(!token){console.warn('GitHub Token 未配置，数据仅保存到本地');updateSyncUI('☁️','本地');_syncStatus='idle';return;}
-    const putRes=await fetch(SHARED_DATA_API,{
-      method:'PUT',
-      headers:{
-        'Authorization':'token '+token,
-        'Content-Type':'application/json'
-      },
-      body:JSON.stringify({
-        message:'IC-SCM sync: update shared data',
-        content:btoa(unescape(encodeURIComponent(raw))),
-        sha:sha||undefined
-      })
+    if(!token){console.warn('Token 未配置');updateSyncUI('☁️','本地');_syncStatus='idle';return;}
+    const res=await fetch(VERCEL_API+'/data',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({token, data})
     });
-    if(putRes.ok){
+    if(res.ok){
       updateSyncUI('✅','已同步');
     } else {
-      console.warn('GitHub 保存失败:', putRes.status);
+      console.warn('保存失败:', res.status);
       updateSyncUI('☁️','本地');
     }
   }catch(e){console.error('同步失败:',e);updateSyncUI('☁️','本地');}
   _syncStatus='idle';
 }
 
-// 节流同步（自动保存后触发）
 let _syncDebounce=null;
 function triggerSync(){
   if(_syncDebounce)clearTimeout(_syncDebounce);
   _syncDebounce=setTimeout(()=>{saveToServer();_syncDebounce=null;},1500);
 }
 
-// 从云端强制拉取数据（覆盖本地）
+// 从云端强制拉取（覆盖本地）
 async function pullFromServer(){
   if(_syncStatus==='syncing')return;
   _syncStatus='syncing';
   updateSyncUI('🔄','拉取中…');
+  const token=getGithubToken();
+  if(!token){showToast('⚠️ 请先配置 Token','warning');updateSyncUI('☁️','本地');_syncStatus='idle';return;}
   try{
-    const res=await fetchWithTimeout(SHARED_DATA_RAW+'?t='+Date.now(),8000);
+    const res=await fetchWithTimeout(VERCEL_API+'/data?token='+encodeURIComponent(token),8000);
     if(res.ok){
-      const data=await res.json();
-      if(data && Array.isArray(data.materials) && data.materials.length > 0){
-        localStorage.setItem(STORAGE_KEY_MASTER,JSON.stringify(data));
+      const result=await res.json();
+      if(result.success && result.data && Array.isArray(result.data.materials) && result.data.materials.length > 0){
+        localStorage.setItem(STORAGE_KEY_MASTER,JSON.stringify(result.data));
         loadMasterdataFromStorage();
         renderAllMasterdata();
         renderDemand();
@@ -4147,7 +4120,7 @@ async function pullFromServer(){
   _syncStatus='idle';
 }
 
-// 手动同步（Token 未配置时弹出对话框引导配置）
+// 手动同步
 async function syncManual(){
   const el=document.getElementById('syncLabel');
   if(el&&(el.textContent==='保存中…'||el.textContent==='拉取中…'))return;
@@ -4160,7 +4133,6 @@ async function syncManual(){
     }
     return;
   }
-  // 选择操作：推送还是拉取
   const action = prompt('选择操作：\n1 = 推送到云端（上传本地数据到服务器）\n2 = 从云端拉取（下载云端数据覆盖本地）\n\n输入 1 或 2，直接回车默认推送', '1');
   if(action === '2'){
     await pullFromServer();
