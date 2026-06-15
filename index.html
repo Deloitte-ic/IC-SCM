@@ -2422,7 +2422,8 @@ function parseWipSheet(data,sheetName){
   // 智能回退：未匹配到则找任何含"日"的列（如到货日、到貨日、完成日等）
   if(finishIdx<0) finishIdx=h.findIndex(c=>/(日|date)/i.test(c)&&!/名称|描述|name|desc|status|数量|qty|order|no|编码|code|supplier|供应商|良率|yield|process|制程|物料|material/i.test(c));
   const stIdx=h.findIndex(c=>/(状态|status)/i.test(c));
-  if(matIdx<0) return;
+  if(matIdx<0) {console.log('[parseWipSheet] ERROR: matIdx not found'); return;}
+  console.log('[parseWipSheet] cols:', JSON.stringify(h), 'finishIdx:', finishIdx, h[finishIdx], 'matIdx:', matIdx);
   let count=0, updCount=0, newCount=0;
   if(!appData.wip) appData.wip=[];
   for(let i=1;i<data.length;i++){
@@ -2440,11 +2441,15 @@ function parseWipSheet(data,sheetName){
     let estimatedFinish='';
     if(finishIdx>=0&&row[finishIdx]!=null&&row[finishIdx]!==''){
       const raw=row[finishIdx];
+      console.log('[parseWipSheet] row date raw:', JSON.stringify(raw), 'type:', typeof raw);
       if(typeof raw==='number'&&raw>40000&&raw<200000){
         const d=new Date(Math.round((raw-25569)*86400*1000));
         estimatedFinish=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-      }else{estimatedFinish=String(raw).trim();}
-    }
+        console.log('[parseWipSheet] date converted (num):', estimatedFinish);
+      }else{estimatedFinish=String(raw).trim();
+        console.log('[parseWipSheet] date converted (str):', estimatedFinish);
+      }
+    }else{console.log('[parseWipSheet] date cell skip: finishIdx:', finishIdx, 'val:', JSON.stringify(row[finishIdx]));}
     const status=stIdx>=0&&row[stIdx]?String(row[stIdx]).trim():'进行中';
     const entry={materialCode:matCode,materialName:matName,processCode,orderNo,supplier,inputQty,outputQty,yieldRate,estimatedFinish,status};
     // 匹配：工单号+物料编码双条件upsert
@@ -2458,9 +2463,11 @@ function parseWipSheet(data,sheetName){
     if(idx>=0){
       appData.wip[idx]=entry;
       updCount++;
+      console.log('[parseWipSheet] UPDATED entry:', JSON.stringify(entry));
     }else{
       appData.wip.push(entry);
       newCount++;
+      console.log('[parseWipSheet] NEW entry:', JSON.stringify(entry));
     }
     count++;
   }
