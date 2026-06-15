@@ -3908,13 +3908,35 @@ function executeMRP(){
   let selectedOrder=null;
   if(sel.value!==''&&sel.value!=='custom')selectedOrder=appData.demands[parseInt(sel.value)];
   // 使用核心计算引擎
-  runMrpEngine(demandQty, dueDate);
-  const results=appData.mrpResult,details=appData.mrpDetails;
+  let results, details;
+  if(sel.value==='all'){
+    // 所有订单：按需求日期分组，每个日期单独运行MRP
+    const groups={};
+    appData.demands.forEach(d=>{
+      if(!d.quantity) return;
+      const dt=d.demandDate||'';
+      if(!groups[dt]) groups[dt]={demandDate:dt, qty:0};
+      groups[dt].qty+=d.quantity;
+    });
+    const groupArr=Object.values(groups).sort((a,b)=>a.demandDate.localeCompare(b.demandDate));
+    const allResults=[], allDetails=[];
+    groupArr.forEach(g=>{
+      appData.mrpResult=[]; appData.mrpDetails=[];
+      runMrpEngine(g.qty, g.demandDate);
+      allResults.push(...appData.mrpResult);
+      allDetails.push(...appData.mrpDetails);
+    });
+    results=allResults; details=allDetails;
+    appData.mrpResult=results; appData.mrpDetails=details;
+  }else{
+    runMrpEngine(demandQty, dueDate);
+    results=appData.mrpResult; details=appData.mrpDetails;
+  }
   document.querySelector('#mrpTabs .tab[data-tab="mrp-result"]').click();
   document.getElementById('mrpEmpty').style.display='none';
   document.getElementById('mrpResultArea').style.display='block';
   let orderInfo;
-  if(sel.value==='all')orderInfo='📋 所有订单（共'+appData.demands.length+'笔，合计'+demandQty.toLocaleString()+'颗，按需求日期分组）';
+  if(sel.value==='all')orderInfo='📋 所有订单（共'+appData.demands.length+'笔，合计'+demandQty.toLocaleString()+'颗，按需求日期分组显示）';
   else orderInfo=selectedOrder?selectedOrder.orderNo+' | '+selectedOrder.material:'自定义需求';
   document.getElementById('resultOrderInfo').textContent=orderInfo;
   // 按制程分组统计汇总（不按单位，按制程FT/AB/CP/BP/Wafer）
