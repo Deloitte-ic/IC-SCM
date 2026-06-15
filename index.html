@@ -352,7 +352,7 @@ tbody tr:hover td{background:var(--primary-bg)}
               <button class="btn btn-sm btn-primary" onclick="openAddRoutingModal()">➕ 新增</button>
             </div>
           </div>
-          <div class="table-wrapper"><table id="routingTable"><thead><tr><th>物料</th><th>制程代码</th><th>工序描述</th><th>计量单位</th><th>标准工时(天)</th><th>日产能</th><th>委外供应商</th><th>工序良率(%)</th><th>操作</th></tr></thead><tbody></tbody></table></div>
+          <div class="table-wrapper"><table id="routingTable"><thead><tr><th>物料</th><th>制程代码</th><th>工序描述</th><th>计量单位</th><th>标准工时(天)</th><th>周产能(片/周)</th><th>委外供应商</th><th>工序良率(%)</th><th>操作</th></tr></thead><tbody></tbody></table></div>
         </div>
       </div>
 
@@ -2790,7 +2790,7 @@ function editRouting(idx) {
   openModal('<div class="modal-title">编辑工艺路线 <button class="modal-close" onclick="closeModal()">×</button></div>'+
     '<div class="grid-2"><div class="form-group"><label>物料</label><input id="formRtCode" value="'+escapeHtml(r.code)+'"></div><div class="form-group"><label>制程代码</label><select id="formRtName"><option value="FT" '+(r.name==='FT'||r.name==='FT测试'?'selected':'')+'>FT（成品测试）</option><option value="AB" '+(r.name==='AB'||r.name==='AB封装'?'selected':'')+'>AB（封装委外）</option><option value="CP" '+(r.name==='CP'||r.name==='CP测试'?'selected':'')+'>CP（测试委外）</option><option value="BP" '+(r.name==='BP'||r.name==='BP制造'?'selected':'')+'>BP（凸块委外）</option><option value="Wafer" '+(r.name==='Wafer'||r.name==='Wafer采购'?'selected':'')+'>Wafer（晶圆采购）</option></select></div></div>'+
     '<div class="grid-2"><div class="form-group"><label>工序描述</label><input id="formRtOp" value="'+escapeHtml(r.operation)+'"></div><div class="form-group"><label>计量单位</label><input id="formRtUnit" value="'+escapeHtml(r.unit||'')+'" placeholder="如 颗/片"></div></div>'+
-    '<div class="grid-2"><div class="form-group"><label>标准工时(天)</label><input type="number" id="formRtHours" value="'+(r.effectiveHours||8)+'"></div><div class="form-group"><label>日产能</label><input type="number" id="formRtCap" value="'+r.capacity+'"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>标准工时(天)</label><input type="number" id="formRtHours" value="'+(r.effectiveHours||8)+'"></div><div class="form-group"><label>周产能(片/周)</label><input type="number" id="formRtCap" value="'+r.capacity+'"></div></div>'+
     '<div class="grid-2"><div class="form-group"><label>委外供应商</label><input id="formRtSupplier" value="'+escapeHtml(r.supplier||'')+'" placeholder="如 ASE/PTI"></div>'+
     '<div class="form-group"><label>工序良率(%)</label><input type="number" id="formRtYield" value="'+(r.yieldRate||100)+'" min="0" max="100" step="0.1"></div></div>'+
     '<input type="hidden" id="editRtIdx" value="'+idx+'">'+
@@ -2888,7 +2888,7 @@ function openAddRoutingModal() {
   openModal('<div class="modal-title">新增工艺路线 <button class="modal-close" onclick="closeModal()">×</button></div>'+
     '<div class="grid-2"><div class="form-group"><label>物料</label><input id="formRtCode" placeholder="如 R-XXX"></div><div class="form-group"><label>制程代码</label><select id="formRtName"><option value="FT">FT（成品测试）</option><option value="AB">AB（封装委外）</option><option value="CP">CP（测试委外）</option><option value="BP">BP（凸块委外）</option><option value="Wafer">Wafer（晶圆采购）</option></select></div></div>'+
     '<div class="grid-2"><div class="form-group"><label>工序描述</label><input id="formRtOp" placeholder="工序描述"></div><div class="form-group"><label>计量单位</label><input id="formRtUnit" placeholder="如 颗/片"></div></div>'+
-    '<div class="grid-2"><div class="form-group"><label>标准工时(天)</label><input type="number" id="formRtHours" value="8"></div><div class="form-group"><label>日产能</label><input type="number" id="formRtCap" value="1000"></div></div>'+
+    '<div class="grid-2"><div class="form-group"><label>标准工时(天)</label><input type="number" id="formRtHours" value="8"></div><div class="form-group"><label>周产能(片/周)</label><input type="number" id="formRtCap" value="0"></div></div>'+
     '<div class="grid-2"><div class="form-group"><label>委外供应商</label><input id="formRtSupplier" placeholder="如 ASE/PTI"></div>'+
     '<div class="form-group"><label>工序良率(%)</label><input type="number" id="formRtYield" value="100" min="0" max="100" step="0.1"></div></div>'+
     '<div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveNewRouting()">保存</button></div>');
