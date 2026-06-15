@@ -6393,15 +6393,21 @@ function renderSpNetwork(){
       }
       suppliers.forEach((sup,si)=>{
         const cap=sup.weeklyCap || 0;
-        const alloc = hasRealSuppliers ? Math.round(cap * 0.78) : Math.round(cap*(0.6+Math.random()*0.3));
-        // 从PR/PO获取实际已分配量
-        const prpoAlloc = appData.prpo.filter(p => p.supplier === sup.name && p.orderType === 'PO' && p.status !== '已取消');
-        const allocatedFromPo = prpoAlloc.reduce((s,p) => s + (p.quantity||0), 0);
-        const finalAlloc = hasRealSuppliers ? Math.max(alloc, Math.round(allocatedFromPo/Math.max(suppliers.length,1))) : alloc;
+        // 从真实PO数据计算已分配量：匹配供应商名称或编码，累加未取消的PO数量
+        let allocated = 0;
+        if(hasRealSuppliers && appData.prpo.length > 0){
+          const relatedPOs = appData.prpo.filter(p =>
+            (p.supplier === sup.name || p.supplier === sup.code) &&
+            p.orderType === 'PO' &&
+            p.status !== '已取消'
+          );
+          allocated = relatedPOs.reduce((s,p) => s + (p.quantity||0), 0);
+        }
+        const finalAlloc = hasRealSuppliers ? Math.min(allocated, cap) : Math.round(cap*(0.6+Math.random()*0.3));
         supplyPlanData.networkAllocations.push({
           process:proc, supplier:sup.name, supplierCode:sup.code,
-          weeklyCap:cap, allocated:finalAlloc, remain:cap-finalAlloc,
-          ratio:Math.round(finalAlloc/cap*100), leadTime:sup.leadTime
+          weeklyCap:cap, allocated:finalAlloc, remain:Math.max(0, cap-finalAlloc),
+          ratio:cap>0?Math.round(finalAlloc/cap*100):0, leadTime:sup.leadTime
         });
       });
     });
