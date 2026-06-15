@@ -1723,17 +1723,19 @@ function init() {
 }
 
 function fallbackToLocal(){
+  // ★ 修复：本地优先 — 先从 localStorage 加载（保证刷新数据不丢失，不受 CDN 缓存影响）
+  const hasLocal = loadMasterdataFromStorage();
+  
+  // 后台从云端同步（不阻塞渲染，只用于跨设备共享场景）
   loadFromServer().then(loaded=>{
     try{
       if(loaded){
+        // 云端有数据 → 重新从 localStorage 加载（loadFromServer 已写入 localStorage）
         loadMasterdataFromStorage();
-        if(!appData.demands||!appData.demands.length) loadSampleDemands();
-      } else {
-        if(!loadMasterdataFromStorage()){
-          // 本地也无数据 → 展示空表
-        } else {
-          if(!appData.demands||!appData.demands.length) loadSampleDemands();
-        }
+      }
+      // 只有完全无数据时才加载示例数据
+      if(!appData.materials||!appData.materials.length){
+        loadSampleDemands();
       }
       renderAllMasterdata();
       renderDemand();
@@ -1742,12 +1744,12 @@ function fallbackToLocal(){
       loadPlannedOrdersFromStorage();
     }catch(e){
       console.error('[fallbackToLocal] 渲染异常:',e);
-      // 尽力渲染
       renderAllMasterdata();
     }
   }).catch(e=>{
     console.error('[fallbackToLocal] 加载异常:',e);
-    try{loadMasterdataFromStorage()}catch(ex){}
+    // 云端失败，但本地数据已在 hasLocal 时加载，无需额外操作
+    if(!hasLocal) loadSampleDemands();
     renderAllMasterdata();
     renderDemand();
     refreshOrderSelect();
@@ -4022,6 +4024,20 @@ async function loadFromServer(){
     if(res.ok){
       const data=await res.json();
       if(data && Array.isArray(data.materials) && data.materials.length > 0){
+        // ★ 关键：只在 localStorage 为空时才写入云端数据，绝不覆盖用户本地已有数据
+        // 因为 raw.githubusercontent.com CDN 有缓存延迟，刚同步的数据不会立即反映
+        const localRaw = localStorage.getItem(STORAGE_KEY_MASTER);
+        if(localRaw){
+          try{
+            const localData = JSON.parse(localRaw);
+            if(localData.materials && localData.materials.length > 0){
+              // localStorage 已有真实数据 → 保留本地，不覆盖
+              updateSyncUI('✅','已同步');
+              return true;
+            }
+          }catch(e){}
+        }
+        // localStorage 为空 → 从云端加载到本地
         localStorage.setItem(STORAGE_KEY_MASTER,JSON.stringify(data));
         updateSyncUI('✅','已同步');
         return true;
