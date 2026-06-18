@@ -6816,7 +6816,7 @@ function saveSpRate(){
 function renderSpMatching(){
   supplyPlanData.exceptions=[];
   supplyPlanData.matchDetails=[];
-  const hasRealDemands = appData.demands.length > 0;
+  const hasRealDemands = appData.customerOrders.length > 0;
   const hasRealFc = demandPlanData.forecasts && demandPlanData.forecasts.length > 0;
   const hasRealInv = appData.inventory.length > 0;
   const hasRealWip = appData.wip.length > 0;
@@ -6957,7 +6957,7 @@ function renderSpMatching(){
     });
   }
   if(hasRealDemands){
-    buildMatchFromDemands(appData.demands, '融合需求');
+    buildMatchFromDemands(appData.customerOrders, '客户订单');
   }
   if(!supplyPlanData.matchDetails.length && hasRealFc){
     buildMatchFromDemands(demandPlanData.forecasts, 'DP预测');
@@ -6998,7 +6998,7 @@ function renderSpMatching(){
     });
   }
   document.getElementById('spMatchCards').innerHTML=
-    '<div class="summary-card blue"><div class="lbl">📊 成品总需求</div><div class="num" style="color:var(--primary)">'+totalFt.toLocaleString()+'颗</div><div class="sub-text">含已确认+预测订单</div></div>'+
+    '<div class="summary-card blue"><div class="lbl">📊 成品总需求</div><div class="num" style="color:var(--primary)">'+totalFt.toLocaleString()+'颗</div><div class="sub-text">含客户订单</div></div>'+
     '<div class="summary-card '+(matchRate>80?'green':'yellow')+'"><div class="lbl">✅ 匹配率</div><div class="num" style="color:'+(matchRate>80?'var(--success)':'var(--warning)')+'">'+matchRate+'%</div><div class="sub-text">考虑库存+WIP+PO+计划</div></div>'+
     '<div class="summary-card '+(highExc>0?'red':'green')+'"><div class="lbl">⚠️ 待处理异常</div><div class="num" style="color:'+(highExc>0?'var(--danger)':'var(--success)')+'">'+highExc+'项</div><div class="sub-text">含良率/交付/库存/PR异常</div></div>'+
     (hasRatePlans?'<div class="summary-card" style="grid-column:span 1"><div class="lbl">📋 各制程周计划</div>'+procPlanHtml+'</div>':'');
