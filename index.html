@@ -6650,7 +6650,13 @@ function spPrQtyByProcSupplier(proc, supName){
 }
 // 辅助：从WIP计算实际产出和良率
 function spWipStats(proc, supName){
-  const wips = appData.wip.filter(w => w.supplier === supName && w.processCode === proc);
+  // 1) 精确匹配：supplier + processCode
+  let wips = appData.wip.filter(w => w.supplier === supName && w.processCode === proc);
+  // 2) 若匹配不上，按物料编码反推制程（WIP可能缺supplier/processCode字段）
+  if(wips.length === 0){
+    const procMatCodes = appData.materials.filter(m => m.processCode === proc).map(m => m.code);
+    wips = appData.wip.filter(w => procMatCodes.includes(w.materialCode));
+  }
   const totalInput = wips.reduce((s,w) => s + (w.inputQty||0), 0);
   const totalOutput = wips.reduce((s,w) => s + (w.outputQty||0), 0);
   const yieldRate = totalInput > 0 ? Math.round(totalOutput / totalInput * 10000) / 100 : 100;
