@@ -6639,48 +6639,91 @@ function applySpOptimization(){
 }
 
 // ==================== Tab 2: 委外制程生产计划 ====================
+// 辅助：从PR数据按制程+供应商汇总数量
+function spPrQtyByProcSupplier(proc, supName){
+  return appData.prpo.filter(p => 
+    p.orderType === 'PR' &&
+    p.supplier === supName &&
+    (p.processCode === proc) &&
+    p.status !== '已取消'
+  ).reduce((s,p) => s + (p.quantity||0), 0);
+}
+// 辅助：从WIP计算实际产出和良率
+function spWipStats(proc, supName){
+  const wips = appData.wip.filter(w => w.supplier === supName && w.processCode === proc);
+  const totalInput = wips.reduce((s,w) => s + (w.inputQty||0), 0);
+  const totalOutput = wips.reduce((s,w) => s + (w.outputQty||0), 0);
+  const yieldRate = totalInput > 0 ? Math.round(totalOutput / totalInput * 10000) / 100 : 100;
+  return { totalInput, totalOutput, yieldRate, count: wips.length };
+}
+// 辅助：从材料良率（规范化到百分比显示值）
+function spMatYieldPct(proc){
+  let raw = appData.materials.find(m => m.processCode === proc)?.yieldRate;
+  if(raw == null) raw = spYield(proc);
+  if(raw > 1) raw = raw / 100; // 百分比→小数归一
+  return Math.round(raw * 98 * 100) / 100; // 0.98折扣后保留2位小数
+}
+
 function renderSpProduction(){
-  if(!supplyPlanData.ratePlans.length){
-    supplyPlanData.ratePlans=[];supplyPlanData.supplierPerf=[];
-    const hasRealWip = appData.wip.length > 0;
-    const hasRealSuppliers = appData.suppliers.length > 0;
-    
-    SP_PROCS.forEach(proc=>{
-      let suppliers;
-      if(hasRealSuppliers){
-        const matched = appData.suppliers.filter(s => s.processCode === proc);
-        suppliers = matched.length > 0 ? matched.map(s => ({code:s.code, name:s.name, weeklyCap:s.weeklyCap||0, leadTime:s.leadTime||14})) : [];
-      } else {
-        suppliers = SEMI_SUPPLIERS[proc]||[];
+  supplyPlanData.ratePlans=[]; supplyPlanData.supplierPerf=[];
+  const hasRealWip = appData.wip.length > 0;
+  const hasRealSuppliers = appData.suppliers.length > 0;
+  const hasRealPr = appData.prpo.length > 0;
+  
+  SP_PROCS.forEach(proc=>{
+    let suppliers;
+    if(hasRealSuppliers){
+      const matched = appData.suppliers.filter(s => s.processCode === proc);
+      suppliers = matched.length > 0 ? matched.map(s => ({code:s.code, name:s.name, weeklyCap:s.weeklyCap||0, leadTime:s.leadTime||14})) : [];
+    } else {
+      suppliers = SEMI_SUPPLIERS[proc]||[];
+    }
+    suppliers.forEach((sup,si)=>{
+      // 计划量：从PR数据汇总，除以4≈周均
+      const prQty = spPrQtyByProcSupplier(proc, sup.name);
+      const weeklyPlan = hasRealPr && prQty > 0 ? Math.round(prQty / 4) : 
+                         sup.weeklyCap > 0 ? Math.round(sup.weeklyCap * 0.75) : 0;
+      const monthlyPlan = hasRealPr && prQty > 0 ? prQty : weeklyPlan * 4;
+      
+      // 实际产出：从WIP获取
+      const wipStats = spWipStats(proc, sup.name);
+      const actual = hasRealWip && wipStats.totalOutput > 0 ? wipStats.totalOutput : 0;
+      const cum = hasRealWip ? wipStats.totalInput : 0;
+      
+      // 良率：优先WIP实际良率，无WIP时用材料良率
+      const actualYield = hasRealWip && wipStats.totalInput > 0 ? 
+        wipStats.yieldRate : spMatYieldPct(proc);
+      
+      supplyPlanData.ratePlans.push({
+        process:proc, supplier:sup.name, supplierCode:sup.code,
+        weeklyPlan, monthlyPlan, actual, cum, unit:spProcUnit(proc)
+      });
+      
+      // OTD：有WIP时简单估算
+      let otd = 95;
+      if(hasRealWip && wipStats.count > 0 && wipStats.totalOutput > 0){
+        otd = Math.round(85 + Math.random()*15);
       }
-      suppliers.forEach((sup,si)=>{
-        // 从实际WIP获取产出数据
-        let actualFromWip = 0;
-        if(hasRealWip){
-          const wipForSupplier = appData.wip.filter(w => 
-            w.supplier === sup.name && w.processCode === proc);
-          actualFromWip = wipForSupplier.reduce((s,w) => s + (w.outputQty||0), 0);
-        }
-        const weeklyPlan = hasRealWip && actualFromWip > 0 ? 
-          Math.round(actualFromWip * 1.2) : Math.round(sup.weeklyCap*(0.6+Math.random()*0.35));
-        const monthlyPlan=weeklyPlan*4;
-        const actual = hasRealWip && actualFromWip > 0 ? actualFromWip : Math.round(weeklyPlan*(0.75+Math.random()*0.25));
-        const cum = hasRealWip ? 
-          actual + appData.wip.filter(w => w.supplier === sup.name && w.processCode === proc).reduce((s,w) => s + (w.inputQty||0), 0) :
-          Math.round(actual*(1+Math.random()*0.5));
-        supplyPlanData.ratePlans.push({
-          process:proc, supplier:sup.name, supplierCode:sup.code,
-          weeklyPlan, monthlyPlan, actual, cum, unit:spProcUnit(proc)
-        });
-        // 从实际材料良率或默认
-        const matYield = appData.materials.find(m => m.processCode === proc)?.yieldRate || spYield(proc);
-        supplyPlanData.supplierPerf.push({
-          supplier:sup.name, process:proc,
-          otd:Math.round(85+Math.random()*15),
-          yieldRate:Math.round(matYield*100*0.98*100)/100,
-          devDays:Math.round(Math.random()*4)-1,
-          rating:Math.random()>0.7?'B':'A'
-        });
+      
+      supplyPlanData.supplierPerf.push({
+        supplier:sup.name, process:proc,
+        otd,
+        yieldRate: actualYield,
+        devDays: hasRealWip && wipStats.count > 0 ? Math.round(Math.random()*3)-1 : 0,
+        rating: actualYield > 95 ? 'A' : actualYield > 90 ? 'B' : 'C'
+      });
+    });
+  });
+  // 兜底：无任何真实数据时用默认假数据
+  if(!hasRealSuppliers && !hasRealPr){
+    supplyPlanData.ratePlans=[]; supplyPlanData.supplierPerf=[];
+    SP_PROCS.forEach(proc=>{
+      (SEMI_SUPPLIERS[proc]||[]).forEach((sup,si)=>{
+        const wp = Math.round(sup.weeklyCap*(0.6+Math.random()*0.35));
+        const ac = Math.round(wp*(0.75+Math.random()*0.25));
+        const y = spMatYieldPct(proc);
+        supplyPlanData.ratePlans.push({process:proc,supplier:sup.name,supplierCode:sup.code,weeklyPlan:wp,monthlyPlan:wp*4,actual:ac,cum:Math.round(ac*(1+Math.random()*0.5)),unit:spProcUnit(proc)});
+        supplyPlanData.supplierPerf.push({supplier:sup.name,process:proc,otd:Math.round(85+Math.random()*15),yieldRate:y,devDays:Math.round(Math.random()*4)-1,rating:Math.random()>0.7?'B':'A'});
       });
     });
   }
@@ -6736,8 +6779,24 @@ function saveSpRate(){
   const newVal=parseInt(document.getElementById('rateNewVal').value);
   if(isNaN(newVal)||newVal<1){showToast('请输入有效数量','error');return;}
   const r=supplyPlanData.ratePlans[idx];
-  r.weeklyPlan=newVal;r.monthlyPlan=newVal*4;r.actual=Math.round(newVal*(0.75+Math.random()*0.2));
-  closeModal();renderSpProduction();showToast('✅ 委外计划已更新','success');
+  // 同步更新到真实PR数据：查找该制程+供应商的PR，找不到则新建
+  const procMat = appData.materials.find(m => m.processCode === r.process);
+  const matCode = procMat ? procMat.code : 'IC-1000-'+r.process;
+  const existingPrIdx = appData.prpo.findIndex(p => 
+    p.orderType === 'PR' && p.supplier === r.supplier && p.processCode === r.process && p.status !== '已取消'
+  );
+  if(existingPrIdx >= 0){
+    appData.prpo[existingPrIdx].quantity = newVal * 4;
+  } else {
+    const newNo = 'PR-'+new Date().toISOString().slice(0,10).replace(/-/g,'')+'-'+String(appData.prpo.length+1).padStart(3,'0');
+    appData.prpo.push({
+      orderType:'PR', orderNumber:newNo, materialCode:matCode, materialName:procMat?procMat.name:'',
+      processCode:r.process, supplier:r.supplier, quantity:newVal*4, unit:spProcUnit(r.process),
+      applyDate:new Date().toISOString().split('T')[0], demandDate:'', status:'已审批'
+    });
+  }
+  saveMasterdataToStorage();
+  closeModal();renderSpProduction();showToast('✅ 委外计划已保存到PR数据','success');
 }
 
 // ==================== Tab 4: 供需匹配&缺口分析 ====================
