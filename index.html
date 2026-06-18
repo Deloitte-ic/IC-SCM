@@ -6732,8 +6732,15 @@ function renderSpProduction(){
   const totalActual=supplyPlanData.ratePlans.reduce((s,r)=>s+r.actual,0);
   const avgRate=totalWeekly>0?Math.round(totalActual/totalWeekly*100):0;
   const lowYields=supplyPlanData.supplierPerf.filter(s=>s.yieldRate<90).length;
+  // 按制程分别显示周计划
+  let procCardsHtml = '';
+  SP_PROCS.forEach(proc=>{
+    const procWeekly = supplyPlanData.ratePlans.filter(r=>r.process===proc).reduce((s,r)=>s+r.weeklyPlan,0);
+    const procUnit = spProcUnit(proc);
+    procCardsHtml += '<div class="summary-card blue"><div class="lbl">'+spProcLabel(proc)+'</div><div class="num" style="color:var(--primary)">'+procWeekly.toLocaleString()+procUnit+'</div><div class="sub-text">周计划</div></div>';
+  });
   document.getElementById('spProductionCards').innerHTML=
-    '<div class="summary-card blue"><div class="lbl">📋 委外周总计划</div><div class="num" style="color:var(--primary)">'+totalWeekly.toLocaleString()+'</div><div class="sub-text">各制程合计</div></div>'+
+    procCardsHtml +
     '<div class="summary-card '+(avgRate>85?'green':'yellow')+'"><div class="lbl">📈 周达成率</div><div class="num" style="color:'+(avgRate>85?'var(--success)':'var(--warning)')+'">'+avgRate+'%</div><div class="sub-text">实际交付/计划</div></div>'+
     '<div class="summary-card '+(lowYields>0?'red':'green')+'"><div class="lbl">⚠️ 良率偏低供应商</div><div class="num" style="color:'+(lowYields>0?'var(--danger)':'var(--success)')+'">'+lowYields+'家</div><div class="sub-text">良率<90%</div></div>';
 
