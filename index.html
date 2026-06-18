@@ -626,7 +626,7 @@ tbody tr:hover td{background:var(--primary-bg)}
               </div>
             </div>
             <div class="table-wrapper"><table id="mrpResultTable"><thead><tr>
-              <th style="min-width:80px">层级</th><th>制程</th><th>物料编码</th><th>需求日期</th><th>供应商</th><th>毛需求</th><th>损耗率</th><th>净需求</th><th>可用库存</th><th>WIP</th><th>WIP到货日</th><th>PR</th><th>PR到货日</th><th>PO</th><th>PO到货日</th><th>净待补</th><th>交期(天)</th>
+              <th style="min-width:80px">层级</th><th>制程</th><th>物料编码</th><th>需求日期</th><th>供应商</th><th>毛需求</th><th>损耗率</th><th>净需求</th><th>可用库存</th><th>WIP</th><th>WIP到货日</th><th>PR</th><th>PR到货日</th><th>PO</th><th>PO到货日</th><th>净待补</th>
             </tr></thead><tbody></tbody></table></div>
           </div>
 
@@ -1286,7 +1286,7 @@ tbody tr:hover td{background:var(--primary-bg)}
               </div>
             </div>
             <div class="table-wrapper" style="max-height:400px;overflow-y:auto"><table id="spMrpResultTable"><thead><tr>
-              <th style="min-width:80px">层级</th><th>制程</th><th>物料编码</th><th>需求日期</th><th>供应商</th><th>毛需求</th><th>损耗率</th><th>净需求</th><th>可用库存</th><th>WIP</th><th>WIP到货日</th><th>PR</th><th>PR到货日</th><th>PO</th><th>PO到货日</th><th>净待补</th><th>交期(天)</th>
+              <th style="min-width:80px">层级</th><th>制程</th><th>物料编码</th><th>需求日期</th><th>供应商</th><th>毛需求</th><th>损耗率</th><th>净需求</th><th>可用库存</th><th>WIP</th><th>WIP到货日</th><th>PR</th><th>PR到货日</th><th>PO</th><th>PO到货日</th><th>净待补</th>
             </tr></thead><tbody></tbody></table></div>
           </div>
           <div class="card">
@@ -7240,7 +7240,7 @@ function renderSpMrpResult(){
       if(r.consumeWip>0) wipArrival=r.wipBreakdown||'-';
       const prItemsForArrival=appData.prpo.filter(p=>p.materialCode===r.matCode&&p.orderType==='PR'&&p.demandDate);const prArrivalStr=r.consumePr>0?[...new Set(prItemsForArrival.map(p=>p.demandDate).sort())].map(d=>d.slice(5)+':'+prItemsForArrival.reduce((s,p)=>s+(p.quantity||0),0).toLocaleString()).join('<br>'):'-';
       const poArrivalStr=r.consumePo>0?(r.poBreakdown||'-'):'-';
-      tableHtml+='<tr style="'+bg+'"><td style="'+levelStyle+'">'+indent+'</td><td style="'+plainStyle+'">'+r.process+'</td><td style="'+plainStyle+'">'+r.matCode+'</td><td style="'+plainStyle+'">'+(r.demandDate||'—')+'</td><td style="'+plainStyle+'">'+(r.supplier||'—')+'</td><td style="'+plainStyle+'">'+r.grossReq.toLocaleString()+'</td><td style="'+plainStyle+'">'+(r.scrapRate||0)+'%</td><td style="'+plainStyle+'">'+r.netReq.toLocaleString()+'</td><td style="'+plainStyle+'">'+(r.consumeStock||0).toLocaleString()+'</td><td style="'+plainStyle+'">'+(r.consumeWip||0).toLocaleString()+'</td><td style="'+plainStyle+'">'+wipArrival+'</td><td style="'+plainStyle+'">'+(r.consumePr>0?r.consumePr.toLocaleString():'0')+'</td><td style="'+plainStyle+'">'+prArrivalStr+'</td><td style="'+plainStyle+'">'+(r.consumePo>0?r.consumePo.toLocaleString():'0')+'</td><td style="'+plainStyle+'">'+poArrivalStr+'</td><td style="'+plainStyle+';'+gapColor+'">'+r.netRemaining.toLocaleString()+'</td><td style="'+plainStyle+'">'+(r.totalDelivery||'—')+'天</td></tr>';
+      tableHtml+='<tr style="'+bg+'"><td style="'+levelStyle+'">'+indent+'</td><td style="'+plainStyle+'">'+r.process+'</td><td style="'+plainStyle+'">'+r.matCode+'</td><td style="'+plainStyle+'">'+(r.demandDate||'—')+'</td><td style="'+plainStyle+'">'+(r.supplier||'—')+'</td><td style="'+plainStyle+'">'+r.grossReq.toLocaleString()+'</td><td style="'+plainStyle+'">'+(r.scrapRate||0)+'%</td><td style="'+plainStyle+'">'+r.netReq.toLocaleString()+'</td><td style="'+plainStyle+'">'+(r.consumeStock||0).toLocaleString()+'</td><td style="'+plainStyle+'">'+(r.consumeWip||0).toLocaleString()+'</td><td style="'+plainStyle+'">'+wipArrival+'</td><td style="'+plainStyle+'">'+(r.consumePr>0?r.consumePr.toLocaleString():'0')+'</td><td style="'+plainStyle+'">'+prArrivalStr+'</td><td style="'+plainStyle+'">'+(r.consumePo>0?r.consumePo.toLocaleString():'0')+'</td><td style="'+plainStyle+'">'+poArrivalStr+'</td><td style="'+plainStyle+';'+gapColor+'">'+r.netRemaining.toLocaleString()+'</td></tr>';
     });
   });
   document.querySelector('#spMrpResultTable tbody').innerHTML=tableHtml;
