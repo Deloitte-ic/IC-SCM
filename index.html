@@ -626,7 +626,7 @@ tbody tr:hover td{background:var(--primary-bg)}
               </div>
             </div>
             <div class="table-wrapper"><table id="mrpResultTable"><thead><tr>
-              <th style="min-width:80px">层级</th><th>制程</th><th>物料编码</th><th>需求日期</th><th>供应商</th><th>毛需求</th><th>损耗率</th><th>净需求</th><th>可用库存</th><th>WIP</th><th>WIP到货日</th><th>PR</th><th>PR到货日</th><th>PO</th><th>PO到货日</th><th>净待补</th>
+              <th style="min-width:80px">层级</th><th>制程</th><th>物料编码</th><th>需求日期</th><th>供应商</th><th>毛需求</th><th>损耗率</th><th>净需求</th><th>可用库存</th><th>WIP扣减数</th><th>WIP到货日</th><th>PR扣减数</th><th>PR到货日</th><th>PO扣减数</th><th>PO到货日</th><th>净待补</th>
             </tr></thead><tbody></tbody></table></div>
           </div>
 
@@ -1286,7 +1286,7 @@ tbody tr:hover td{background:var(--primary-bg)}
               </div>
             </div>
             <div class="table-wrapper" style="max-height:400px;overflow-y:auto"><table id="spMrpResultTable"><thead><tr>
-              <th style="min-width:80px">层级</th><th>制程</th><th>物料编码</th><th>需求日期</th><th>供应商</th><th>毛需求</th><th>损耗率</th><th>净需求</th><th>可用库存</th><th>WIP</th><th>WIP到货日</th><th>PR</th><th>PR到货日</th><th>PO</th><th>PO到货日</th><th>净待补</th>
+              <th style="min-width:80px">层级</th><th>制程</th><th>物料编码</th><th>需求日期</th><th>供应商</th><th>毛需求</th><th>损耗率</th><th>净需求</th><th>可用库存</th><th>WIP扣减数</th><th>WIP到货日</th><th>PR扣减数</th><th>PR到货日</th><th>PO扣减数</th><th>PO到货日</th><th>净待补</th>
             </tr></thead><tbody></tbody></table></div>
           </div>
           <div class="card">
@@ -5465,7 +5465,7 @@ function renderSopSupplyReview(){
     const color=utilization>90?'var(--danger)':utilization>70?'var(--warning)':'var(--success)';
     phtml+='<tr><td><span class="tag-status" style="background:'+PROCESS_COLORS[p]+';color:#333;font-weight:600">'+p+'</span></td><td>'+PROCESS_LABELS[p]+'</td><td class="font-bold">'+s.toLocaleString()+'</td><td style="color:'+color+'">'+utilization+'%</td><td>'+invCount+'批/'+wipCount+'单</td><td>'+poCount+'单</td><td><span style="font-size:11px;color:var(--gray-400)">来自实际业务数据</span></td></tr>';
   });
-  document.getElementById('sopSupplyPlanTable').querySelector('thead').innerHTML='<tr><th>制程</th><th>说明</th><th>供给总量</th><th>供需比</th><th>库存/WIP</th><th>未收PO</th><th>数据来源</th></tr>';
+  document.getElementById('sopSupplyPlanTable').querySelector('thead').innerHTML='<tr><th>制程</th><th>说明</th><th>供给总量</th><th>供需比</th><th>库存/WIP扣减数</th><th>未收PO</th><th>数据来源</th></tr>';
   document.getElementById('sopSupplyPlanTable').querySelector('tbody').innerHTML=phtml||'<tr><td colspan="7" style="text-align:center;color:var(--gray-400)">暂无供应数据</td></tr>';
 }
 
@@ -6124,7 +6124,7 @@ function renderSopSimulation(){
   });
   const btHead = document.getElementById('sopSimBottleneckTable').querySelector('thead');
   if(btHead){
-    btHead.innerHTML = '<tr><th>制程</th><th>总需求负荷</th><th>现有库存/WIP/PO</th><th>净负荷</th><th>可供应能</th><th>缺口</th><th>利用率</th><th>瓶颈?</th></tr>';
+    btHead.innerHTML = '<tr><th>制程</th><th>总需求负荷</th><th>现有库存/WIP/PO扣减数</th><th>净负荷</th><th>可供应能</th><th>缺口</th><th>利用率</th><th>瓶颈?</th></tr>';
   }
   document.getElementById('sopSimBottleneckTable').querySelector('tbody').innerHTML = bhtml;
   
