@@ -9670,7 +9670,7 @@ function createAiVoiceUI(){
       </div>
       <div style="display:flex;gap:6px;width:100%;justify-content:space-between">
         <button class="btn btn-sm btn-outline" style="flex:1" onclick="startAiVoiceRecog()">🎤 语音</button>
-        <button class="btn btn-sm btn-outline" style="flex:1" onclick="document.querySelector('.vp-body').innerHTML='输入"需求""供应""MRP""排程"等关键词快速查询，或直接提问';document.getElementById('aiTextInput').value=''">清空</button>
+        <button class="btn btn-sm btn-outline" style="flex:1" onclick="document.querySelector('.vp-body').innerHTML='';document.getElementById('aiTextInput').value=''">清空</button>
       </div>
     </div>`;
   document.body.appendChild(panel);
