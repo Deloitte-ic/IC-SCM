@@ -8918,7 +8918,7 @@ async function aiChat(msgs,opts={}){
     const resp=await fetch(baseUrl+'/chat/completions',{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
-      body:JSON.stringify({model,messages,temperature:opts.temp||0.3,max_tokens:opts.maxTokens||2048})
+      body:JSON.stringify({model,messages:msgs,temperature:opts.temp||0.3,max_tokens:opts.maxTokens||2048})
     });
     if(!resp.ok){const t=await resp.text();throw new Error('HTTP '+resp.status+': '+t.slice(0,100))}
     const d=await resp.json();
