@@ -9412,121 +9412,83 @@ async function handleAiVoiceCommand(text){
     }
   }
 
-  // 默认：AI聊天（带平台真实数据上下文）
-  if(body)body.innerHTML='💬 <strong>'+text.replace(/</g,'&lt;')+'</strong><br><br>⏳ AI思考中...';
-  const platCtx=buildPlatformContext();
-  const sys=`你是IC-SCM平台AI助手。回答要基于以下**平台真实数据**，不要凭空假设参数。
-
-## 平台数据
-${platCtx}
-
-## 回答规则
-1. 涉及数量计算（如Wafer需求、下单时间等），先用calcBomExplosion()函数计算，把计算过程和真实数据列出来
-2. 需要交期/库存信息时，直接引用平台数据
-3. 如用户问题涉及具体物料，先查该物料的BOM、良率、交期再回答
-4. 计算要分步展示：成品需求→各制程良率折算→BOM用量展开→库存扣减→交期倒推
-5. 简明扼要，关键数字加粗`;
-  const result=await aiChat([
-    {role:'system',content:sys},
-    {role:'user',content:text}
-  ],{temp:0.3,maxTokens:2048});
-  if(body)body.innerHTML='💬 <strong>'+text.replace(/</g,'&lt;')+'</strong><br><br>💡 '+result;
-}
-
-// ---- 平台数据上下文构建 ----
-function buildPlatformContext(){
-  const mats=appData.materials||[];
-  const boms=appData.boms||[];
-  const lts=appData.leadTimes||[];
-  const inv=appData.inventory||[];
-  // BOM摘要
-  let bomTxt='BOM结构:\n';
-  boms.forEach(b=>{bomTxt+=`  ${b.parent}→${b.child} 用量${b.usage} 损耗${b.scrap}%\n`});
-  // 良率
-  let yldTxt='物料良率:\n';
-  mats.forEach(m=>{if(m.yieldRate!==undefined)yldTxt+=`  ${m.code} ${m.yieldRate}%\n`});
-  // 交期
-  let ltTxt='各制程交期(天):\n';
-  lts.forEach(l=>{ltTxt+=`  ${l.process} ${l.name} 生产${l.prod}+运输${l.trans}+检验${l.inspect}=${l.prod+l.trans+l.inspect}天\n`});
-  // 库存
-  let invTxt='库存:\n';
-  inv.forEach(i=>{invTxt+=`  ${i.materialCode} ${i.goodQty||i.stock||0}${i.unit||'颗'}\n`});
-  // 工艺链
-  const chainTxt='工艺链(逆序): FT→AB→CP→BP→Wafer\n';
-  return bomTxt+yldTxt+ltTxt+invTxt+chainTxt+'供应商产能和交期详见各制程页。';
-}
-
-// ---- BOM展开计算（基于真实数据） ----
-function calcBomExplosion(materialCode, topQty, targetDateStr){
-  const PROC_CHAIN=['FT','AB','CP','BP','Wafer'];
-  const revChain=[...PROC_CHAIN].reverse(); // Wafer→BP→CP→AB→FT
-  const mat=appData.materials.find(m=>m.code===materialCode);
-  if(!mat)return null;
-  const procIdx=PROC_CHAIN.indexOf(mat.processCode);
-  if(procIdx===-1)return null;
-
-  const targetDate=targetDateStr?new Date(targetDateStr):null;
-  const steps=[];
-  let qty=topQty;
-  let cumDate=targetDate?new Date(targetDate):null;
-
-  // 向工艺链下游展开（从成品到Wafer）
-  for(let i=procIdx;i<PROC_CHAIN.length;i++){
-    const p=PROC_CHAIN[i];
-    const pMat=appData.materials.find(m=>m.processCode===p);
-    const yieldRate=pMat&&pMat.yieldRate?pMat.yieldRate/100:0.95;
-    // 考虑本制程良率
-    const inputNeeded=Math.ceil(qty/yieldRate);
-    // 查找BOM：当前制程作为parent时，它的child物料用量
-    const bom=appData.boms.find(b=>b.parent===p);
-    const usage=bom?bom.usage:1;
-    const scrap=bom?bom.scrap/100:0;
-    // 展开到下阶需求
-    const nextQty=Math.ceil(inputNeeded*usage/(1-scrap));
-
-    // 查找库存
-    const inv=pMat?appData.inventory.find(i=>i.materialCode===pMat.code):null;
-    const stock=inv?(inv.goodQty||inv.stock||0):0;
-
-    // 查找交期
-    const lt=appData.leadTimes.find(l=>l.process===p);
-    const totalLt=lt?lt.prod+lt.trans+lt.inspect:0;
-
-    // 计算最晚开始时间
-    let startDate=null;
-    if(cumDate&&totalLt>0){
-      startDate=new Date(cumDate);
-      startDate.setDate(startDate.getDate()-totalLt);
+  // 默认：按用户问题匹配平台功能，返回真实执行结果
+  const qaMap=[
+    // 物料需求/BOM展开类 → Supply → MRP（已有完整BOM+良率+交期计算）
+    {keys:['Wafer需要多少','Wafer什么时候','Wafer下单','Wafer需求','BOM展开','物料需求','下阶物料','需要多少Wafer','成品.*交付.*Wafer','FT.*交付'], fn:()=>{
+      switchSection('supplyplan');
+      switchSupplyPlanTab('sp-mrp');
+      setTimeout(()=>{loadSpMrpParams();showToast('✅ 已加载MRP运算，请查看各制程需求详情','success')},200);
+      return '🔀 已跳转到 **Supply → MRP物料需求计划**\n\n平台MRP已基于真实BOM、良率、库存、在途数据展开计算，请查看页面上的详细运算结果（含各制程需求、交期倒排、PR建议）。';
+    }},
+    // 供需匹配类 → Supply → 供需匹配
+    {keys:['供需匹配','供需缺口','什么缺货','供应不足','缺料','物料短缺'], fn:()=>{
+      switchSection('supplyplan');
+      switchSupplyPlanTab('sp-matching');
+      setTimeout(()=>runSpMatching(),300);
+      return '🔀 已跳转到 **Supply → 供需匹配&缺口分析**\n\n页面已展示各制程的供应vs需求对比、缺口预警及补货建议。';
+    }},
+    // 产能类 → Supply → 供应网络
+    {keys:['产能','产能利用率','产线负荷','产能够','瓶颈'], fn:()=>{
+      switchSection('supplyplan');
+      switchSupplyPlanTab('sp-network');
+      return '🔀 已跳转到 **Supply → 晶圆供应&委外网络**\n\n页面展示了各委外制程的产能、利用率和瓶颈分析。';
+    }},
+    // 生产计划类 → Supply → 生产计划
+    {keys:['生产计划','生产排程','排产','生产安排'], fn:()=>{
+      switchSection('supplyplan');
+      switchSupplyPlanTab('sp-production');
+      return '🔀 已跳转到 **Supply → 委外制程生产计划**\n\n页面展示各制程的生产计划排程。';
+    }},
+    // Demand Planning
+    {keys:['需求预测','统计预测','预测','Demand Planning'], fn:()=>{
+      switchSection('demandplan');
+      return '🔀 已跳转到 **Demand Planning**\n\n页面展示统计预测、承诺感知、滚动共识等需求计划数据。';
+    }},
+    // S&OP Executive
+    {keys:['S&OP会议','高管决策','管理层','决策会议','KPI'], fn:()=>{
+      switchSection('collaboration');
+      switchSopTab('sop-exec');
+      if(cfg.apiKey) setTimeout(()=>runAiMeetingBrief(),500);
+      return '🔀 已跳转到 **S&OP → Executive S&OP**\n\n页面展示真实KPI聚合与高管决策数据。';
+    }},
+    // 供应商
+    {keys:['供应商','供应商绩效','交期','供应商交期'], fn:()=>{
+      switchSection('masterdata');
+      return '🔀 已跳转到 **Master Data → 供应商**\n\n可查看供应商交期、良率、绩效等数据。';
+    }},
+    // 库存
+    {keys:['库存','安全库存','库存情况'], fn:()=>{
+      switchSection('business');
+      return '🔀 已跳转到 **Business Data → 库存**\n\n页面展示当前各物料库存、在途及安全库存数据。';
+    }},
+    // 在制品
+    {keys:['在制品','WIP','在制'], fn:()=>{
+      switchSection('business');
+      return '🔀 已跳转到 **Business Data → 在制品**\n\n页面展示当前在制品数据。';
+    }},
+    // 客户订单
+    {keys:['客户订单','订单情况','订单状态','sales order'], fn:()=>{
+      switchSection('demand');
+      return '🔀 已跳转到 **Requirement → 客户订单**\n\n页面展示所有客户订单明细及状态。';
+    }},
+  ];
+  for(const item of qaMap){
+    if(item.keys.some(k=>new RegExp(k,'i').test(text))){
+      const msg=item.fn();
+      if(body)body.innerHTML='✅ '+msg;
+      return;
     }
-
-    steps.push({
-      process:p,
-      material:pMat?pMat.code:'',
-      materialDesc:pMat?pMat.name:p,
-      outputQty:qty,
-      yieldRate:Math.round(yieldRate*100)+'%',
-      inputNeeded,
-      bomUsage:usage,
-      bomScrap:Math.round(scrap*100)+'%',
-      nextLevelQty:nextQty,
-      stock,
-      leadTime:totalLt,
-      startDate:startDate?startDate.toISOString().slice(0,10):'',
-      dueDate:cumDate?cumDate.toISOString().slice(0,10):''
-    });
-
-    qty=nextQty;
-    if(startDate)cumDate=new Date(startDate);
   }
 
-  return {
-    topMaterial:materialCode,
-    topQty,
-    targetDate:targetDateStr,
-    steps,
-    waferQty:qty,
-    waferOrderDate:steps[steps.length-1]?.startDate||''
-  };
+  // 仍未匹配 → 用LLM简单回复（不做计算，只做引导）
+  if(body)body.innerHTML='💬 <strong>'+text.replace(/</g,'&lt;')+'</strong><br><br>⏳ AI思考中...';
+  const guideHint='你是IC-SCM平台AI助手。用户的问题未匹配到具体功能。请：1）先尝试理解用户需求 2）推荐可用的平台功能 3）引导用户使用导航命令。可用命令：MRP、供需匹配、产能、需求预测、库存、客户订单、Demand Review、Supply Review、排程建议、质检。';
+  const result=await aiChat([
+    {role:'system',content:guideHint},
+    {role:'user',content:text}
+  ],{temp:0.3,maxTokens:512});
+  if(body)body.innerHTML='💬 <strong>'+text.replace(/</g,'&lt;')+'</strong><br><br>💡 '+result;
 }
 
 // ---- 注入AI UI元素到S&OP各Tab ----
