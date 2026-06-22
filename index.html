@@ -9265,9 +9265,20 @@ function startAiVoiceRecog(){
     document.querySelector('.vp-body').innerHTML='🎤 识别: '+text+'<br>⏳ 处理中...';
     handleAiVoiceCommand(text);
   };
-  _aiVoiceRecognition.onerror=function(){
+  _aiVoiceRecognition.onerror=function(ev){
     btn.classList.remove('listening');
-    document.querySelector('.vp-body').innerHTML='❌ 语音识别失败，请重试';
+    const err=ev&&ev.error?ev.error:'未知';
+    const tips={
+      'not-allowed':'浏览器拒绝了麦克风权限',
+      'no-speech':'未检测到语音',
+      'audio-capture':'麦克风设备不可用',
+      'network':'网络错误（需Google语音服务）',
+      'service-not-allowed':'语音服务被禁止',
+      'aborted':'用户取消了语音输入',
+      'language-not-supported':'当前语言不支持',
+      'bad-grammar':'语法错误'
+    };
+    document.querySelector('.vp-body').innerHTML='❌ 语音识别失败<br><small>错误: '+err+(tips[err]?' — '+tips[err]:'')+'</small>';
   };
   _aiVoiceRecognition.onend=function(){btn.classList.remove('listening')};
 
