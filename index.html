@@ -9842,6 +9842,9 @@ function submitAiText(){
     setTimeout(()=>runAiDataIntegrityCheck(true),2000);
   }
 })();
+
+// ======================== 本地AI文本生成引擎（不依赖API） ========================
+function generateLocalBrief(type, data) {
   const lines=[];
   if(type==='scheduling' && data.prSummary){
     const {byProc,sp,lt}=data;
