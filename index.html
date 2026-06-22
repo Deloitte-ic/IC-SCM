@@ -9294,62 +9294,143 @@ function stopAiVoiceRecog(){
 }
 async function handleAiVoiceCommand(text){
   const cfg=getAiCfg();
-  if(!cfg.apiKey){
-    document.querySelector('.vp-body').innerHTML='⚠️ 请先点🧠配置AI API Key';
-    return;
-  }
-  // 匹配意图
-  const cmdMap={
-    '需求':['需求','预测','Demand','demand'],
-    '供应':['供应','Supply','supply','风险','产能'],
-    'MRP':['MRP','mrp','物料','采购','PR'],
-    'S&OP':['S&OP','sop','SOP','会议','简报','决策'],
-    '主数据':['主数据','物料','BOM','bom','工艺','供应商'],
-    '质检':['质检','巡检','检查','质量','数据检查'],
-    '仪表板':['仪表板','总览','dashboard','Dashboard']
-  };
-  let intent='chat';
-  for(const [key,keywords] of Object.entries(cmdMap)){
-    if(keywords.some(k=>text.includes(k))){intent=key;break}
-  }
+  const body=document.querySelector('.vp-body');
 
-  let result;
-  switch(intent){
-    case '需求':result=await processDemandVoice();break;
-    case '供应':result=await processSupplyVoice();break;
-    case 'MRP':result=await processMrpVoice();break;
-    case 'S&OP':result=await processSopVoice();break;
-    case '质检':runAiDataIntegrityCheck(false);return;
-    default:{
-      // AI聊天
-      const ctx=`当前平台数据：客户订单${(appData.customerOrders||[]).length}条，库存${(appData.inventory||[]).length}条，物料${(appData.materials||[]).length}个。`;
-      result=await aiChat([
-        {role:'system',content:'你是IC-SCM平台的AI助手。回答供应链相关问题，简明扼要。当前'+ctx},
-        {role:'user',content:text}
-      ],{temp:0.3,maxTokens:512});
+  // ---- 导航+执行型指令（无需API Key） ----
+  const navMap=[
+    // [指令关键词, 动作函数, 反馈文字]
+    {keys:['返回MRP','MRP结果','运算结果','物料需求计划'], fn:()=>{
+      switchSection('supplyplan');
+      switchSupplyPlanTab('sp-mrp');
+      setTimeout(()=>loadSpMrpParams(),200);
+      return '🔀 已切换到 Supply → MRP物料需求计划';
+    }},
+    {keys:['供需匹配','缺口分析'], fn:()=>{
+      switchSection('supplyplan');
+      switchSupplyPlanTab('sp-matching');
+      setTimeout(()=>runSpMatching(),300);
+      return '🔀 已切换到 Supply → 供需匹配&缺口分析';
+    }},
+    {keys:['供应网络','晶圆供应','委外网络'], fn:()=>{
+      switchSection('supplyplan');
+      switchSupplyPlanTab('sp-network');
+      return '🔀 已切换到 Supply → 晶圆供应&委外网络';
+    }},
+    {keys:['生产计划','委外制程'], fn:()=>{
+      switchSection('supplyplan');
+      switchSupplyPlanTab('sp-production');
+      return '🔀 已切换到 Supply → 委外制程生产计划';
+    }},
+    {keys:['需求回顾','Demand Review','demand review'], fn:()=>{
+      switchSection('collaboration');
+      switchSopTab('sop-demand');
+      return '🔀 已切换到 S&OP → Demand Review';
+    }},
+    {keys:['供应回顾','Supply Review','supply review'], fn:()=>{
+      switchSection('collaboration');
+      switchSopTab('sop-supply');
+      return '🔀 已切换到 S&OP → Supply Review';
+    }},
+    {keys:['预评审','Pre-S&OP','pre-sop','量利'], fn:()=>{
+      switchSection('collaboration');
+      switchSopTab('sop-presop');
+      return '🔀 已切换到 S&OP → Pre-S&OP';
+    }},
+    {keys:['高管决策','Executive S&OP','executive','会议简报','决策'], fn:()=>{
+      switchSection('collaboration');
+      switchSopTab('sop-exec');
+      if(cfg.apiKey) setTimeout(()=>runAiMeetingBrief(),500);
+      return '🔀 已切换到 S&OP → Executive S&OP'+(cfg.apiKey?' + AI已自动生成会议简报':'');
+    }},
+    {keys:['计划模拟','Plan Simulation','simulation','模拟'], fn:()=>{
+      switchSection('collaboration');
+      switchSopTab('sop-invopt');
+      return '🔀 已切换到 S&OP → Plan Simulation';
+    }},
+    {keys:['主数据','物料主数据'], fn:()=>{
+      switchSection('masterdata');
+      return '🔀 已切换到 Master Data';
+    }},
+    {keys:['库存'], fn:()=>{
+      switchSection('business');
+      return '🔀 已切换到 Business Data → 库存';
+    }},
+    {keys:['在制品','WIP'], fn:()=>{
+      switchSection('business');
+      return '🔀 已切换到 Business Data → 在制品';
+    }},
+    {keys:['客户订单'], fn:()=>{
+      switchSection('demand');
+      return '🔀 已切换到 Requirement → 客户订单';
+    }},
+    {keys:['需求计划','Demand Planning','DP'], fn:()=>{
+      switchSection('demandplan');
+      return '🔀 已切换到 Demand Planning';
+    }},
+  ];
+
+  // 先匹配导航指令
+  for(const item of navMap){
+    if(item.keys.some(k=>text.includes(k))){
+      const msg=item.fn();
+      if(body)body.innerHTML='✅ '+msg;
+      return;
     }
   }
-  const body=document.querySelector('.vp-body');
-  if(body)body.innerHTML='🎤 <strong>'+text+'</strong><br><br>💡 '+result;
-}
-async function processDemandVoice(){
-  const co=(appData.customerOrders||[]).filter(d=>getMatProcess(d.material)==='FT');
-  const total=co.reduce((s,d)=>s+d.quantity,0);
-  const cust=new Set(co.map(d=>d.customer)).size;
-  return `FT成品需求汇总：共${co.length}条客户订单，总需求量${total.toLocaleString()}颗，涉及${cust}个客户。`;
-}
-async function processSupplyVoice(){
-  const sp=appData.supplierPerf||[];
-  const low=sp.filter(s=>(s.yieldRate||100)<80);
-  return `当前供应商绩效：共${sp.length}条记录，${low.length>0?'⚠️ '+low.length+'条良率低于80%（'+low.map(l=>l.code+'='+l.yieldRate+'%').join(',')+'）':'✅ 所有供应商良率正常'}`;
-}
-async function processMrpVoice(){
-  const pr=appData.pr||[];
-  const total=pr.reduce((s,p)=>s+(p.quantity||p.qty||0),0);
-  return `当前PR采购需求：共${pr.length}条，总需求量${total.toLocaleString()}。建议运行MRP获取最新需求。`;
-}
-async function processSopVoice(){
-  return `S&OP当前包含5个子模块：Demand Review、Supply Review、Pre-S&OP、Executive S&OP、Plan Simulation。建议前往S&OP菜单查看详细分析数据。`;
+
+  // 匹配AI分析指令（需API Key）
+  if(!cfg.apiKey){
+    if(body)body.innerHTML='⚠️ 请先点🧠配置AI API Key，或输入"MRP""需求回顾""库存"等关键词直接导航';
+    return;
+  }
+  const aiMap=[
+    {keys:['需求洞察','需求分析','AI需求'], fn:()=>{
+      switchSection('collaboration');switchSopTab('sop-demand');
+      setTimeout(()=>runAiDemandInsight(),300);
+      return '🤖 AI需求洞察已启动';
+    }},
+    {keys:['供应风险','AI供应','风险分析'], fn:()=>{
+      switchSection('collaboration');switchSopTab('sop-supply');
+      setTimeout(()=>runAiSupplyRisk(),300);
+      return '🤖 AI供应风险分析已启动';
+    }},
+    {keys:['排程建议','AI排程','排程'], fn:()=>{
+      switchSection('supplyplan');switchSupplyPlanTab('sp-mrp');
+      setTimeout(()=>runAiSchedulingAdvice(),300);
+      return '🤖 AI排程建议已启动';
+    }},
+    {keys:['质检','巡检','数据检查','数据质量'], fn:()=>{
+      runAiDataIntegrityCheck(false);
+      return '🔍 AI数据质量巡检已启动';
+    }},
+  ];
+  for(const item of aiMap){
+    if(item.keys.some(k=>text.includes(k))){
+      const msg=item.fn();
+      if(body)body.innerHTML='✅ '+msg;
+      return;
+    }
+  }
+
+  // 默认：AI聊天+自动导航
+  const navCtx={
+    '需求':'当前在S&OP Demand Review，可查看客户订单与DP对比',
+    '供应':'当前在S&OP Supply Review，可查看制程产能与供应商绩效',
+    'MRP':'当前在Supply MRP页面，可运行MRP计算需求',
+    'S&OP':'当前在S&OP页面，包含5个子模块',
+    '采购':'可查看PR/PO数据及供应商信息',
+  };
+  let ctxHint='可输入"MRP""需求回顾""供应""供需匹配""排程建议""质检"等直接跳转';
+  for(const [k,v] of Object.entries(navCtx)){
+    if(text.includes(k)){ctxHint=v;break}
+  }
+  if(body)body.innerHTML='💬 <strong>'+text.replace(/</g,'&lt;')+'</strong><br><br>⏳ AI思考中...';
+  const sys=`你是IC-SCM平台AI助手，回答供应链问题简明扼要。当前${ctxHint}。平台数据：客户订单${(appData.customerOrders||[]).length}条，库存${(appData.inventory||[]).length}条，物料${(appData.materials||[]).length}个。`;
+  const result=await aiChat([
+    {role:'system',content:sys},
+    {role:'user',content:text}
+  ],{temp:0.3,maxTokens:512});
+  if(body)body.innerHTML='💬 <strong>'+text.replace(/</g,'&lt;')+'</strong><br><br>💡 '+result;
 }
 
 // ---- 注入AI UI元素到S&OP各Tab ----
