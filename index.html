@@ -250,6 +250,42 @@ tbody tr:hover td{background:var(--primary-bg)}
 .sub-tab:hover{color:var(--gray-700);background:var(--gray-50)}
 .sub-tab-content{display:none;animation:fadeIn .2s ease}
 .sub-tab-content.active{display:block}
+
+/* ===== AI Copilot 样式 ===== */
+.ai-card{border:1px solid #e0d4fc;background:linear-gradient(135deg,#f5f0ff,#faf5ff);border-radius:10px;padding:14px 16px;margin-bottom:12px;position:relative}
+.ai-card .ai-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 10px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border-radius:10px;font-size:10px;font-weight:600}
+.ai-card .ai-title{font-size:14px;font-weight:600;color:#5b21b6;margin:6px 0 8px}
+.ai-card .ai-content{font-size:13px;color:var(--gray-700);line-height:1.7;white-space:pre-wrap}
+.ai-card .ai-meta{font-size:11px;color:var(--gray-400);margin-top:8px;border-top:1px solid #e8e0f8;padding-top:6px}
+.ai-card.loading{min-height:60px;display:flex;align-items:center;justify-content:center;gap:8px}
+.ai-card.loading::after{content:'';width:18px;height:18px;border:2px solid #e0d4fc;border-top-color:#7c3aed;border-radius:50%;animation:aiSpin .6s linear infinite}
+@keyframes aiSpin{to{transform:rotate(360deg)}
+}
+.ai-float-btn{position:fixed;bottom:28px;right:28px;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:none;font-size:22px;cursor:pointer;box-shadow:0 4px 16px rgba(124,58,237,.35);z-index:300;transition:all .2s;display:flex;align-items:center;justify-content:center}
+.ai-float-btn:hover{transform:scale(1.08);box-shadow:0 6px 24px rgba(124,58,237,.45)}
+.ai-float-btn.listening{background:linear-gradient(135deg,#ef4444,#f97316);animation:aiPulse 1s ease-in-out infinite}
+@keyframes aiPulse{0%,100%{box-shadow:0 4px 16px rgba(239,68,68,.35)}50%{box-shadow:0 4px 28px rgba(239,68,68,.55)}
+}
+.ai-voice-panel{position:fixed;bottom:90px;right:28px;width:340px;max-height:420px;background:#fff;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,.15);z-index:299;overflow:hidden;display:none;flex-direction:column;animation:fadeIn .2s ease}
+.ai-voice-panel.show{display:flex}
+.ai-voice-panel .vp-header{padding:12px 16px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-size:13px;font-weight:600;display:flex;justify-content:space-between;align-items:center}
+.ai-voice-panel .vp-body{padding:12px 16px;flex:1;overflow-y:auto;font-size:13px;color:var(--gray-700);line-height:1.6;min-height:60px}
+.ai-voice-panel .vp-footer{padding:8px 16px;border-top:1px solid var(--gray-200);display:flex;gap:8px}
+.ai-voice-panel .vp-footer input{flex:1;padding:6px 10px;border:1px solid var(--gray-300);border-radius:6px;font-size:13px}
+.ai-voice-panel .vp-footer button{padding:6px 14px;border-radius:6px;font-size:12px}
+.ai-insight-btn{background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;border:none;padding:5px 12px;border-radius:6px;font-size:12px;cursor:pointer;transition:all .2s}
+.ai-insight-btn:hover{opacity:.9;transform:translateY(-1px)}
+.ai-insight-btn:disabled{opacity:.5;cursor:not-allowd}
+.ai-insight-btn-sm{padding:3px 8px;font-size:11px}
+.quality-bell{position:relative}
+.quality-bell .badge-dot{position:absolute;top:2px;right:2px;width:8px;height:8px;background:#ef4444;border-radius:50%;display:none}
+.quality-bell .badge-dot.show{display:block}
+.ai-suggestion-row{background:#f5f0ff;font-size:12px}
+.ai-suggestion-row td{color:#5b21b6}
+.ai-risk-item{padding:6px 10px;border-radius:6px;margin-bottom:4px;font-size:12px;display:flex;align-items:center;gap:8px}
+.ai-risk-item.critical{background:#fef2f2;color:#dc2626;border-left:3px solid #dc2626}
+.ai-risk-item.warning{background:#fffbeb;color:#d97706;border-left:3px solid #f59e0b}
+.ai-risk-item.info{background:#eff6ff;color:#2563eb;border-left:3px solid #3b82f6}
 </style>
 </head>
 <body>
@@ -303,7 +339,11 @@ tbody tr:hover td{background:var(--primary-bg)}
       <div style="font-size:10px;color:#999;margin-left:12px" id="versionBadge">v?</div>
     </div>
     <div class="header-actions">
-      
+      <div class="quality-bell" style="display:inline-flex;align-items:center">
+        <button class="header-btn" onclick="runAiDataIntegrityCheck()" title="数据质量巡检">🔍</button>
+        <span class="badge-dot" id="qualityBadgeDot"></span>
+      </div>
+      <button class="header-btn" onclick="openAiConfigModal()" title="AI配置">🧠</button>
     </div>
   </header>
 
@@ -8858,5 +8898,557 @@ function applySimToRatePlans(){
     showToast('ℹ️ 当前模拟结果无需调整生产计划', 'info');
   }
 }
+
+// =============================== 🤖 AI Copilot ===============================
+const AI_CFG_KEY = 'ic_scm_ai_config';
+const AI_CACHE_KEY = 'ic_scm_ai_cache';
+function getAiCfg(){try{return JSON.parse(localStorage.getItem(AI_CFG_KEY))||{}}catch(e){return{}}}
+function saveAiCfg(c){localStorage.setItem(AI_CFG_KEY,JSON.stringify(c))}
+function getAiCache(){try{return JSON.parse(sessionStorage.getItem(AI_CACHE_KEY))||{}}catch(e){return{}}}
+function setAiCache(k,v){const c=getAiCache();c[k]=v;c._time=Date.now();sessionStorage.setItem(AI_CACHE_KEY,JSON.stringify(c))}
+function getAiCacheVal(k){const c=getAiCache();return Date.now()-(c._time||0)<300000?c[k]:null}
+
+async function aiChat(msgs,opts={}){
+  const cfg=getAiCfg();
+  const baseUrl=cfg.baseUrl||'https://api.deepseek.com';
+  const apiKey=cfg.apiKey||'';
+  const model=cfg.model||'deepseek-chat';
+  if(!apiKey){showToast('⚠️ 请先点 🧠 配置 AI API Key','warning');return null}
+  try{
+    const resp=await fetch(baseUrl+'/chat/completions',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
+      body:JSON.stringify({model,messages,temperature:opts.temp||0.3,max_tokens:opts.maxTokens||2048})
+    });
+    if(!resp.ok){const t=await resp.text();throw new Error('HTTP '+resp.status+': '+t.slice(0,100))}
+    const d=await resp.json();
+    return d.choices[0].message.content;
+  }catch(e){showToast('❌ AI调用失败: '+e.message,'error');return null}
+}
+
+// ---- AI 配置弹窗 ----
+function openAiConfigModal(){
+  const cfg=getAiCfg();
+  openModal(`<div style="width:520px">
+    <div class="modal-title">🧠 AI Copilot 配置 <button class="modal-close" onclick="closeModal()">×</button></div>
+    <p style="font-size:12px;color:var(--gray-500);margin-bottom:14px">配置大模型API，平台AI功能将调用此接口（OpenAI兼容格式）。推荐 <a href="https://platform.deepseek.com" target="_blank" style="color:var(--primary)">DeepSeek</a>（便宜且中文好）。</p>
+    <div class="form-group"><label>API地址</label><input id="aiBaseUrl" value="${cfg.baseUrl||'https://api.deepseek.com'}" style="width:100%;padding:8px 10px;border:1px solid var(--gray-300);border-radius:6px;font-size:13px"></div>
+    <div class="form-group" style="margin-top:10px"><label>API Key</label><input type="password" id="aiApiKey" value="${cfg.apiKey||''}" style="width:100%;padding:8px 10px;border:1px solid var(--gray-300);border-radius:6px;font-size:13px" placeholder="sk-..."></div>
+    <div class="form-group" style="margin-top:10px"><label>模型</label><input id="aiModel" value="${cfg.model||'deepseek-chat'}" style="width:100%;padding:8px 10px;border:1px solid var(--gray-300);border-radius:6px;font-size:13px"><div style="font-size:11px;color:var(--gray-400);margin-top:3px">常用: deepseek-chat / gpt-4o / claude-3.5-sonnet</div></div>
+    <div style="margin-top:14px"><button class="btn btn-sm btn-outline" onclick="testAiConn()">🔄 测试连接</button></div>
+    <div id="aiTestRes" style="margin-top:10px;font-size:12px"></div>
+    <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="saveAiCfgModal()">✅ 保存</button></div>
+  </div>`);
+}
+async function testAiConn(){
+  const el=document.getElementById('aiTestRes');el.innerHTML='⏳ 测试中...';
+  const cfg={baseUrl:document.getElementById('aiBaseUrl').value,apiKey:document.getElementById('aiApiKey').value,model:document.getElementById('aiModel').value};
+  if(!cfg.apiKey){el.innerHTML='⚠️ 请填入API Key';return}
+  try{
+    const r=await fetch(cfg.baseUrl+'/chat/completions',{
+      method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+cfg.apiKey},
+      body:JSON.stringify({model:cfg.model,messages:[{role:'user',content:'hi'}],max_tokens:10})
+    });
+    if(r.ok){el.innerHTML='✅ 连接成功！'}else{const t=await r.text();el.innerHTML='❌ '+r.status+': '+t.slice(0,80)}
+  }catch(e){el.innerHTML='❌ '+e.message}
+}
+function saveAiCfgModal(){
+  saveAiCfg({baseUrl:document.getElementById('aiBaseUrl').value,apiKey:document.getElementById('aiApiKey').value,model:document.getElementById('aiModel').value});
+  closeModal();showToast('✅ AI配置已保存','success');
+}
+
+// ---- 1. 数据质量巡检 ----
+async function runAiDataIntegrityCheck(silent){
+  const cfg=getAiCfg();
+  if(!cfg.apiKey&&!silent){showToast('⚠️ 请先配置AI API Key','warning');return}
+  const dot=document.getElementById('qualityBadgeDot');
+  if(dot)dot.classList.remove('show');
+
+  const co=appData.customerOrders||[];
+  const dm=appData.demands||[];
+  const sp=appData.supplierPerf||[];
+  const inv=appData.inventory||[];
+  const rt=supplyPlanData.ratePlans||[];
+  const mat=appData.materials||[];
+  const bom=appData.bom||[];
+
+  // 本地规则检查（无需AI）
+  const issues=[];
+  // ① customerOrders vs demands 订单号一致性
+  const coOrders=new Set(co.map(d=>d.orderNo).filter(Boolean));
+  const dmOrders=new Set(dm.map(d=>d.orderNo).filter(Boolean));
+  const overlap=[...coOrders].filter(o=>dmOrders.has(o));
+  if(coOrders.size>0&&dmOrders.size>0&&overlap.length===0)issues.push({lvl:'critical',msg:'客户订单(customerOrders)与SAP需求(demands)订单号无交集，可能数据同步异常'});
+  if(coOrders.size>0&&dmOrders.size>0&&overlap.length<Math.min(coOrders.size,dmOrders.size)*0.3)issues.push({lvl:'warning',msg:'客户订单与SAP需求仅'+overlap.length+'个订单号重叠，建议检查同步逻辑'});
+
+  // ② 良率异常
+  sp.forEach(s=>{if(s.yieldRate!==undefined&&s.yieldRate<70)issues.push({lvl:'critical',msg:s.code+'良率仅'+s.yieldRate+'%，低于正常阈值70%'})});
+  // ③ 产能利用率异常
+  rt.forEach(r=>{
+    const m=mat.find(m=>m.process===r.process);
+    if(m&&m.capacity&&r.weeklyPlan){
+      const util=r.weeklyPlan/m.capacity*100;
+      if(util>95)issues.push({lvl:'warning',msg:r.process+'周产能利用率'+Math.round(util)+'%，接近满产'});
+      if(util<20&&util>0)issues.push({lvl:'info',msg:r.process+'周产能利用率仅'+Math.round(util)+'%，建议检查排产'});
+    }
+  });
+  // ④ 交期异常
+  (appData.leadTimes||[]).forEach(lt=>{if(lt.prod>30)issues.push({lvl:'info',msg:lt.code+'生产交期'+lt.prod+'天较长，建议关注'})});
+  // ⑤ BOM良率
+  bom.forEach(b=>{if(b.scrap>15)issues.push({lvl:'warning',msg:b.parent+'→'+b.child+'损耗率'+b.scrap+'%偏高'})});
+
+  // AI 深度分析
+  if(cfg.apiKey&&(co.length>0||dm.length>0)){
+    const demandSummary=co.slice(0,10).map(d=>d.material+':'+d.quantity+(d.orderNo?'('+d.orderNo+')':'')).join(',');
+    const aiIssues=await aiChat([
+      {role:'system',content:'你是IC-SCM平台的数据质量专家。分析以下数据摘要，检测数据异常、不一致或质量问题。只输出JSON数组[{lvl,category,msg}]，lvl可选critical/warning/info，category可选"一致性/完整性/合理性"。不要解释，只输出JSON。如无问题输出[]'},
+      {role:'user',content:`客户订单(前10): ${demandSummary}\n物料数:${mat.length} BOM数:${bom.length} 供应商绩效:${sp.length}条 库存:${inv.length}条`}
+    ],{temp:0.1,maxTokens:1024});
+    if(aiIssues){try{JSON.parse(aiIssues).forEach(i=>issues.push(i))}catch(e){}}
+  }
+
+  // 显示结果
+  if(issues.length===0){
+    if(!silent)showToast('✅ 数据质量检查通过，未发现问题','success');
+    return;
+  }
+  if(dot)dot.classList.add('show');
+
+  // 弹窗展示
+  let html='<div style="width:600px"><div class="modal-title">🔍 数据质量巡检报告 <span style="font-size:12px;font-weight:400;color:var(--gray-500)">发现'+issues.length+'个问题</span><button class="modal-close" onclick="closeModal()">×</button></div>';
+  issues.forEach((iss,i)=>{
+    const ic={critical:'🔴',warning:'🟡',info:'🔵'};
+    html+=`<div class="ai-risk-item ${iss.lvl}">${ic[iss.lvl]||'🔵'} ${iss.msg}${iss.category?' <span style="font-size:10px;color:var(--gray-400)">['+iss.category+']</span>':''}</div>`;
+  });
+  html+=`<div style="margin-top:14px;text-align:right"><button class="btn btn-sm btn-primary" onclick="closeModal()">知道了</button></div></div>`;
+  openModal(html);
+}
+
+// ---- 2. 需求洞察（Demand Review AI 卡片） ----
+let _aiDemandResult=null;
+async function runAiDemandInsight(){
+  const el=document.getElementById('aiDemandCard');
+  if(el)el.innerHTML='<div class="ai-card loading">🤖 AI正在分析需求模式...</div>';
+  const co=(appData.customerOrders||[]).filter(d=>getMatProcess(d.material)==='FT');
+  if(co.length<3){showToast('⚠️ 客户订单数据不足，至少需要3条','warning');return}
+
+  // 按物料+客户聚合
+  const byMat={};
+  co.forEach(d=>{
+    const k=d.material;
+    if(!byMat[k])byMat[k]={material:k,qty:0,orders:0,customers:new Set(),status:{}};
+    byMat[k].qty+=d.quantity;
+    byMat[k].orders++;
+    byMat[k].customers.add(d.customer);
+    if(d.status)byMat[k].status[d.status]=(byMat[k].status[d.status]||0)+1;
+  });
+  const matInsights=Object.values(byMat).map(m=>({code:m.material,qty:m.qty,orders:m.orders,customers:m.customers.size,confirmed:m.status['已确认']||0,forecast:m.status['Forecast']||0}));
+  const totalQty=matInsights.reduce((s,m)=>s+m.qty,0);
+  const totalOrders=matInsights.reduce((s,m)=>s+m.orders,0);
+  const fcstRatio=matInsights.reduce((s,m)=>s+m.forecast,0)/Math.max(totalOrders,1)*100;
+  const custCount=new Set(co.map(d=>d.customer)).size;
+
+  // DP对比
+  const dpData=demandPlanData.forecasts||[];
+  let dpInsight='';
+  if(dpData.length>0){
+    const dpTotal=dpData.filter(f=>getMatProcess(f.material)==='FT').reduce((s,f)=>s+(f.totalForecast||f.quantity||0),0);
+    const diffPct=dpTotal>0?Math.round((totalQty-dpTotal)/dpTotal*100):0;
+    dpInsight=`DP统计预测${dpTotal.toLocaleString()}颗，客户订单${totalQty.toLocaleString()}颗，偏差${diffPct>0?'+':''}${diffPct}%。`;
+  }
+
+  const AI=await aiChat([
+    {role:'system',content:'你是IC设计公司供应链需求分析师。分析以下需求数据，给出：1)需求模式特征 2)异常信号 3)前瞻建议。简要专业，用中文，200字内。'},
+    {role:'user',content:`FT成品需求摘要：${JSON.stringify(matInsights)}\n总需求量:${totalQty}颗/${totalOrders}单\n客户数:${custCount}\nForecast占比:${Math.round(fcstRatio)}%\n${dpInsight}`}
+  ],{temp:0.3,maxTokens:1024});
+
+  if(!AI)return;
+  _aiDemandResult=AI;
+  const cardEl=document.getElementById('aiDemandCard');
+  if(cardEl){
+    cardEl.innerHTML=`<div class="ai-card">
+      <span class="ai-badge">🤖 AI 需求洞察</span>
+      <div class="ai-title">📊 需求模式分析</div>
+      <div class="ai-content">${AI}</div>
+      <div class="ai-meta">基于${totalOrders}条客户订单 · ${custCount}个客户 · ${Object.keys(byMat).length}个物料</div>
+    </div>`;
+  }
+}
+
+// ---- 3. 供应风险看板（Supply Review AI） ----
+async function runAiSupplyRisk(){
+  const el=document.getElementById('aiSupplyRiskCard');
+  if(el)el.innerHTML='<div class="ai-card loading">🤖 AI正在分析供应风险...</div>';
+
+  const sp=appData.supplierPerf||[];
+  const rt=supplyPlanData.ratePlans||[];
+  const inv=appData.inventory||[];
+  const lt=appData.leadTimes||[];
+  const bom=appData.bom||[];
+  const procs=PROCESS_CHAIN;
+
+  // 本地数据分析
+  const riskItems=[];
+  procs.forEach(p=>{
+    const pSp=sp.filter(s=>s.process===p);
+    const pInv=inv.filter(i=>i.process===p);
+    const pRt=rt.filter(r=>r.process===p);
+    const pLt=lt.filter(l=>l.process===p);
+
+    const avgYield=pSp.length?Math.round(pSp.reduce((s,x)=>s+(x.yieldRate||100),0)/pSp.length):null;
+    const totalInv=pInv.reduce((s,i)=>s+(i.quantity||0),0);
+    const weeklyRt=pRt.reduce((s,r)=>s+(r.weeklyPlan||0),0);
+    const maxLt=pLt.length?Math.max(...pLt.map(l=>l.prod+l.trans+l.inspect)):null;
+
+    if(avgYield!==null&&avgYield<80)riskItems.push({proc:p,type:'良率',lvl:'critical',detail:p+'平均良率'+avgYield+'%'});
+    if(avgYield!==null&&avgYield>=80&&avgYield<90)riskItems.push({proc:p,type:'良率',lvl:'warning',detail:p+'平均良率'+avgYield+'%'});
+    if(totalInv===0&&p!=='Wafer')riskItems.push({proc:p,type:'库存',lvl:'warning',detail:p+'库存为0'});
+    if(weeklyRt===0&&p==='FT')riskItems.push({proc:p,type:'产能',lvl:'warning',detail:p+'无周产能计划'});
+    if(maxLt!==null&&maxLt>20)riskItems.push({proc:p,type:'交期',lvl:'info',detail:p+'最大交期'+maxLt+'天'});
+  });
+
+  // AI深度分析
+  const summary=`制程链:${procs.join('→')}\n供应商绩效:${sp.length}条\n生产计划:${rt.length}条\n库存:${inv.reduce((s,i)=>s+(i.quantity||0),0)}件\n交期:${JSON.stringify(lt.map(l=>({p:l.process,lt:l.prod+l.trans+l.inspect})))}`;
+  const AI=await aiChat([
+    {role:'system',content:'你是半导体供应链风险分析师。分析以下供应数据，识别瓶颈和风险，给出中文建议。100字内，简洁。'},
+    {role:'user',content:summary+'\n已识别风险:'+JSON.stringify(riskItems)}
+  ],{temp:0.3,maxTokens:1024});
+
+  const cardEl=document.getElementById('aiSupplyRiskCard');
+  if(cardEl){
+    let html='<div class="ai-card"><span class="ai-badge">🤖 AI 供应风险</span><div class="ai-title">⚠️ 风险分析</div>';
+    // 风险列表
+    riskItems.slice(0,5).forEach(r=>{
+      const ic={critical:'🔴',warning:'🟡',info:'🔵'};
+      html+=`<div class="ai-risk-item ${r.lvl}">${ic[r.lvl]||'🔵'} [${r.proc}] ${r.detail}</div>`;
+    });
+    if(AI)html+=`<div style="margin-top:8px;padding:8px;background:#fff;border-radius:6px;font-size:12px;color:var(--gray-700)">💡 ${AI}</div>`;
+    html+=`<div class="ai-meta">基于${sp.length}条供应商绩效 · ${rt.length}条生产计划</div></div>`;
+    cardEl.innerHTML=html;
+  }
+}
+
+// ---- 4. AI排程建议（MRP结果页） ----
+async function runAiSchedulingAdvice(){
+  const el=document.getElementById('aiScheduleCard');
+  if(el)el.innerHTML='<div class="ai-card loading">🤖 AI正在生成排程建议...</div>';
+
+  const pr=appData.pr||[];
+  const sp=appData.supplierPerf||[];
+  const lt=appData.leadTimes||[];
+  const mat=appData.materials||[];
+
+  if(pr.length<2){showToast('⚠️ PR数据不足，请先运行MRP','warning');return}
+
+  // 按制程+供应商聚合PR
+  const byProc={};
+  pr.forEach(p=>{
+    const proc=getMatProcess(p.material);
+    if(!byProc[proc])byProc[proc]={prs:[],qty:0,count:0};
+    byProc[proc].prs.push(p);
+    byProc[proc].qty+=p.quantity||p.qty||0;
+    byProc[proc].count++;
+  });
+
+  const spLookup={};
+  sp.forEach(s=>{spLookup[s.code||s.supplier]=s});
+
+  // AI分析
+  const prSummary=Object.entries(byProc).map(([proc,data])=>({
+    proc,qty:data.qty,count:data.count,
+    bestSup:sp.filter(s=>s.process===proc).sort((a,b)=>(b.yieldRate||0)-(a.yieldRate||0))[0]
+  }));
+  const AI=await aiChat([
+    {role:'system',content:'你是供应链排程专家。分析以下PR采购需求和供应商绩效，给出：1)优先级排序建议 2)供应商推荐 3)风险提示。100字内中文。'},
+    {role:'user',content:JSON.stringify(prSummary)+'\n交期配置:'+JSON.stringify(lt.map(l=>({p:l.process,lead:l.prod+l.trans+l.inspect})))}
+  ],{temp:0.3,maxTokens:1024});
+
+  // 生成建议表格
+  let tableHtml='';
+  Object.entries(byProc).forEach(([proc,data])=>{
+    const bestSup=sp.filter(s=>s.process===proc).sort((a,b)=>(b.yieldRate||0)-(a.yieldRate||0))[0];
+    const urgent=data.qty>1000?'🔴紧急':data.qty>500?'🟡关注':'🔵常规';
+    tableHtml+=`<tr class="ai-suggestion-row"><td>${proc}</td><td>${data.count}条/${data.qty.toLocaleString()}</td><td>${bestSup?bestSup.code+' (良率'+(bestSup.yieldRate||'—')+'%)':'—'}</td><td>${urgent}</td></tr>`;
+  });
+
+  const cardEl=document.getElementById('aiScheduleCard');
+  if(cardEl){
+    cardEl.innerHTML=`<div class="ai-card">
+      <span class="ai-badge">🤖 AI 排程建议</span>
+      <div class="ai-title">📋 采购计划优先级</div>
+      <div style="font-size:12px;margin-bottom:8px"><table style="width:100%;border-collapse:collapse"><tr style="background:#ede9fe;font-weight:600"><td style="padding:4px 8px">制程</td><td>PR汇总</td><td>推荐供应商</td><td>优先级</td></tr>${tableHtml}</table></div>
+      ${AI?`<div style="padding:8px;background:#fff;border-radius:6px;font-size:12px;color:var(--gray-700)">💡 ${AI}</div>`:''}
+    </div>`;
+  }
+}
+
+// ---- 5. AI会议简报（Executive S&OP） ----
+async function runAiMeetingBrief(){
+  const el=document.getElementById('aiMeetingBrief');
+  if(el)el.innerHTML='<div class="ai-card loading">🤖 AI正在生成会议简报...</div>';
+
+  const co=appData.customerOrders||[];
+  const sp=appData.supplierPerf||[];
+  const rt=supplyPlanData.ratePlans||[];
+  const inv=appData.inventory||[];
+  const ftMats=getFtMaterials();
+
+  // 汇总关键KPI
+  const ftDemand=co.filter(d=>getMatProcess(d.material)==='FT').reduce((s,d)=>s+d.quantity,0);
+  const ftInv=inv.filter(i=>i.process==='FT').reduce((s,i)=>s+(i.quantity||0),0);
+  const avgYield=sp.length?Math.round(sp.reduce((s,x)=>s+(x.yieldRate||100),0)/sp.length):null;
+  const lowYieldItems=sp.filter(s=>(s.yieldRate||100)<80).map(s=>s.code+'('+s.yieldRate+'%)').join(',');
+  const gapItems=[];
+
+  ftMats.forEach(m=>{
+    const demand=co.filter(d=>d.material===m.code).reduce((s,d)=>s+d.quantity,0);
+    if(demand>0){
+      const supply=rt.filter(r=>r.process==='FT').reduce((s,r)=>s+(r.weeklyPlan||0),0);
+      if(supply<demand)gapItems.push(m.code+'需求'+demand+'<供给'+supply);
+    }
+  });
+
+  const now=new Date().toISOString().slice(0,10);
+  const AI=await aiChat([
+    {role:'system',content:'你是S&OP会议秘书。基于以下供应链KPI数据，生成一份Executive S&OP会议简报，包含：1)本期核心摘要 2)关键指标 3)风险与决策项。150字内中文，简洁专业。'},
+    {role:'user',content:`FT成品需求:${ftDemand.toLocaleString()}颗
+FT库存:${ftInv}颗
+平均良率:${avgYield?avgYield+'%':'暂无'}
+低良率项:${lowYieldItems||'无'}
+供需缺口:${gapItems.join(';')||'无'}
+供应商绩效:${sp.length}条
+生产计划:${rt.length}条
+日期:${now}`}
+  ],{temp:0.3,maxTokens:1024});
+
+  const cardEl=document.getElementById('aiMeetingBrief');
+  if(cardEl){
+    cardEl.innerHTML=`<div class="ai-card">
+      <span class="ai-badge">🤖 AI 会议简报</span>
+      <div class="ai-title">📄 Executive S&OP 简报 · ${now}</div>
+      <div class="ai-content">${AI||'数据不足，请先生成报告'}</div>
+      <div class="ai-meta">基于${co.length}条客户订单 · ${sp.length}条供应商绩效 · ${rt.length}条生产计划</div>
+    </div>`;
+  }
+}
+
+// ---- 6. 语音助手 ----
+let _aiVoicePanelVisible=false;
+let _aiVoiceRecognition=null;
+
+function toggleAiVoice(){
+  const panel=document.getElementById('aiVoicePanel');
+  const btn=document.getElementById('aiVoiceBtn');
+  if(!panel||!btn)return;
+  _aiVoicePanelVisible=!panel.classList.contains('show');
+  panel.classList.toggle('show',_aiVoicePanelVisible);
+  if(!_aiVoicePanelVisible){btn.classList.remove('listening');stopAiVoiceRecog()}
+}
+function startAiVoiceRecog(){
+  const btn=document.getElementById('aiVoiceBtn');
+  const panel=document.getElementById('aiVoicePanel');
+  if(!panel){toggleAiVoice();return}
+  panel.classList.add('show');_aiVoicePanelVisible=true;
+  if(!('webkitSpeechRecognition' in window)&&!('SpeechRecognition' in window)){
+    document.querySelector('.vp-body').innerHTML='⚠️ 当前浏览器不支持语音识别，请使用Chrome';
+    return;
+  }
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  _aiVoiceRecognition=new SR();
+  _aiVoiceRecognition.lang='zh-CN';
+  _aiVoiceRecognition.continuous=false;
+  _aiVoiceRecognition.interimResults=false;
+
+  _aiVoiceRecognition.onresult=function(e){
+    const text=e.results[0][0].transcript;
+    btn.classList.remove('listening');
+    document.querySelector('.vp-body').innerHTML='🎤 识别: '+text+'<br>⏳ 处理中...';
+    handleAiVoiceCommand(text);
+  };
+  _aiVoiceRecognition.onerror=function(){
+    btn.classList.remove('listening');
+    document.querySelector('.vp-body').innerHTML='❌ 语音识别失败，请重试';
+  };
+  _aiVoiceRecognition.onend=function(){btn.classList.remove('listening')};
+
+  btn.classList.add('listening');
+  document.querySelector('.vp-body').innerHTML='🎤 请说话...';
+  _aiVoiceRecognition.start();
+}
+function stopAiVoiceRecog(){
+  if(_aiVoiceRecognition){try{_aiVoiceRecognition.stop()}catch(e){}_aiVoiceRecognition=null}
+  const btn=document.getElementById('aiVoiceBtn');
+  if(btn)btn.classList.remove('listening');
+}
+async function handleAiVoiceCommand(text){
+  const cfg=getAiCfg();
+  if(!cfg.apiKey){
+    document.querySelector('.vp-body').innerHTML='⚠️ 请先点🧠配置AI API Key';
+    return;
+  }
+  // 匹配意图
+  const cmdMap={
+    '需求':['需求','预测','Demand','demand'],
+    '供应':['供应','Supply','supply','风险','产能'],
+    'MRP':['MRP','mrp','物料','采购','PR'],
+    'S&OP':['S&OP','sop','SOP','会议','简报','决策'],
+    '主数据':['主数据','物料','BOM','bom','工艺','供应商'],
+    '质检':['质检','巡检','检查','质量','数据检查'],
+    '仪表板':['仪表板','总览','dashboard','Dashboard']
+  };
+  let intent='chat';
+  for(const [key,keywords] of Object.entries(cmdMap)){
+    if(keywords.some(k=>text.includes(k))){intent=key;break}
+  }
+
+  let result;
+  switch(intent){
+    case '需求':result=await processDemandVoice();break;
+    case '供应':result=await processSupplyVoice();break;
+    case 'MRP':result=await processMrpVoice();break;
+    case 'S&OP':result=await processSopVoice();break;
+    case '质检':runAiDataIntegrityCheck(false);return;
+    default:{
+      // AI聊天
+      const ctx=`当前平台数据：客户订单${(appData.customerOrders||[]).length}条，库存${(appData.inventory||[]).length}条，物料${(appData.materials||[]).length}个。`;
+      result=await aiChat([
+        {role:'system',content:'你是IC-SCM平台的AI助手。回答供应链相关问题，简明扼要。当前'+ctx},
+        {role:'user',content:text}
+      ],{temp:0.3,maxTokens:512});
+    }
+  }
+  const body=document.querySelector('.vp-body');
+  if(body)body.innerHTML='🎤 <strong>'+text+'</strong><br><br>💡 '+result;
+}
+async function processDemandVoice(){
+  const co=(appData.customerOrders||[]).filter(d=>getMatProcess(d.material)==='FT');
+  const total=co.reduce((s,d)=>s+d.quantity,0);
+  const cust=new Set(co.map(d=>d.customer)).size;
+  return `FT成品需求汇总：共${co.length}条客户订单，总需求量${total.toLocaleString()}颗，涉及${cust}个客户。`;
+}
+async function processSupplyVoice(){
+  const sp=appData.supplierPerf||[];
+  const low=sp.filter(s=>(s.yieldRate||100)<80);
+  return `当前供应商绩效：共${sp.length}条记录，${low.length>0?'⚠️ '+low.length+'条良率低于80%（'+low.map(l=>l.code+'='+l.yieldRate+'%').join(',')+'）':'✅ 所有供应商良率正常'}`;
+}
+async function processMrpVoice(){
+  const pr=appData.pr||[];
+  const total=pr.reduce((s,p)=>s+(p.quantity||p.qty||0),0);
+  return `当前PR采购需求：共${pr.length}条，总需求量${total.toLocaleString()}。建议运行MRP获取最新需求。`;
+}
+async function processSopVoice(){
+  return `S&OP当前包含5个子模块：Demand Review、Supply Review、Pre-S&OP、Executive S&OP、Plan Simulation。建议前往S&OP菜单查看详细分析数据。`;
+}
+
+// ---- 注入AI UI元素到S&OP各Tab ----
+function injectAiCards(){
+  // Demand Review Tab - AI洞察卡片
+  const drCards=document.getElementById('sopDemandReviewCards');
+  if(drCards&&!document.getElementById('aiDemandCard')){
+    const aiDiv=document.createElement('div');
+    aiDiv.id='aiDemandCard';
+    aiDiv.style.cssText='grid-column:1/-1';
+    drCards.parentNode.insertBefore(aiDiv,drCards.nextSibling);
+    // 自动加载（加按钮）
+    const btnDiv=document.createElement('div');
+    btnDiv.style.cssText='display:flex;gap:8px;margin-bottom:12px';
+    btnDiv.innerHTML=`<button class="ai-insight-btn" onclick="runAiDemandInsight()">🤖 AI需求洞察</button>`;
+    drCards.parentNode.insertBefore(btnDiv,drCards.nextSibling);
+  }
+
+  // Supply Review Tab - AI风险卡片
+  const srCards=document.getElementById('sopSupplyReviewCards');
+  if(srCards&&!document.getElementById('aiSupplyRiskCard')){
+    const aiDiv=document.createElement('div');
+    aiDiv.id='aiSupplyRiskCard';
+    aiDiv.style.cssText='grid-column:1/-1';
+    srCards.parentNode.insertBefore(aiDiv,srCards.nextSibling);
+    const btnDiv=document.createElement('div');
+    btnDiv.style.cssText='display:flex;gap:8px;margin-bottom:12px';
+    btnDiv.innerHTML=`<button class="ai-insight-btn" onclick="runAiSupplyRisk()">🤖 AI供应风险分析</button>`;
+    srCards.parentNode.insertBefore(btnDiv,srCards.nextSibling);
+  }
+
+  // Executive S&OP Tab - AI会议简报
+  const execReport=document.getElementById('sopExecReportContent');
+  if(execReport&&!document.getElementById('aiMeetingBrief')){
+    const aiDiv=document.createElement('div');
+    aiDiv.id='aiMeetingBrief';
+    aiDiv.style.cssText='margin-top:12px';
+    execReport.parentNode.insertBefore(aiDiv,execReport.nextSibling);
+    const btn=document.createElement('button');
+    btn.className='btn btn-sm btn-primary';
+    btn.style.cssText='margin-top:8px';
+    btn.innerHTML='🤖 AI生成会议简报';
+    btn.onclick=runAiMeetingBrief;
+    aiDiv.parentNode.insertBefore(btn,aiDiv.nextSibling);
+  }
+
+  // MRP Tab - AI排程建议
+  const mrpContent=document.querySelector('#section-mrp .tab-content.active, #tab-sp-mrp');
+  if(mrpContent&&!document.getElementById('aiScheduleCard')){
+    // 找到第一个卡片区域插入
+    const firstCard=mrpContent.querySelector('.card');
+    if(firstCard){
+      const aiDiv=document.createElement('div');
+      aiDiv.id='aiScheduleCard';
+      aiDiv.style.cssText='margin-bottom:12px';
+      firstCard.parentNode.insertBefore(aiDiv,firstCard);
+      const btn=document.createElement('button');
+      btn.className='ai-insight-btn';
+      btn.style.cssText='margin-bottom:8px';
+      btn.innerHTML='🤖 AI排程建议';
+      btn.onclick=runAiSchedulingAdvice;
+      aiDiv.parentNode.insertBefore(btn,aiDiv);
+    }
+  }
+}
+
+// ---- 创建语音助手浮动按钮+面板 ----
+function createAiVoiceUI(){
+  if(document.getElementById('aiVoiceBtn'))return;
+  // 浮窗按钮
+  const btn=document.createElement('button');
+  btn.id='aiVoiceBtn';
+  btn.className='ai-float-btn';
+  btn.innerHTML='🎤';
+  btn.title='AI语音助手';
+  btn.onclick=toggleAiVoice;
+  document.body.appendChild(btn);
+
+  // 语音面板
+  const panel=document.createElement('div');
+  panel.id='aiVoicePanel';
+  panel.className='ai-voice-panel';
+  panel.innerHTML=`
+    <div class="vp-header">
+      <span>🎤 AI语音助手</span>
+      <span style="cursor:pointer;font-size:18px" onclick="toggleAiVoice()">×</span>
+    </div>
+    <div class="vp-body">说"需求""供应""MRP""排程"等关键词快速查询，或直接提问</div>
+    <div class="vp-footer">
+      <button class="btn btn-sm btn-primary" onclick="startAiVoiceRecog()">🎤 开始说话</button>
+      <button class="btn btn-sm btn-outline" onclick="document.querySelector('.vp-body').innerHTML='说"需求""供应""MRP""排程"等关键词快速查询，或直接提问'">清空</button>
+    </div>`;
+  document.body.appendChild(panel);
+}
+
+// ---- 初始化AI Copilot ----
+(function initAiCopilot(){
+  createAiVoiceUI();
+  // S&OP Tab切换时注入AI卡片
+  const origSwitchSop=window.switchSopTab;
+  window.switchSopTab=function(tab){
+    if(origSwitchSop)origSwitchSop(tab);
+    setTimeout(injectAiCards,100);
+  };
+  // 页面加载完成后注入
+  setTimeout(injectAiCards,500);
+  // 如果已有API Key，静默检查数据质量
+  const cfg=getAiCfg();
+  if(cfg.apiKey){
+    setTimeout(()=>runAiDataIntegrityCheck(true),2000);
+  }
+})();
 </script>
 </body></html>
