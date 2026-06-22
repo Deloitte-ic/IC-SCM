@@ -666,7 +666,7 @@ tbody tr:hover td{background:var(--primary-bg)}
               </div>
             </div>
             <div class="table-wrapper"><table id="mrpResultTable"><thead><tr>
-              <th style="min-width:80px">层级</th><th>制程</th><th>物料编码</th><th>需求日期</th><th>供应商</th><th>毛需求</th><th>损耗率</th><th>净需求</th><th>可用库存</th><th>WIP扣减数</th><th>WIP到货日</th><th>PR扣减数</th><th>PR到货日</th><th>PO扣减数</th><th>PO到货日</th><th>净待补</th>
+              <th style="min-width:80px">层级</th><th>制程</th><th>物料编码</th><th>需求日期</th><th>供应商</th><th>毛需求</th><th>损耗率</th><th>净需求</th><th>可用库存</th><th>WIP扣减数</th><th>WIP到货日</th><th>PR扣减数</th><th>PR到货日</th><th>PO扣减数</th><th>PO到货日</th><th>净待补</th><th style="min-width:90px">🤖 AI建议</th>
             </tr></thead><tbody></tbody></table></div>
           </div>
 
@@ -836,6 +836,17 @@ tbody tr:hover td{background:var(--primary-bg)}
       <!-- ==================== Tab 4: Executive S&OP（高管决策） ==================== -->
       <div class="tab-content" id="tab-sop-exec">
         <div class="result-summary" id="sopExecCards"></div>
+        <!-- 一键生成会议简报卡片 -->
+        <div class="card" style="background:linear-gradient(135deg,#f5f0ff,#eef2ff);border-color:#c4b5fd;margin-bottom:16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+            <div>
+              <div class="card-title" style="margin-bottom:4px">📄 一键生成会议简报 <span class="tag" style="background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff">AI</span></div>
+              <div style="font-size:13px;color:var(--gray-500)">基于Demand Review / Supply Review / Pre-S&OP 数据，AI自动生成Executive S&OP会议简报</div>
+            </div>
+            <button class="btn btn-lg btn-primary" onclick="runAiMeetingBrief()" style="background:linear-gradient(135deg,#7c3aed,#a855f7);border:none;padding:10px 24px;font-size:14px;white-space:nowrap;box-shadow:0 4px 12px rgba(124,58,237,.3)">🤖 一键生成会议简报</button>
+          </div>
+          <div id="aiMeetingBrief" style="margin-top:12px"></div>
+        </div>
         <div class="grid-2">
           <div class="card">
             <div class="card-title">📈 S&OP KPI 仪表板 <span class="tag">Executive Dashboard</span></div>
@@ -1327,7 +1338,7 @@ tbody tr:hover td{background:var(--primary-bg)}
               </div>
             </div>
             <div class="table-wrapper" style="max-height:400px;overflow-y:auto"><table id="spMrpResultTable"><thead><tr>
-              <th style="min-width:80px">层级</th><th>制程</th><th>物料编码</th><th>需求日期</th><th>供应商</th><th>毛需求</th><th>损耗率</th><th>净需求</th><th>可用库存</th><th>WIP扣减数</th><th>WIP到货日</th><th>PR扣减数</th><th>PR到货日</th><th>PO扣减数</th><th>PO到货日</th><th>净待补</th>
+              <th style="min-width:80px">层级</th><th>制程</th><th>物料编码</th><th>需求日期</th><th>供应商</th><th>毛需求</th><th>损耗率</th><th>净需求</th><th>可用库存</th><th>WIP扣减数</th><th>WIP到货日</th><th>PR扣减数</th><th>PR到货日</th><th>PO扣减数</th><th>PO到货日</th><th>净待补</th><th style="min-width:90px">🤖 AI建议</th>
             </tr></thead><tbody></tbody></table></div>
           </div>
           <div class="card">
@@ -4007,7 +4018,7 @@ function executeMRP(){
   results.forEach((r,idx)=>{
     // 新FT树开始：分隔线+交替背景
     if(r.level===0){
-      if(idx>0)tableHtml+='<tr style="background:none"><td colspan="16" style="height:6px;border-top:2px solid var(--gray-300);padding:0"></td></tr>';
+      if(idx>0)tableHtml+='<tr style="background:none"><td colspan="18" style="height:6px;border-top:2px solid var(--gray-300);padding:0"></td></tr>';
       treeColor=1-treeColor;
     }
     const bg=treeBgs[treeColor];
@@ -4033,7 +4044,7 @@ function executeMRP(){
     const poDateItems=appData.prpo.filter(p=>p.materialCode===r.matCode&&p.orderType==='PO'&&p.demandDate);
     const poDatesStr=(r.consumePo||0)>0?[...new Set(poDateItems.map(p=>p.demandDate).sort())].join(' / '):'';
     const prTotalQty=prDateItems.reduce((s,p)=>s+(p.quantity||0),0);const prArrivalCell=(r.consumePr||0)>0?[...new Set(prDateItems.map(p=>p.demandDate).sort())].map(d=>d.slice(5)+':'+prTotalQty.toLocaleString()).join('<br>'):'-';
-    tableHtml+='<tr style="background:'+bg+'"><td style="'+levelStyle+'">'+levelLabel+'</td><td><span class="tag-status '+(r.process==='FT'?'tag-green':'tag-blue')+'">'+r.process+'</span></td><td style="font-weight:500">'+r.matCode+'</td><td><span class="tag-status '+(r.demandType==='独立需求'?'tag-green':'tag-blue')+'">'+r.demandType+'</span></td><td style="font-weight:600;color:var(--primary)">'+(r.demandDate||'')+'</td><td style="font-weight:500">'+r.grossReq.toLocaleString()+'</td><td>'+r.scrapRate+'%</td><td style="font-weight:600">'+r.netReq.toLocaleString()+'</td><td>'+r.unit+'</td><td style="font-weight:500">'+(r.consumeStock||0).toLocaleString()+'</td><td>'+(r.consumeWip||0).toLocaleString()+'</td><td>'+wipArrival+'</td><td style="font-weight:500;font-size:13px">'+(r.consumePr||0).toLocaleString()+'</td><td style="font-size:11px;color:var(--gray-600)">'+prArrivalCell+'</td><td style="font-weight:500;font-size:13px">'+(r.consumePo||0).toLocaleString()+'</td><td style="font-size:11px;color:var(--gray-600)">'+((r.consumePo||0)>0?(poDatesStr||r.poBreakdown||'-'):'-')+'</td><td style="font-weight:600;color:'+(r.netRemaining>0?'var(--danger)':'var(--success)')+'">'+r.netRemaining.toLocaleString()+'</td></tr>';
+    tableHtml+='<tr style="background:'+bg+'"><td style="'+levelStyle+'">'+levelLabel+'</td><td><span class="tag-status '+(r.process==='FT'?'tag-green':'tag-blue')+'">'+r.process+'</span></td><td style="font-weight:500">'+r.matCode+'</td><td><span class="tag-status '+(r.demandType==='独立需求'?'tag-green':'tag-blue')+'">'+r.demandType+'</span></td><td style="font-weight:600;color:var(--primary)">'+(r.demandDate||'')+'</td><td style="font-weight:500">'+r.grossReq.toLocaleString()+'</td><td>'+r.scrapRate+'%</td><td style="font-weight:600">'+r.netReq.toLocaleString()+'</td><td>'+r.unit+'</td><td style="font-weight:500">'+(r.consumeStock||0).toLocaleString()+'</td><td>'+(r.consumeWip||0).toLocaleString()+'</td><td>'+wipArrival+'</td><td style="font-weight:500;font-size:13px">'+(r.consumePr||0).toLocaleString()+'</td><td style="font-size:11px;color:var(--gray-600)">'+prArrivalCell+'</td><td style="font-weight:500;font-size:13px">'+(r.consumePo||0).toLocaleString()+'</td><td style="font-size:11px;color:var(--gray-600)">'+((r.consumePo||0)>0?(poDatesStr||r.poBreakdown||'-'):'-')+'</td><td style="font-weight:600;color:'+(r.netRemaining>0?'var(--danger)':'var(--success)')+'">'+r.netRemaining.toLocaleString()+'</td><td style="font-size:11px;line-height:1.4">'+getMrpAiSuggestion(r)+'</td></tr>';
   });
   document.querySelector('#mrpResultTable tbody').innerHTML=tableHtml;
   renderProcurementList(results);
@@ -4043,6 +4054,41 @@ function executeMRP(){
   showToast('✅ MRP运算完成','success');
 }
 
+// ---- MRP结果 AI建议生成 ----
+function getMrpAiSuggestion(r){
+  const chips=[];
+  if(r.netRemaining<=0){
+    chips.push('<span style="display:inline-block;padding:1px 8px;border-radius:8px;font-size:11px;background:#dcfce7;color:#166534;font-weight:500">✅ 平衡</span>');
+  }else{
+    const hasPr=(r.consumePr||0)>0;
+    const hasPo=(r.consumePo||0)>0;
+    const hasWip=(r.consumeWip||0)>0;
+    const hasStock=(r.consumeStock||0)>0;
+    
+    const gapRatio=r.netRemaining/(r.grossReq||1);
+    if(gapRatio>0.8){
+      chips.push('<span style="display:inline-block;padding:1px 8px;border-radius:8px;font-size:11px;background:#fef2f2;color:#dc2626;font-weight:600">🔴 大缺口</span>');
+    }else if(gapRatio>0.3){
+      chips.push('<span style="display:inline-block;padding:1px 8px;border-radius:8px;font-size:11px;background:#fff7ed;color:#c2410c;font-weight:500">🟠 需补货</span>');
+    }else{
+      chips.push('<span style="display:inline-block;padding:1px 8px;border-radius:8px;font-size:11px;background:#fffbeb;color:#c27803;font-weight:500">🟡 少量缺口</span>');
+    }
+    
+    const supplyWays=[];
+    if(hasStock)supplyWays.push('库存');
+    if(hasWip)supplyWays.push('WIP');
+    if(hasPr)supplyWays.push('PR');
+    if(hasPo)supplyWays.push('PO');
+    if(supplyWays.length>0){
+      chips.push('<span style="display:inline-block;padding:1px 6px;border-radius:6px;font-size:10px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe">'+supplyWays.join('/')+'</span>');
+    }
+    
+    if((r.scrapRate||0)>10){
+      chips.push('<span style="display:inline-block;padding:1px 6px;border-radius:6px;font-size:10px;background:#fef3c7;color:#92400e">损耗'+r.scrapRate+'%</span>');
+    }
+  }
+  return chips.join('&nbsp;');
+}
 // ==================== MRP运算规则管理（动态规则列表，可新增/删除/编辑） ====================
 // 默认核心规则（由自然语言界面配置驱动，不对外暴露代码）
 let defaultMrpCore={
@@ -4758,7 +4804,7 @@ function exportProcurementList(){
 }
 
 function exportMRPResult(){
-  const rows=[];document.querySelectorAll('#mrpResultTable tbody tr').forEach(tr=>{const tds=tr.querySelectorAll('td');if(tds.length>=17&&tds[0].textContent.trim())rows.push({'层级':tds[0].textContent.trim().replace('└─ ',''),'制程':tds[1].textContent.trim(),'物料编码':tds[2].textContent.trim(),'需求类型':tds[3].textContent.trim(),'需求日期':tds[4].textContent.trim(),'毛需求':tds[5].textContent.trim(),'损耗率':tds[6].textContent.trim(),'净需求':tds[7].textContent.trim(),'单位':tds[8].textContent.trim(),'当前库存':tds[9].textContent.trim(),'WIP':tds[10].textContent.trim(),'WIP到货日':tds[11].textContent.trim(),'PR':tds[12].textContent.trim(),'PR到货日':tds[13].textContent.trim(),'PO':tds[14].textContent.trim(),'PO到货日':tds[15].textContent.trim(),'净待补':tds[16].textContent.trim()});});
+  const rows=[];document.querySelectorAll('#mrpResultTable tbody tr').forEach(tr=>{const tds=tr.querySelectorAll('td');if(tds.length>=18&&tds[0].textContent.trim())rows.push({'层级':tds[0].textContent.trim().replace('└─ ',''),'制程':tds[1].textContent.trim(),'物料编码':tds[2].textContent.trim(),'需求类型':tds[3].textContent.trim(),'需求日期':tds[4].textContent.trim(),'毛需求':tds[5].textContent.trim(),'损耗率':tds[6].textContent.trim(),'净需求':tds[7].textContent.trim(),'单位':tds[8].textContent.trim(),'当前库存':tds[9].textContent.trim(),'WIP':tds[10].textContent.trim(),'WIP到货日':tds[11].textContent.trim(),'PR':tds[12].textContent.trim(),'PR到货日':tds[13].textContent.trim(),'PO':tds[14].textContent.trim(),'PO到货日':tds[15].textContent.trim(),'净待补':tds[16].textContent.trim(),'AI建议':tds[17].textContent.trim()});});
   if(!rows.length){showToast('没有可导出的数据','warning');return;}
   const ws=XLSX.utils.json_to_sheet(rows),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'MRP运算结果');XLSX.writeFile(wb,'MRP运算结果_'+new Date().toISOString().split('T')[0]+'.xlsx');showToast('✅ 导出成功','success');
 }
@@ -7520,9 +7566,9 @@ function renderSpMrpResult(){
   groups.sort((a,b)=>(a.demandDate||'').localeCompare(b.demandDate||''));
   groups.forEach((g,gi)=>{
     const allRows=[g.ft,...g.children.sort((a,b)=>a.level-b.level)];
-    if(gi>0) tableHtml+='<tr style="background:none"><td colspan="17" style="height:8px;border-top:2px solid var(--gray-300);padding:0"></td></tr>';
+    if(gi>0) tableHtml+='<tr style="background:none"><td colspan="18" style="height:8px;border-top:2px solid var(--gray-300);padding:0"></td></tr>';
     // FT日期标题行
-    tableHtml+='<tr style="background:#e8f4f8"><td colspan="17" style="font-weight:600;padding:6px 10px;color:var(--primary)">📅 需求日期：'+(g.demandDate==='未指定'?'未指定':g.demandDate)+'</td></tr>';
+    tableHtml+='<tr style="background:#e8f4f8"><td colspan="18" style="font-weight:600;padding:6px 10px;color:var(--primary)">📅 需求日期：'+(g.demandDate==='未指定'?'未指定':g.demandDate)+'</td></tr>';
     allRows.forEach((r,ri)=>{
       const isFirst=ri===0, isLast=ri===allRows.length-1;
       const padLeft=8+r.level*14;
@@ -7537,7 +7583,7 @@ function renderSpMrpResult(){
       if(r.consumeWip>0) wipArrival=r.wipBreakdown||'-';
       const prItemsForArrival=appData.prpo.filter(p=>p.materialCode===r.matCode&&p.orderType==='PR'&&p.demandDate);const prArrivalStr=r.consumePr>0?[...new Set(prItemsForArrival.map(p=>p.demandDate).sort())].map(d=>d.slice(5)+':'+prItemsForArrival.reduce((s,p)=>s+(p.quantity||0),0).toLocaleString()).join('<br>'):'-';
       const poArrivalStr=r.consumePo>0?(r.poBreakdown||'-'):'-';
-      tableHtml+='<tr style="'+bg+'"><td style="'+levelStyle+'">'+indent+'</td><td style="'+plainStyle+'">'+r.process+'</td><td style="'+plainStyle+'">'+r.matCode+'</td><td style="'+plainStyle+'">'+(r.demandDate||'—')+'</td><td style="'+plainStyle+'">'+(r.supplier||'—')+'</td><td style="'+plainStyle+'">'+r.grossReq.toLocaleString()+'</td><td style="'+plainStyle+'">'+(r.scrapRate||0)+'%</td><td style="'+plainStyle+'">'+r.netReq.toLocaleString()+'</td><td style="'+plainStyle+'">'+(r.consumeStock||0).toLocaleString()+'</td><td style="'+plainStyle+'">'+(r.consumeWip||0).toLocaleString()+'</td><td style="'+plainStyle+'">'+wipArrival+'</td><td style="'+plainStyle+'">'+(r.consumePr>0?r.consumePr.toLocaleString():'0')+'</td><td style="'+plainStyle+'">'+prArrivalStr+'</td><td style="'+plainStyle+'">'+(r.consumePo>0?r.consumePo.toLocaleString():'0')+'</td><td style="'+plainStyle+'">'+poArrivalStr+'</td><td style="'+plainStyle+';'+gapColor+'">'+r.netRemaining.toLocaleString()+'</td></tr>';
+      tableHtml+='<tr style="'+bg+'"><td style="'+levelStyle+'">'+indent+'</td><td style="'+plainStyle+'">'+r.process+'</td><td style="'+plainStyle+'">'+r.matCode+'</td><td style="'+plainStyle+'">'+(r.demandDate||'—')+'</td><td style="'+plainStyle+'">'+(r.supplier||'—')+'</td><td style="'+plainStyle+'">'+r.grossReq.toLocaleString()+'</td><td style="'+plainStyle+'">'+(r.scrapRate||0)+'%</td><td style="'+plainStyle+'">'+r.netReq.toLocaleString()+'</td><td style="'+plainStyle+'">'+(r.consumeStock||0).toLocaleString()+'</td><td style="'+plainStyle+'">'+(r.consumeWip||0).toLocaleString()+'</td><td style="'+plainStyle+'">'+wipArrival+'</td><td style="'+plainStyle+'">'+(r.consumePr>0?r.consumePr.toLocaleString():'0')+'</td><td style="'+plainStyle+'">'+prArrivalStr+'</td><td style="'+plainStyle+'">'+(r.consumePo>0?r.consumePo.toLocaleString():'0')+'</td><td style="'+plainStyle+'">'+poArrivalStr+'</td><td style="'+plainStyle+';'+gapColor+'">'+r.netRemaining.toLocaleString()+'</td><td style="font-size:11px;line-height:1.4">'+getMrpAiSuggestion(r)+'</td></tr>';
     });
   });
   document.querySelector('#spMrpResultTable tbody').innerHTML=tableHtml;
