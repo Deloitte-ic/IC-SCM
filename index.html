@@ -4057,37 +4057,86 @@ function executeMRP(){
 // ---- MRP结果 AI建议生成 ----
 function getMrpAiSuggestion(r){
   const chips=[];
+  let detailLines=[];
+  
+  // 基准状态
   if(r.netRemaining<=0){
     chips.push('<span style="display:inline-block;padding:1px 8px;border-radius:8px;font-size:11px;background:#dcfce7;color:#166534;font-weight:500">✅ 平衡</span>');
+    detailLines.push('供需平衡，无需补货');
+    return '<span title="'+detailLines.join(' | ')+'">'+chips.join('&nbsp;')+'</span>';
+  }
+  
+  // 缺口比例标签
+  const gapRatio=r.netRemaining/(r.grossReq||1);
+  let urgency='常规', urgencyColor='';
+  if(gapRatio>0.8){ urgency='紧急'; urgencyColor='#dc2626'; }
+  else if(gapRatio>0.3){ urgency='关注'; urgencyColor='#c2410c'; }
+  else{ urgency='常规'; urgencyColor='#c27803'; }
+  
+  // 优先级评分 (0-100)：缺口比例60% + 损耗率权重20% + 时间紧迫度20%
+  const scrapPenalty=Math.min(30,(r.scrapRate||0)*3);
+  const timeUrgency=40; // 默认中等紧迫度
+  const priorityScore=Math.round(Math.min(100, gapRatio*60 + scrapPenalty + timeUrgency));
+  
+  const colorMap={紧急:'#dc2626',关注:'#c2410c',常规:'#c27803'};
+  const bgMap={紧急:'#fef2f2',关注:'#fff7ed',常规:'#fffbeb'};
+  chips.push('<span style="display:inline-block;padding:1px 8px;border-radius:8px;font-size:11px;background:'+bgMap[urgency]+';color:'+colorMap[urgency]+';font-weight:600">'+
+    (urgency==='紧急'?'🔴':urgency==='关注'?'🟠':'🟡')+' '+urgency+'</span>');
+  detailLines.push('缺口率'+Math.round(gapRatio*100)+'% | 优先级评分'+priorityScore+'/100');
+  
+  // 供给手段标签
+  const supplyWays=[];
+  if((r.consumeStock||0)>0) supplyWays.push('库存:'+(r.consumeStock||0).toLocaleString());
+  if((r.consumeWip||0)>0) supplyWays.push('WIP:'+(r.consumeWip||0).toLocaleString());
+  if((r.consumePr||0)>0) supplyWays.push('PR:'+(r.consumePr||0).toLocaleString());
+  if((r.consumePo||0)>0) supplyWays.push('PO:'+(r.consumePo||0).toLocaleString());
+  if(supplyWays.length>0){
+    chips.push('<span style="display:inline-block;padding:1px 6px;border-radius:6px;font-size:10px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe">'+supplyWays.join(' ')+'</span>');
+  }
+  
+  // 损耗提示
+  if((r.scrapRate||0)>10){
+    chips.push('<span style="display:inline-block;padding:1px 6px;border-radius:6px;font-size:10px;background:#fef3c7;color:#92400e">⚡损耗'+r.scrapRate+'%</span>');
+    detailLines.push('损耗率'+r.scrapRate+'%偏高，建议核查工艺');
+  }
+  
+  // 供应商推荐（实时从appData.suppliers查找）
+  const supRecs=window.appData&&appData.suppliers?appData.suppliers.filter(s=>s.processCode===r.process&&s.material===r.matCode):[];
+  if(supRecs.length>0){
+    const bestSup=supRecs.sort((a,b)=>(b.qualityLevel||'B').localeCompare(a.qualityLevel||'B'))[0];
+    chips.push('<span style="display:inline-block;padding:1px 6px;border-radius:6px;font-size:10px;background:#f0fdf4;color:#166534;border:1px solid #bbf7d0">🏭'+bestSup.code+'</span>');
+    detailLines.push('推荐供应商:'+bestSup.code+' | 交期'+bestSup.leadTime+'天 | MOQ:'+(bestSup.moq||'—'));
   }else{
-    const hasPr=(r.consumePr||0)>0;
-    const hasPo=(r.consumePo||0)>0;
-    const hasWip=(r.consumeWip||0)>0;
-    const hasStock=(r.consumeStock||0)>0;
-    
-    const gapRatio=r.netRemaining/(r.grossReq||1);
-    if(gapRatio>0.8){
-      chips.push('<span style="display:inline-block;padding:1px 8px;border-radius:8px;font-size:11px;background:#fef2f2;color:#dc2626;font-weight:600">🔴 大缺口</span>');
-    }else if(gapRatio>0.3){
-      chips.push('<span style="display:inline-block;padding:1px 8px;border-radius:8px;font-size:11px;background:#fff7ed;color:#c2410c;font-weight:500">🟠 需补货</span>');
-    }else{
-      chips.push('<span style="display:inline-block;padding:1px 8px;border-radius:8px;font-size:11px;background:#fffbeb;color:#c27803;font-weight:500">🟡 少量缺口</span>');
-    }
-    
-    const supplyWays=[];
-    if(hasStock)supplyWays.push('库存');
-    if(hasWip)supplyWays.push('WIP');
-    if(hasPr)supplyWays.push('PR');
-    if(hasPo)supplyWays.push('PO');
-    if(supplyWays.length>0){
-      chips.push('<span style="display:inline-block;padding:1px 6px;border-radius:6px;font-size:10px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe">'+supplyWays.join('/')+'</span>');
-    }
-    
-    if((r.scrapRate||0)>10){
-      chips.push('<span style="display:inline-block;padding:1px 6px;border-radius:6px;font-size:10px;background:#fef3c7;color:#92400e">损耗'+r.scrapRate+'%</span>');
+    // 尝试从supplierPerf按制程匹配
+    const perfRecs=window.appData&&appData.supplierPerf?appData.supplierPerf.filter(s=>s.process===r.process):[];
+    if(perfRecs.length>0){
+      const best=perfRecs.sort((a,b)=>(b.yieldRate||0)-(a.yieldRate||0))[0];
+      chips.push('<span style="display:inline-block;padding:1px 6px;border-radius:6px;font-size:10px;background:#f0fdf4;color:#166534;border:1px solid #bbf7d0">🏭'+best.code+'</span>');
+      detailLines.push('推荐:'+best.code+' (良率'+(best.yieldRate||'—')+'%)');
     }
   }
-  return chips.join('&nbsp;');
+  
+  // 建议下单时间（从需求日期反推）
+  if(r.demandDate){
+    const leadTimes=window.appData&&appData.leadTimes?appData.leadTimes.find(l=>l.process===r.process):null;
+    if(leadTimes){
+      const ltDays=leadTimes.prod+leadTimes.trans+leadTimes.inspect;
+      const orderDate=new Date(r.demandDate);
+      orderDate.setDate(orderDate.getDate()-ltDays);
+      const today=new Date();today.setHours(0,0,0,0);
+      const daysLeft=Math.round((orderDate-today)/86400000);
+      if(daysLeft<=0) chips.push('<span style="display:inline-block;padding:1px 6px;border-radius:6px;font-size:10px;background:#fef2f2;color:#dc2626">⏰ 立即下单</span>');
+      else if(daysLeft<=7) chips.push('<span style="display:inline-block;padding:1px 6px;border-radius:6px;font-size:10px;background:#fff7ed;color:#c2410c">⏰ '+daysLeft+'天内下单</span>');
+      detailLines.push('建议下单日:'+(orderDate.toISOString().slice(0,10))+' | 交期'+ltDays+'天');
+    }else{
+      const daysToDemand=Math.round((new Date(r.demandDate)-new Date())/86400000);
+      if(daysToDemand<=0) chips.push('<span style="display:inline-block;padding:1px 6px;border-radius:6px;font-size:10px;background:#fef2f2;color:#dc2626">⏰ 已过期</span>');
+      else if(daysToDemand<=7) chips.push('<span style="display:inline-block;padding:1px 6px;border-radius:6px;font-size:10px;background:#fff7ed;color:#c2410c">⏰ '+daysToDemand+'天到期</span>');
+    }
+  }
+  
+  const titleAttr=detailLines.join(' | ');
+  return '<span title="'+titleAttr+'">'+chips.join('&nbsp;')+'</span>';
 }
 // ==================== MRP运算规则管理（动态规则列表，可新增/删除/编辑） ====================
 // 默认核心规则（由自然语言界面配置驱动，不对外暴露代码）
@@ -9103,19 +9152,23 @@ async function runAiDemandInsight(){
     dpInsight=`DP统计预测${dpTotal.toLocaleString()}颗，客户订单${totalQty.toLocaleString()}颗，偏差${diffPct>0?'+':''}${diffPct}%。`;
   }
 
-  const AI=await aiChat([
+  let AI=await aiChat([
     {role:'system',content:'你是IC设计公司供应链需求分析师。分析以下需求数据，给出：1)需求模式特征 2)异常信号 3)前瞻建议。简要专业，用中文，200字内。'},
     {role:'user',content:`FT成品需求摘要：${JSON.stringify(matInsights)}\n总需求量:${totalQty}颗/${totalOrders}单\n客户数:${custCount}\nForecast占比:${Math.round(fcstRatio)}%\n${dpInsight}`}
   ],{temp:0.3,maxTokens:1024});
 
-  if(!AI)return;
+  // API不可用时本地生成
+  if(!AI){
+    AI=generateLocalBrief('demandInsight',{matInsights,totalQty,totalOrders,custCount,fcstRatio,dpInsight});
+    if(el)el.innerHTML='<div class="ai-card loading">📊 正在生成需求分析...</div>';
+  }
   _aiDemandResult=AI;
   const cardEl=document.getElementById('aiDemandCard');
   if(cardEl){
     cardEl.innerHTML=`<div class="ai-card">
-      <span class="ai-badge">🤖 AI 需求洞察</span>
+      <span class="ai-badge">📊 需求洞察</span>
       <div class="ai-title">📊 需求模式分析</div>
-      <div class="ai-content">${AI}</div>
+      <div class="ai-content" style="white-space:pre-line;line-height:1.6">${AI}</div>
       <div class="ai-meta">基于${totalOrders}条客户订单 · ${custCount}个客户 · ${Object.keys(byMat).length}个物料</div>
     </div>`;
   }
@@ -9153,22 +9206,28 @@ async function runAiSupplyRisk(){
     if(maxLt!==null&&maxLt>20)riskItems.push({proc:p,type:'交期',lvl:'info',detail:p+'最大交期'+maxLt+'天'});
   });
 
-  // AI深度分析
+  // 风险分析文本
   const summary=`制程链:${procs.join('→')}\n供应商绩效:${sp.length}条\n生产计划:${rt.length}条\n库存:${inv.reduce((s,i)=>s+(i.quantity||0),0)}件\n交期:${JSON.stringify(lt.map(l=>({p:l.process,lt:l.prod+l.trans+l.inspect})))}`;
-  const AI=await aiChat([
+  let AI=await aiChat([
     {role:'system',content:'你是半导体供应链风险分析师。分析以下供应数据，识别瓶颈和风险，给出中文建议。100字内，简洁。'},
     {role:'user',content:summary+'\n已识别风险:'+JSON.stringify(riskItems)}
   ],{temp:0.3,maxTokens:1024});
 
+  // API不可用时本地生成
+  if(!AI){
+    AI=generateLocalBrief('supplyRisk',{riskItems,spCount:sp.length,rtCount:rt.length});
+    if(el)el.innerHTML='<div class="ai-card loading">⚠️ 正在分析供应风险...</div>';
+  }
+
   const cardEl=document.getElementById('aiSupplyRiskCard');
   if(cardEl){
-    let html='<div class="ai-card"><span class="ai-badge">🤖 AI 供应风险</span><div class="ai-title">⚠️ 风险分析</div>';
+    let html='<div class="ai-card"><span class="ai-badge">⚠️ 供应风险分析</span><div class="ai-title">⚠️ 风险分析</div>';
     // 风险列表
     riskItems.slice(0,5).forEach(r=>{
       const ic={critical:'🔴',warning:'🟡',info:'🔵'};
       html+=`<div class="ai-risk-item ${r.lvl}">${ic[r.lvl]||'🔵'} [${r.proc}] ${r.detail}</div>`;
     });
-    if(AI)html+=`<div style="margin-top:8px;padding:8px;background:#fff;border-radius:6px;font-size:12px;color:var(--gray-700)">💡 ${AI}</div>`;
+    html+=`<div style="margin-top:8px;padding:8px;background:#fff;border-radius:6px;font-size:12px;color:var(--gray-700);white-space:pre-line;line-height:1.6">💡 ${AI}</div>`;
     html+=`<div class="ai-meta">基于${sp.length}条供应商绩效 · ${rt.length}条生产计划</div></div>`;
     cardEl.innerHTML=html;
   }
@@ -9204,26 +9263,40 @@ async function runAiSchedulingAdvice(){
     proc,qty:data.qty,count:data.count,
     bestSup:sp.filter(s=>s.process===proc).sort((a,b)=>(b.yieldRate||0)-(a.yieldRate||0))[0]
   }));
-  const AI=await aiChat([
+  let AI=await aiChat([
     {role:'system',content:'你是供应链排程专家。分析以下PR采购需求和供应商绩效，给出：1)优先级排序建议 2)供应商推荐 3)风险提示。100字内中文。'},
     {role:'user',content:JSON.stringify(prSummary)+'\n交期配置:'+JSON.stringify(lt.map(l=>({p:l.process,lead:l.prod+l.trans+l.inspect})))}
   ],{temp:0.3,maxTokens:1024});
 
-  // 生成建议表格
-  let tableHtml='';
-  Object.entries(byProc).forEach(([proc,data])=>{
+  // API不可用时本地生成
+  if(!AI){
+    AI=generateLocalBrief('scheduling',{byProc,sp,lt,prSummary:true});
+    if(el)el.innerHTML='<div class="ai-card loading">📋 正在生成排程建议...</div>';
+  }
+
+  // 生成含优先级评分的建议表格
+  const scoredProcs=Object.entries(byProc).map(([proc,data])=>{
     const bestSup=sp.filter(s=>s.process===proc).sort((a,b)=>(b.yieldRate||0)-(a.yieldRate||0))[0];
-    const urgent=data.qty>1000?'🔴紧急':data.qty>500?'🟡关注':'🔵常规';
-    tableHtml+=`<tr class="ai-suggestion-row"><td>${proc}</td><td>${data.count}条/${data.qty.toLocaleString()}</td><td>${bestSup?bestSup.code+' (良率'+(bestSup.yieldRate||'—')+'%)':'—'}</td><td>${urgent}</td></tr>`;
+    const supScore=bestSup?Math.min(100,(bestSup.yieldRate||80)):50;
+    const urgentScore=Math.min(100,Math.round(data.qty/500));
+    const score=Math.round(urgentScore*0.6+supScore*0.4);
+    return {...data,proc,bestSup,score};
+  }).sort((a,b)=>b.score-a.score);
+  
+  let tableHtml='';
+  scoredProcs.forEach(({proc,count,qty,bestSup,score})=>{
+    const urgent=score>70?'🔴紧急':score>40?'🟡关注':'🔵常规';
+    const grade=score>70?'#fef2f2':score>40?'#fff7ed':'#f0fdf4';
+    tableHtml+=`<tr style="background:${grade}"><td style="padding:4px 8px;font-weight:600">${proc}</td><td>${count}条/${qty.toLocaleString()}</td><td>${bestSup?bestSup.code+' (良率'+(bestSup.yieldRate||'—')+'%)':'—'}</td><td>${urgent}</td><td style="font-weight:600;color:${score>70?'#dc2626':score>40?'#c2410c':'#166534'}">${score}/100</td></tr>`;
   });
 
   const cardEl=document.getElementById('aiScheduleCard');
   if(cardEl){
     cardEl.innerHTML=`<div class="ai-card">
-      <span class="ai-badge">🤖 AI 排程建议</span>
-      <div class="ai-title">📋 采购计划优先级</div>
-      <div style="font-size:12px;margin-bottom:8px"><table style="width:100%;border-collapse:collapse"><tr style="background:#ede9fe;font-weight:600"><td style="padding:4px 8px">制程</td><td>PR汇总</td><td>推荐供应商</td><td>优先级</td></tr>${tableHtml}</table></div>
-      ${AI?`<div style="padding:8px;background:#fff;border-radius:6px;font-size:12px;color:var(--gray-700)">💡 ${AI}</div>`:''}
+      <span class="ai-badge">📋 排程建议</span>
+      <div class="ai-title">📋 采购计划优先级排序</div>
+      <div style="font-size:12px;margin-bottom:8px"><table style="width:100%;border-collapse:collapse"><tr style="background:#ede9fe;font-weight:600"><td style="padding:4px 8px">制程</td><td>PR汇总</td><td>推荐供应商</td><td>优先级</td><td>评分</td></tr>${tableHtml}</table></div>
+      <div style="padding:8px;background:#fff;border-radius:6px;font-size:12px;color:var(--gray-700);white-space:pre-line;line-height:1.6">💡 ${AI}</div>
     </div>`;
   }
 }
@@ -9255,7 +9328,14 @@ async function runAiMeetingBrief(){
   });
 
   const now=new Date().toISOString().slice(0,10);
-  const AI=await aiChat([
+  // 上期预测偏差：从demandHistory取上期数据
+  const dh=appData.demandHistory||[];
+  const prevMonth=new Date(); prevMonth.setMonth(prevMonth.getMonth()-1);
+  const prevMonthStr=prevMonth.toISOString().slice(0,7);
+  const prevFcst=dh.filter(d=>d.month===prevMonthStr).reduce((s,d)=>s+(d.forecast||0),0);
+  const prevActual=dh.filter(d=>d.month===prevMonthStr).reduce((s,d)=>s+(d.actual||0),0);
+  
+  let AI=await aiChat([
     {role:'system',content:'你是S&OP会议秘书。基于以下供应链KPI数据，生成一份Executive S&OP会议简报，包含：1)本期核心摘要 2)关键指标 3)风险与决策项。150字内中文，简洁专业。'},
     {role:'user',content:`FT成品需求:${ftDemand.toLocaleString()}颗
 FT库存:${ftInv}颗
@@ -9267,12 +9347,27 @@ FT库存:${ftInv}颗
 日期:${now}`}
   ],{temp:0.3,maxTokens:1024});
 
+  // API不可用时本地模板生成
+  if(!AI){
+    AI=generateLocalBrief('meeting',{ftDemand,ftInv,avgYield,lowYieldItems,gapItems,spCount:sp.length,rtCount:rt.length,coCount:co.length,prevFcst,prevActual});
+    if(el)el.innerHTML='<div class="ai-card loading">📄 正在生成会议简报...</div>';
+  }
+
   const cardEl=document.getElementById('aiMeetingBrief');
   if(cardEl){
+    // 构建关键指标行
+    const kpiHtml=`<div style="display:flex;gap:10px;flex-wrap:wrap;margin:8px 0">
+      <span style="background:#ede9fe;padding:2px 8px;border-radius:6px;font-size:11px">📦 需求 ${ftDemand.toLocaleString()}颗</span>
+      <span style="background:#dbeafe;padding:2px 8px;border-radius:6px;font-size:11px">🏭 库存 ${ftInv.toLocaleString()}颗</span>
+      <span style="background:${avgYield&&avgYield<80?'#fef2f2':'#dcfce7'};padding:2px 8px;border-radius:6px;font-size:11px">📈 良率 ${avgYield?avgYield+'%':'—'}</span>
+      <span style="background:${gapItems.length?'#fef2f2':'#dcfce7'};padding:2px 8px;border-radius:6px;font-size:11px">⚠️ 缺口 ${gapItems.length}项</span>
+    </div>`;
+    
     cardEl.innerHTML=`<div class="ai-card">
-      <span class="ai-badge">🤖 AI 会议简报</span>
+      <span class="ai-badge">📄 会议简报</span>
       <div class="ai-title">📄 Executive S&OP 简报 · ${now}</div>
-      <div class="ai-content">${AI||'数据不足，请先生成报告'}</div>
+      ${kpiHtml}
+      <div class="ai-content" style="white-space:pre-line;line-height:1.6">${AI}</div>
       <div class="ai-meta">基于${co.length}条客户订单 · ${sp.length}条供应商绩效 · ${rt.length}条生产计划</div>
     </div>`;
   }
@@ -9385,8 +9480,8 @@ async function handleAiVoiceCommand(text){
     {keys:['高管决策','Executive S&OP','executive','会议简报','决策'], fn:()=>{
       switchSection('collaboration');
       switchSopTab('sop-exec');
-      if(cfg.apiKey) setTimeout(()=>runAiMeetingBrief(),500);
-      return '🔀 已切换到 S&OP → Executive S&OP'+(cfg.apiKey?' + AI已自动生成会议简报':'');
+      setTimeout(()=>runAiMeetingBrief(),500);
+      return '🔀 已切换到 S&OP → Executive S&OP + 会议简报已自动生成';
     }},
     {keys:['计划模拟','Plan Simulation','simulation','模拟'], fn:()=>{
       switchSection('collaboration');
@@ -9424,11 +9519,7 @@ async function handleAiVoiceCommand(text){
     }
   }
 
-  // 匹配AI分析指令（需API Key）
-  if(!cfg.apiKey){
-    if(body)body.innerHTML='⚠️ 请先点🧠配置AI API Key，或输入"MRP""需求回顾""库存"等关键词直接导航';
-    return;
-  }
+  // 匹配AI分析指令（现在AI分析可本地运行，不再依赖API Key）
   const aiMap=[
     {keys:['需求洞察','需求分析','AI需求'], fn:()=>{
       switchSection('collaboration');switchSopTab('sop-demand');
@@ -9557,7 +9648,7 @@ async function handleAiVoiceCommand(text){
     {keys:['S&OP会议','高管决策','管理层','决策会议','KPI','经营分析'], fn:()=>{
       switchSection('collaboration');
       switchSopTab('sop-exec');
-      if(cfg.apiKey) setTimeout(()=>runAiMeetingBrief(),500);
+      setTimeout(()=>runAiMeetingBrief(),500);
       return '🔀 S&OP → Executive S&OP（结果在页面中）';
     }},
     // 供应商
@@ -9751,5 +9842,69 @@ function submitAiText(){
     setTimeout(()=>runAiDataIntegrityCheck(true),2000);
   }
 })();
-</script>
-</body></html>
+  const lines=[];
+  if(type==='scheduling' && data.prSummary){
+    const {byProc,sp,lt}=data;
+    const procs=Object.keys(byProc).sort((a,b)=>PROCESS_CHAIN.indexOf(a)-PROCESS_CHAIN.indexOf(b));
+    const totalQty=procs.reduce((s,p)=>s+byProc[p].qty,0);
+    const totalCount=procs.reduce((s,p)=>s+byProc[p].count,0);
+    lines.push(`本次共${totalCount}条PR需求，总量${totalQty.toLocaleString()}颗。`);
+    
+    // 按紧急程度排序
+    const scored=procs.map(p=>{
+      const d=byProc[p];
+      const bestSup=sp.filter(s=>s.process===p).sort((a,b)=>(b.yieldRate||0)-(a.yieldRate||0))[0];
+      const supScore=bestSup?Math.min(100,(bestSup.yieldRate||80)):50;
+      const urgentScore=Math.min(100,Math.round(d.qty/100));
+      return {proc:p,qty:d.qty,count:d.count,bestSup,supScore,urgentScore,totalScore:Math.round(urgentScore*0.6+supScore*0.4)};
+    }).sort((a,b)=>b.totalScore-a.totalScore);
+    
+    if(scored.length) lines.push(`优先级排序：${scored.map(s=>s.proc+'('+(s.totalScore>70?'🔴紧急':s.totalScore>40?'🟡关注':'🔵常规')+')').join(' → ')}`);
+    
+    const needRec=scored.filter(s=>s.bestSup);
+    if(needRec.length) lines.push(`供应商推荐：${needRec.map(s=>s.proc+'→'+s.bestSup.code+'（良率'+s.bestSup.yieldRate+'%）').join('；')}`);
+    
+    const ltInfo=lt.filter(l=>l.prod+l.trans+l.inspect);
+    if(ltInfo.length) lines.push(`交期参考：${ltInfo.map(l=>l.process+'('+(l.prod+l.trans+l.inspect)+'天)').join('，')}`);
+    
+    const riskProcs=scored.filter(s=>s.supScore<70);
+    if(riskProcs.length) lines.push(`⚠️ 风险提示：${riskProcs.map(s=>s.proc+'供应商良率偏低('+s.supScore+'%)').join('，')}，建议备选开发。`);
+  }
+  else if(type==='meeting'){
+    const {ftDemand,ftInv,avgYield,lowYieldItems,gapItems,spCount,rtCount,coCount,prevFcst,prevActual}=data;
+    lines.push('【Executive S&OP 会议简报】');
+    lines.push(`本期核心：FT成品需求${ftDemand.toLocaleString()}颗，库存${ftInv.toLocaleString()}颗，平均良率${avgYield||'—'}。`);
+    if(prevFcst>0 && prevActual>0){
+      const dev=Math.round((prevActual-prevFcst)/prevFcst*100);
+      lines.push(`上期预测偏差：${dev>0?'+':''}${dev}%（预测${prevFcst.toLocaleString()}，实际${prevActual.toLocaleString()}）。`);
+    }
+    if(gapItems.length) lines.push(`⚠️ 供需缺口${gapItems.length}项：${gapItems.slice(0,3).join('；')}${gapItems.length>3?'等':''}，需优先决策。`);
+    if(lowYieldItems) lines.push(`⚠️ 低良率供应商：${lowYieldItems}，建议纳入质量改善计划。`);
+    lines.push(`数据基础：${coCount}条客户订单 · ${spCount}条供应商绩效 · ${rtCount}条生产计划。`);
+  }
+  else if(type==='supplyRisk'){
+    const {riskItems,spCount,rtCount}=data;
+    const critical=riskItems.filter(r=>r.lvl==='critical');
+    const warnings=riskItems.filter(r=>r.lvl==='warning');
+    if(critical.length) lines.push(`🔴 严重风险${critical.length}项：${critical.map(r=>'['+r.proc+']'+r.detail).join('；')}。建议立即处理。`);
+    if(warnings.length) lines.push(`🟡 预警${warnings.length}项：${warnings.map(r=>'['+r.proc+']'+r.detail).join('；')}。需关注。`);
+    if(!critical.length&&!warnings.length) lines.push('✅ 当前未发现严重风险，各制程指标在正常范围。');
+    const bottleneck=riskItems.filter(r=>r.type==='产能'||r.type==='库存');
+    if(bottleneck.length) lines.push(`建议优先解决瓶颈：${bottleneck.map(r=>r.proc+'('+r.type+')').join('、')}。`);
+    lines.push(`基于${spCount}条供应商绩效 · ${rtCount}条生产计划。`);
+  }
+  else if(type==='demandInsight'){
+    const {matInsights,totalQty,totalOrders,custCount,fcstRatio,dpInsight}=data;
+    const topMats=matInsights.sort((a,b)=>b.qty-a.qty).slice(0,3);
+    lines.push(`需求分析：共${totalOrders}单/${totalQty.toLocaleString()}颗，来自${custCount}个客户，${matInsights.length}个物料。`);
+    if(topMats.length) lines.push(`主力物料：${topMats.map(m=>m.code+'('+m.qty.toLocaleString()+'颗/'+m.orders+'单)').join('、')}。`);
+    if(fcstRatio>50) lines.push(`⚠️ Forecast占比${Math.round(fcstRatio)}%，需求确定性较低，建议滚动排产。`);
+    else lines.push(`✅ 已确认订单占比${Math.round(100-fcstRatio)}%，需求可见性良好。`);
+    if(dpInsight) lines.push(dpInsight);
+    const highVol=matInsights.filter(m=>m.qty>10000);
+    if(highVol.length) lines.push(`大用量物料(${highVol.length}个)建议建立安全库存。`);
+  }
+  return lines.join('\n');
+}</script>
+</body>
+</html>
