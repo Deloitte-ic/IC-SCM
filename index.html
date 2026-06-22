@@ -4100,15 +4100,15 @@ function getMrpAiSuggestion(r){
     detailLines.push('损耗率'+r.scrapRate+'%偏高，建议核查工艺');
   }
   
-  // 供应商推荐（实时从appData.suppliers查找）
-  const supRecs=window.appData&&appData.suppliers?appData.suppliers.filter(s=>s.processCode===r.process&&s.material===r.matCode):[];
+  // 供应商推荐（实时从appData.suppliers查找，兼容material/materialCode两种字段名）
+  const supRecs=appData.suppliers?appData.suppliers.filter(s=>s.processCode===r.process&&(s.material===r.matCode||s.materialCode===r.matCode)):[];
   if(supRecs.length>0){
     const bestSup=supRecs.sort((a,b)=>(b.qualityLevel||'B').localeCompare(a.qualityLevel||'B'))[0];
     chips.push('<span style="display:inline-block;padding:1px 6px;border-radius:6px;font-size:10px;background:#f0fdf4;color:#166534;border:1px solid #bbf7d0">🏭'+bestSup.code+'</span>');
     detailLines.push('推荐供应商:'+bestSup.code+' | 交期'+bestSup.leadTime+'天 | MOQ:'+(bestSup.moq||'—'));
   }else{
     // 尝试从supplierPerf按制程匹配
-    const perfRecs=window.appData&&appData.supplierPerf?appData.supplierPerf.filter(s=>s.process===r.process):[];
+    const perfRecs=appData.supplierPerf?appData.supplierPerf.filter(s=>s.process===r.process):[];
     if(perfRecs.length>0){
       const best=perfRecs.sort((a,b)=>(b.yieldRate||0)-(a.yieldRate||0))[0];
       chips.push('<span style="display:inline-block;padding:1px 6px;border-radius:6px;font-size:10px;background:#f0fdf4;color:#166534;border:1px solid #bbf7d0">🏭'+best.code+'</span>');
@@ -4116,22 +4116,33 @@ function getMrpAiSuggestion(r){
     }
   }
   
-  // 建议下单时间（从需求日期反推）
+  // 建议下单时间（从需求日期反推，始终显示）
   if(r.demandDate){
-    const leadTimes=window.appData&&appData.leadTimes?appData.leadTimes.find(l=>l.process===r.process):null;
+    const leadTimes=appData.leadTimes?appData.leadTimes.find(l=>l.process===r.process):null;
     if(leadTimes){
       const ltDays=leadTimes.prod+leadTimes.trans+leadTimes.inspect;
       const orderDate=new Date(r.demandDate);
       orderDate.setDate(orderDate.getDate()-ltDays);
       const today=new Date();today.setHours(0,0,0,0);
       const daysLeft=Math.round((orderDate-today)/86400000);
-      if(daysLeft<=0) chips.push('<span style="display:inline-block;padding:1px 6px;border-radius:6px;font-size:10px;background:#fef2f2;color:#dc2626">⏰ 立即下单</span>');
-      else if(daysLeft<=7) chips.push('<span style="display:inline-block;padding:1px 6px;border-radius:6px;font-size:10px;background:#fff7ed;color:#c2410c">⏰ '+daysLeft+'天内下单</span>');
-      detailLines.push('建议下单日:'+(orderDate.toISOString().slice(0,10))+' | 交期'+ltDays+'天');
+      let timeLabel;
+      if(daysLeft<=0) timeLabel='⏰ 立即下单';
+      else if(daysLeft<=7) timeLabel='⏰ '+daysLeft+'天内下单';
+      else timeLabel='⏰ '+daysLeft+'天后需下单';
+      const chipBg=daysLeft<=0?'#fef2f2':daysLeft<=7?'#fff7ed':'#f0fdf4';
+      const chipColor=daysLeft<=0?'#dc2626':daysLeft<=7?'#c2410c':'#166534';
+      chips.push('<span style="display:inline-block;padding:1px 6px;border-radius:6px;font-size:10px;background:'+chipBg+';color:'+chipColor+'">'+timeLabel+'</span>');
+      detailLines.push('建议下单日:'+(orderDate.toISOString().slice(0,10))+' | 交期'+ltDays+'天 | 需求日:'+r.demandDate);
     }else{
       const daysToDemand=Math.round((new Date(r.demandDate)-new Date())/86400000);
-      if(daysToDemand<=0) chips.push('<span style="display:inline-block;padding:1px 6px;border-radius:6px;font-size:10px;background:#fef2f2;color:#dc2626">⏰ 已过期</span>');
-      else if(daysToDemand<=7) chips.push('<span style="display:inline-block;padding:1px 6px;border-radius:6px;font-size:10px;background:#fff7ed;color:#c2410c">⏰ '+daysToDemand+'天到期</span>');
+      let timeLabel;
+      if(daysToDemand<=0) timeLabel='⏰ 已过期';
+      else if(daysToDemand<=7) timeLabel='⏰ '+daysToDemand+'天到期';
+      else timeLabel='⏰ 距需求'+daysToDemand+'天';
+      const chipBg=daysToDemand<=0?'#fef2f2':daysToDemand<=7?'#fff7ed':'#f0fdf4';
+      const chipColor=daysToDemand<=0?'#dc2626':daysToDemand<=7?'#c2410c':'#166534';
+      chips.push('<span style="display:inline-block;padding:1px 6px;border-radius:6px;font-size:10px;background:'+chipBg+';color:'+chipColor+'">'+timeLabel+'</span>');
+      detailLines.push('需求日:'+r.demandDate+' | 建议参考交期配置安排');
     }
   }
   
