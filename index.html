@@ -9412,14 +9412,76 @@ async function handleAiVoiceCommand(text){
     }
   }
 
-  // 默认：按用户问题匹配平台功能，直接跳转展示真实数据（不做任何计算推导）
+  // 默认：按用户问题匹配平台功能，后台执行并直接展示结果
   const qaMap=[
-    // 交付/需求+BOM展开 → Supply → MRP（平台真实BOM+良率+交期展开结果）
-    {keys:['Wafer需要多少','Wafer什么时候','Wafer下单','Wafer需求','BOM展开','物料需求','下阶物料','需要多少Wafer','要交付.*成品','交付.*FT','要交付.*FT','月.*要交付','月.*交付','.*交付.*颗','.*交货.*颗','物料清单','MRP运算','MRP结果'], fn:()=>{
-      switchSection('supplyplan');
-      switchSupplyPlanTab('sp-mrp');
-      setTimeout(()=>{loadSpMrpParams();showToast('✅ 已加载MRP','success')},200);
-      return '🔀 Supply → MRP（结果在页面中）';
+    // 交付/需求+BOM展开 → 后台执行MRP，在对话框直接展示结果
+    {keys:['Wafer需要多少','Wafer什么时候','Wafer下单','Wafer需求','BOM展开','物料需求','下阶物料','需要多少Wafer','要交付.*成品','交付.*FT','要交付.*FT','月.*要交付','月.*交付','.*交付.*颗','.*交货.*颗','物料清单','MRP运算','MRP结果'], fn:async()=>{
+      if(body)body.innerHTML='💬 <strong>'+text.replace(/</g,'&lt;')+'</strong><br><br>⏳ MRP运算中...';
+      // 解析数量和日期
+      let qty=0, dueDate='';
+      const qtyMatch=text.match(/(\d[\d,]*)\s*颗/);
+      if(qtyMatch) qty=parseInt(qtyMatch[1].replace(/,/g,''));
+      const dateMatch=text.match(/(\d{1,2})月(\d{1,2})日/);
+      if(dateMatch){
+        const m=String(dateMatch[1]).padStart(2,'0'), d=String(dateMatch[2]).padStart(2,'0');
+        dueDate='2026-'+m+'-'+d;
+      }else{
+        const ymdMatch=text.match(/(\d{4})-(\d{2})-(\d{2})/);
+        if(ymdMatch) dueDate=ymdMatch[0];
+      }
+      // 兜底默认
+      if(!qty) qty=1000;
+      if(!dueDate) dueDate=new Date(Date.now()+30*86400000).toISOString().split('T')[0];
+      try{
+        // 确保参数同步到core
+        if(typeof syncParamsToCore==='function'&&typeof getMrpParamValues==='function'){
+          syncParamsToCore(getMrpParamValues());
+        }
+        // 后台执行MRP
+        appData.mrpResult=[]; appData.mrpDetails=[];
+        runMrpEngine(qty, dueDate);
+        const results=appData.mrpResult||[];
+        if(!results.length){
+          if(body)body.innerHTML='💬 <strong>'+text.replace(/</g,'&lt;')+'</strong><br><br>❌ MRP运算无结果';
+          return;
+        }
+        // 格式化结果文本
+        const procOrder=['FT','AB','CP','BP','Wafer'];
+        const groups={};
+        results.forEach(r=>{
+          const p=r.process||'其他';
+          if(!groups[p]) groups[p]={items:[],netRemaining:0,grossReq:0,netReq:0,stock:0,wip:0,po:0,pr:0};
+          groups[p].items.push(r);
+          groups[p].netReq+=r.netReq||0;
+          groups[p].grossReq+=r.grossReq||0;
+          groups[p].stock+=r.consumeStock||0;
+          groups[p].wip+=r.consumeWip||0;
+          groups[p].po+=r.consumePo||0;
+          groups[p].pr+=r.consumePr||0;
+          groups[p].netRemaining+=r.netRemaining||0;
+        });
+        let html='📦 <b>MRP运算结果</b><br><small>需求: '+qty.toLocaleString()+'颗 | 日期: '+dueDate+'</small><br><br>';
+        procOrder.forEach(p=>{
+          const g=groups[p]; if(!g) return;
+          const item=g.items[0];
+          const gapColor=g.netRemaining>0?'color:#dc2626':'color:#16a34a';
+          html+='<b>'+p+'</b> <small>('+(item?item.matCode:'')+')</small><br>';
+          html+='&nbsp;&nbsp;毛需求: '+g.grossReq.toLocaleString()+' | 净需求: '+g.netReq.toLocaleString()+'<br>';
+          html+='&nbsp;&nbsp;消耗→ 库存:'+g.stock.toLocaleString()+' WIP:'+g.wip.toLocaleString()+' PR:'+g.pr.toLocaleString()+' PO:'+g.po.toLocaleString()+'<br>';
+          html+='&nbsp;&nbsp;<span style="'+gapColor+'">待补: '+g.netRemaining.toLocaleString()+'</span>';
+          if(item&&item.plannedOrderDate) html+=' | 建议下单: '+item.plannedOrderDate;
+          if(item&&item.plannedArrival) html+=' | 到货: '+item.plannedArrival;
+          html+='<br>';
+          if(g.netRemaining>0&&item&&item.supplier&&item.supplier!=='-') html+='&nbsp;&nbsp;供应商: '+item.supplier+'<br>';
+          html+='<br>';
+        });
+        html+='<small>💡 如需查看完整明细，可在 Supply → MRP 页面查看</small>';
+        if(body)body.innerHTML='💬 <strong>'+text.replace(/</g,'&lt;')+'</strong><br><br>'+html;
+      }catch(e){
+        console.error('[AI-MRP]',e);
+        if(body)body.innerHTML='💬 <strong>'+text.replace(/</g,'&lt;')+'</strong><br><br>❌ MRP运算异常: '+e.message;
+      }
+      return;
     }},
     // 供需匹配类 → Supply → 供需匹配
     {keys:['供需匹配','供需缺口','什么缺货','供应不足','缺料','物料短缺'], fn:()=>{
