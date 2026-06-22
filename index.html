@@ -9561,8 +9561,8 @@ async function handleAiVoiceCommand(text){
   ];
   for(const item of qaMap){
     if(item.keys.some(k=>new RegExp(k,'i').test(text))){
-      const msg=item.fn();
-      if(body)body.innerHTML='✅ '+msg;
+      const msg=await item.fn();
+      if(body&&typeof msg==='string')body.innerHTML='✅ '+msg;
       return;
     }
   }
