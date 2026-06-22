@@ -9412,25 +9412,121 @@ async function handleAiVoiceCommand(text){
     }
   }
 
-  // 默认：AI聊天+自动导航
-  const navCtx={
-    '需求':'当前在S&OP Demand Review，可查看客户订单与DP对比',
-    '供应':'当前在S&OP Supply Review，可查看制程产能与供应商绩效',
-    'MRP':'当前在Supply MRP页面，可运行MRP计算需求',
-    'S&OP':'当前在S&OP页面，包含5个子模块',
-    '采购':'可查看PR/PO数据及供应商信息',
-  };
-  let ctxHint='可输入"MRP""需求回顾""供应""供需匹配""排程建议""质检"等直接跳转';
-  for(const [k,v] of Object.entries(navCtx)){
-    if(text.includes(k)){ctxHint=v;break}
-  }
+  // 默认：AI聊天（带平台真实数据上下文）
   if(body)body.innerHTML='💬 <strong>'+text.replace(/</g,'&lt;')+'</strong><br><br>⏳ AI思考中...';
-  const sys=`你是IC-SCM平台AI助手，回答供应链问题简明扼要。当前${ctxHint}。平台数据：客户订单${(appData.customerOrders||[]).length}条，库存${(appData.inventory||[]).length}条，物料${(appData.materials||[]).length}个。`;
+  const platCtx=buildPlatformContext();
+  const sys=`你是IC-SCM平台AI助手。回答要基于以下**平台真实数据**，不要凭空假设参数。
+
+## 平台数据
+${platCtx}
+
+## 回答规则
+1. 涉及数量计算（如Wafer需求、下单时间等），先用calcBomExplosion()函数计算，把计算过程和真实数据列出来
+2. 需要交期/库存信息时，直接引用平台数据
+3. 如用户问题涉及具体物料，先查该物料的BOM、良率、交期再回答
+4. 计算要分步展示：成品需求→各制程良率折算→BOM用量展开→库存扣减→交期倒推
+5. 简明扼要，关键数字加粗`;
   const result=await aiChat([
     {role:'system',content:sys},
     {role:'user',content:text}
-  ],{temp:0.3,maxTokens:512});
+  ],{temp:0.3,maxTokens:2048});
   if(body)body.innerHTML='💬 <strong>'+text.replace(/</g,'&lt;')+'</strong><br><br>💡 '+result;
+}
+
+// ---- 平台数据上下文构建 ----
+function buildPlatformContext(){
+  const mats=appData.materials||[];
+  const boms=appData.boms||[];
+  const lts=appData.leadTimes||[];
+  const inv=appData.inventory||[];
+  // BOM摘要
+  let bomTxt='BOM结构:\n';
+  boms.forEach(b=>{bomTxt+=`  ${b.parent}→${b.child} 用量${b.usage} 损耗${b.scrap}%\n`});
+  // 良率
+  let yldTxt='物料良率:\n';
+  mats.forEach(m=>{if(m.yieldRate!==undefined)yldTxt+=`  ${m.code} ${m.yieldRate}%\n`});
+  // 交期
+  let ltTxt='各制程交期(天):\n';
+  lts.forEach(l=>{ltTxt+=`  ${l.process} ${l.name} 生产${l.prod}+运输${l.trans}+检验${l.inspect}=${l.prod+l.trans+l.inspect}天\n`});
+  // 库存
+  let invTxt='库存:\n';
+  inv.forEach(i=>{invTxt+=`  ${i.materialCode} ${i.goodQty||i.stock||0}${i.unit||'颗'}\n`});
+  // 工艺链
+  const chainTxt='工艺链(逆序): FT→AB→CP→BP→Wafer\n';
+  return bomTxt+yldTxt+ltTxt+invTxt+chainTxt+'供应商产能和交期详见各制程页。';
+}
+
+// ---- BOM展开计算（基于真实数据） ----
+function calcBomExplosion(materialCode, topQty, targetDateStr){
+  const PROC_CHAIN=['FT','AB','CP','BP','Wafer'];
+  const revChain=[...PROC_CHAIN].reverse(); // Wafer→BP→CP→AB→FT
+  const mat=appData.materials.find(m=>m.code===materialCode);
+  if(!mat)return null;
+  const procIdx=PROC_CHAIN.indexOf(mat.processCode);
+  if(procIdx===-1)return null;
+
+  const targetDate=targetDateStr?new Date(targetDateStr):null;
+  const steps=[];
+  let qty=topQty;
+  let cumDate=targetDate?new Date(targetDate):null;
+
+  // 向工艺链下游展开（从成品到Wafer）
+  for(let i=procIdx;i<PROC_CHAIN.length;i++){
+    const p=PROC_CHAIN[i];
+    const pMat=appData.materials.find(m=>m.processCode===p);
+    const yieldRate=pMat&&pMat.yieldRate?pMat.yieldRate/100:0.95;
+    // 考虑本制程良率
+    const inputNeeded=Math.ceil(qty/yieldRate);
+    // 查找BOM：当前制程作为parent时，它的child物料用量
+    const bom=appData.boms.find(b=>b.parent===p);
+    const usage=bom?bom.usage:1;
+    const scrap=bom?bom.scrap/100:0;
+    // 展开到下阶需求
+    const nextQty=Math.ceil(inputNeeded*usage/(1-scrap));
+
+    // 查找库存
+    const inv=pMat?appData.inventory.find(i=>i.materialCode===pMat.code):null;
+    const stock=inv?(inv.goodQty||inv.stock||0):0;
+
+    // 查找交期
+    const lt=appData.leadTimes.find(l=>l.process===p);
+    const totalLt=lt?lt.prod+lt.trans+lt.inspect:0;
+
+    // 计算最晚开始时间
+    let startDate=null;
+    if(cumDate&&totalLt>0){
+      startDate=new Date(cumDate);
+      startDate.setDate(startDate.getDate()-totalLt);
+    }
+
+    steps.push({
+      process:p,
+      material:pMat?pMat.code:'',
+      materialDesc:pMat?pMat.name:p,
+      outputQty:qty,
+      yieldRate:Math.round(yieldRate*100)+'%',
+      inputNeeded,
+      bomUsage:usage,
+      bomScrap:Math.round(scrap*100)+'%',
+      nextLevelQty:nextQty,
+      stock,
+      leadTime:totalLt,
+      startDate:startDate?startDate.toISOString().slice(0,10):'',
+      dueDate:cumDate?cumDate.toISOString().slice(0,10):''
+    });
+
+    qty=nextQty;
+    if(startDate)cumDate=new Date(startDate);
+  }
+
+  return {
+    topMaterial:materialCode,
+    topQty,
+    targetDate:targetDateStr,
+    steps,
+    waferQty:qty,
+    waferOrderDate:steps[steps.length-1]?.startDate||''
+  };
 }
 
 // ---- 注入AI UI元素到S&OP各Tab ----
