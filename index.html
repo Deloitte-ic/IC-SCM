@@ -9272,13 +9272,14 @@ function startAiVoiceRecog(){
       'not-allowed':'浏览器拒绝了麦克风权限',
       'no-speech':'未检测到语音',
       'audio-capture':'麦克风设备不可用',
-      'network':'网络错误（需Google语音服务）',
+      'network':'网络环境不支持Google语音服务，请用下方输入框打字',
       'service-not-allowed':'语音服务被禁止',
       'aborted':'用户取消了语音输入',
       'language-not-supported':'当前语言不支持',
       'bad-grammar':'语法错误'
     };
-    document.querySelector('.vp-body').innerHTML='❌ 语音识别失败<br><small>错误: '+err+(tips[err]?' — '+tips[err]:'')+'</small>';
+    const msg='❌ 语音识别失败<br><small>错误: '+err+(tips[err]?' — '+tips[err]:'')+'</small>'+(err==='network'?'<br><br>💡 <strong>请在下方输入框直接打字</strong>':'');
+    document.querySelector('.vp-body').innerHTML=msg;
   };
   _aiVoiceRecognition.onend=function(){btn.classList.remove('listening')};
 
@@ -9422,26 +9423,44 @@ function createAiVoiceUI(){
   const btn=document.createElement('button');
   btn.id='aiVoiceBtn';
   btn.className='ai-float-btn';
-  btn.innerHTML='🎤';
-  btn.title='AI语音助手';
+  btn.innerHTML='💬';
+  btn.title='AI助手';
   btn.onclick=toggleAiVoice;
   document.body.appendChild(btn);
 
-  // 语音面板
+  // AI助手面板（文字+语音双模）
   const panel=document.createElement('div');
   panel.id='aiVoicePanel';
   panel.className='ai-voice-panel';
   panel.innerHTML=`
     <div class="vp-header">
-      <span>🎤 AI语音助手</span>
+      <span>💬 AI助手</span>
       <span style="cursor:pointer;font-size:18px" onclick="toggleAiVoice()">×</span>
     </div>
-    <div class="vp-body">说"需求""供应""MRP""排程"等关键词快速查询，或直接提问</div>
-    <div class="vp-footer">
-      <button class="btn btn-sm btn-primary" onclick="startAiVoiceRecog()">🎤 开始说话</button>
-      <button class="btn btn-sm btn-outline" onclick="document.querySelector('.vp-body').innerHTML='说"需求""供应""MRP""排程"等关键词快速查询，或直接提问'">清空</button>
+    <div class="vp-body">输入"需求""供应""MRP""排程"等关键词快速查询，或直接提问</div>
+    <div class="vp-footer" style="flex-direction:column;gap:6px">
+      <div style="display:flex;gap:6px;width:100%">
+        <input id="aiTextInput" type="text" placeholder="输入问题..." style="flex:1;padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px;outline:none">
+        <button class="btn btn-sm btn-primary" onclick="submitAiText()">发送</button>
+      </div>
+      <div style="display:flex;gap:6px;width:100%;justify-content:space-between">
+        <button class="btn btn-sm btn-outline" style="flex:1" onclick="startAiVoiceRecog()">🎤 语音</button>
+        <button class="btn btn-sm btn-outline" style="flex:1" onclick="document.querySelector('.vp-body').innerHTML='输入"需求""供应""MRP""排程"等关键词快速查询，或直接提问';document.getElementById('aiTextInput').value=''">清空</button>
+      </div>
     </div>`;
   document.body.appendChild(panel);
+  // 输入框回车提交
+  document.getElementById('aiTextInput').addEventListener('keydown',function(e){
+    if(e.key==='Enter')submitAiText();
+  });
+}
+function submitAiText(){
+  const input=document.getElementById('aiTextInput');
+  if(!input)return;
+  const text=input.value.trim();
+  if(!text)return;
+  document.querySelector('.vp-body').innerHTML='💬 <strong>'+text.replace(/</g,'&lt;')+'</strong><br><br>⏳ 处理中...';
+  handleAiVoiceCommand(text);
 }
 
 // ---- 初始化AI Copilot ----
