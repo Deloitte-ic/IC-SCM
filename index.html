@@ -9412,65 +9412,89 @@ async function handleAiVoiceCommand(text){
     }
   }
 
-  // 默认：按用户问题匹配平台功能，返回真实执行结果
+  // 默认：按用户问题匹配平台功能，直接跳转展示真实数据（不做任何计算推导）
   const qaMap=[
-    // 物料需求/BOM展开类 → Supply → MRP（已有完整BOM+良率+交期计算）
-    {keys:['Wafer需要多少','Wafer什么时候','Wafer下单','Wafer需求','BOM展开','物料需求','下阶物料','需要多少Wafer','成品.*交付.*Wafer','FT.*交付'], fn:()=>{
+    // 交付/需求+BOM展开 → Supply → MRP（平台真实BOM+良率+交期展开结果）
+    {keys:['Wafer需要多少','Wafer什么时候','Wafer下单','Wafer需求','BOM展开','物料需求','下阶物料','需要多少Wafer','要交付.*成品','交付.*FT','要交付.*FT','月.*要交付','月.*交付','.*交付.*颗','.*交货.*颗','物料清单','MRP运算','MRP结果'], fn:()=>{
       switchSection('supplyplan');
       switchSupplyPlanTab('sp-mrp');
-      setTimeout(()=>{loadSpMrpParams();showToast('✅ 已加载MRP运算，请查看各制程需求详情','success')},200);
-      return '🔀 已跳转到 **Supply → MRP物料需求计划**\n\n平台MRP已基于真实BOM、良率、库存、在途数据展开计算，请查看页面上的详细运算结果（含各制程需求、交期倒排、PR建议）。';
+      setTimeout(()=>{loadSpMrpParams();showToast('✅ 已加载MRP','success')},200);
+      return '🔀 Supply → MRP（结果在页面中）';
     }},
     // 供需匹配类 → Supply → 供需匹配
     {keys:['供需匹配','供需缺口','什么缺货','供应不足','缺料','物料短缺'], fn:()=>{
       switchSection('supplyplan');
       switchSupplyPlanTab('sp-matching');
       setTimeout(()=>runSpMatching(),300);
-      return '🔀 已跳转到 **Supply → 供需匹配&缺口分析**\n\n页面已展示各制程的供应vs需求对比、缺口预警及补货建议。';
+      return '🔀 Supply → 供需匹配（结果在页面中）';
     }},
     // 产能类 → Supply → 供应网络
-    {keys:['产能','产能利用率','产线负荷','产能够','瓶颈'], fn:()=>{
+    {keys:['产能','产能利用率','产线负荷','产能够','瓶颈','供应商产能'], fn:()=>{
       switchSection('supplyplan');
       switchSupplyPlanTab('sp-network');
-      return '🔀 已跳转到 **Supply → 晶圆供应&委外网络**\n\n页面展示了各委外制程的产能、利用率和瓶颈分析。';
+      return '🔀 Supply → 供应网络（结果在页面中）';
     }},
     // 生产计划类 → Supply → 生产计划
     {keys:['生产计划','生产排程','排产','生产安排'], fn:()=>{
       switchSection('supplyplan');
       switchSupplyPlanTab('sp-production');
-      return '🔀 已跳转到 **Supply → 委外制程生产计划**\n\n页面展示各制程的生产计划排程。';
+      return '🔀 Supply → 生产计划（结果在页面中）';
     }},
     // Demand Planning
     {keys:['需求预测','统计预测','预测','Demand Planning'], fn:()=>{
       switchSection('demandplan');
-      return '🔀 已跳转到 **Demand Planning**\n\n页面展示统计预测、承诺感知、滚动共识等需求计划数据。';
+      return '🔀 Demand Planning（结果在页面中）';
     }},
     // S&OP Executive
-    {keys:['S&OP会议','高管决策','管理层','决策会议','KPI'], fn:()=>{
+    {keys:['S&OP会议','高管决策','管理层','决策会议','KPI','经营分析'], fn:()=>{
       switchSection('collaboration');
       switchSopTab('sop-exec');
       if(cfg.apiKey) setTimeout(()=>runAiMeetingBrief(),500);
-      return '🔀 已跳转到 **S&OP → Executive S&OP**\n\n页面展示真实KPI聚合与高管决策数据。';
+      return '🔀 S&OP → Executive S&OP（结果在页面中）';
     }},
     // 供应商
-    {keys:['供应商','供应商绩效','交期','供应商交期'], fn:()=>{
+    {keys:['供应商','供应商绩效','交期','供应商交期','厂商'], fn:()=>{
       switchSection('masterdata');
-      return '🔀 已跳转到 **Master Data → 供应商**\n\n可查看供应商交期、良率、绩效等数据。';
+      return '🔀 Master Data → 供应商';
     }},
     // 库存
-    {keys:['库存','安全库存','库存情况'], fn:()=>{
+    {keys:['库存','安全库存','库存情况','库存水平'], fn:()=>{
       switchSection('business');
-      return '🔀 已跳转到 **Business Data → 库存**\n\n页面展示当前各物料库存、在途及安全库存数据。';
+      return '🔀 Business Data → 库存';
     }},
     // 在制品
-    {keys:['在制品','WIP','在制'], fn:()=>{
+    {keys:['在制品','WIP','在制','未完工'], fn:()=>{
       switchSection('business');
-      return '🔀 已跳转到 **Business Data → 在制品**\n\n页面展示当前在制品数据。';
+      return '🔀 Business Data → 在制品';
     }},
     // 客户订单
-    {keys:['客户订单','订单情况','订单状态','sales order'], fn:()=>{
+    {keys:['客户订单','订单情况','订单状态','sales order','SO'], fn:()=>{
       switchSection('demand');
-      return '🔀 已跳转到 **Requirement → 客户订单**\n\n页面展示所有客户订单明细及状态。';
+      return '🔀 Requirement → 客户订单';
+    }},
+    // 需求计划/DP
+    {keys:['需求计划','滚动预测','需求回顾','DR','Demand Review','demand review'], fn:()=>{
+      switchSection('collaboration');
+      switchSopTab('sop-demand');
+      return '🔀 S&OP → Demand Review';
+    }},
+    // Supply Review
+    {keys:['供应回顾','供应计划','SR','Supply Review','supply review'], fn:()=>{
+      switchSection('collaboration');
+      switchSopTab('sop-supply');
+      return '🔀 S&OP → Supply Review';
+    }},
+    // Pre-S&OP
+    {keys:['预评审','Pre-S&OP','pre-sop','量利'], fn:()=>{
+      switchSection('collaboration');
+      switchSopTab('sop-presop');
+      return '🔀 S&OP → Pre-S&OP';
+    }},
+    // Plan Simulation
+    {keys:['计划模拟','Plan Simulation','simulation','模拟','what-if'], fn:()=>{
+      switchSection('collaboration');
+      switchSopTab('sop-invopt');
+      return '🔀 S&OP → Plan Simulation';
     }},
   ];
   for(const item of qaMap){
@@ -9481,13 +9505,13 @@ async function handleAiVoiceCommand(text){
     }
   }
 
-  // 仍未匹配 → 用LLM简单回复（不做计算，只做引导）
-  if(body)body.innerHTML='💬 <strong>'+text.replace(/</g,'&lt;')+'</strong><br><br>⏳ AI思考中...';
-  const guideHint='你是IC-SCM平台AI助手。用户的问题未匹配到具体功能。请：1）先尝试理解用户需求 2）推荐可用的平台功能 3）引导用户使用导航命令。可用命令：MRP、供需匹配、产能、需求预测、库存、客户订单、Demand Review、Supply Review、排程建议、质检。';
+  // 仍未匹配 → LLM一句话推荐功能（不做计算推导）
+  if(body)body.innerHTML='💬 <strong>'+text.replace(/</g,'&lt;')+'</strong><br><br>⏳ ...';
+  const guideHint='你是IC-SCM平台AI助手，回答必须在一句话以内。用户问题未匹配到功能，请推荐最相关的平台功能名称（如MRP、供需匹配、产能、需求预测、库存、客户订单、Demand Review）。不要做任何计算、推导或估算。不要列举。';
   const result=await aiChat([
     {role:'system',content:guideHint},
     {role:'user',content:text}
-  ],{temp:0.3,maxTokens:512});
+  ],{temp:0.3,maxTokens:128});
   if(body)body.innerHTML='💬 <strong>'+text.replace(/</g,'&lt;')+'</strong><br><br>💡 '+result;
 }
 
